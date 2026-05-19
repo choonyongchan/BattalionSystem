@@ -25,6 +25,41 @@ function closeMobileSidebar() {
 document.getElementById("mobile-nav-toggle")?.addEventListener("click", openMobileSidebar);
 document.getElementById("sidebar-backdrop")?.addEventListener("click", closeMobileSidebar);
 
+// ── Auto-hide topbar on scroll-down, restore on scroll-up ────────────
+// Uses negative margin-top equal to the measured topbar height so the
+// element doesn't just slide off-screen with empty space behind — the
+// space genuinely collapses and #content takes over. requestAnimationFrame
+// keeps the scroll handler cheap.
+(function setupTopbarAutoHide() {
+  const content = document.getElementById("content");
+  const topbar = document.getElementById("topbar");
+  if (!content || !topbar) return;
+  let lastY = 0;
+  let ticking = false;
+  const SCROLL_THRESHOLD = 6;   // ignore micro-scrolls / rubber-band
+  const SHOW_BELOW_PX   = 60;   // always show topbar near the very top
+  content.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = content.scrollTop;
+      const delta = y - lastY;
+      if (Math.abs(delta) > SCROLL_THRESHOLD) {
+        if (delta > 0 && y > SHOW_BELOW_PX) {
+          // Scrolling down past the top — hide topbar by pulling its full
+          // height upward so #content reclaims the space.
+          topbar.style.marginTop = "-" + topbar.offsetHeight + "px";
+        } else if (delta < 0) {
+          // Scrolling up — show again.
+          topbar.style.marginTop = "0";
+        }
+        lastY = y;
+      }
+      ticking = false;
+    });
+  });
+})();
+
 document.getElementById("search-input").addEventListener("input", e => {
   const q = e.target.value.toLowerCase();
   const res = document.getElementById("search-results");
