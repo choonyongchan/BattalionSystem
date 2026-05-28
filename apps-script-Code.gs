@@ -88,8 +88,9 @@
  *                display-format ("16 May 2026"); time is free text ("0930").)
  *
  *   Leave:      id | d4 | type | startDate | endDate | days | reason
- *               (Personnel absences. type ∈ {Leave, Off-in-Lieu, Weekend,
- *                Night's Out, Course, Guard Duty, NDP, Other}. Only
+ *               (Personnel absences. type ∈ {Leave, Compassionate,
+ *                Off-in-Lieu, Weekend, Night's Out, Course, Guard Duty,
+ *                NDP, Other}. Only
  *                Off-in-Lieu decrements the per-commander leaveQuota
  *                (roster field). Night's Out = same-day evening off-camp
  *                (start = end = same date). startDate/endDate inclusive,
