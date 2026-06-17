@@ -5,7 +5,7 @@
 // The Apps Script web app URL. This is no longer a secret — auth is enforced
 // server-side by per-device tokens issued via the invite flow (see Apps Script).
 // PASTE YOUR DEPLOYMENT URL HERE after redeploying the updated Apps Script:
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnjBgB11uqvKjIMk8UWv7Rj6Wb20JtYY1KpYS6H5o1WPwLpkE6Jcn4Nd-3qKsKId6fqQ/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDS7xf98_EbA7q6pnv1LvqnEPt9hqm5hZV8XQly9yb/dev";
 
 // Storage key is versioned so we can invalidate stale caches in users' browsers.
 const STORAGE_KEY = "cougar-data-v2";
