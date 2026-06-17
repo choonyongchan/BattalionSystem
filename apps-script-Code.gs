@@ -116,7 +116,7 @@
  *                the next Push All.)
  */
 
-var FRONTEND_BASE_URL = "https://coon-hound.github.io/cougar-system/";
+var FRONTEND_BASE_URL = "https://choonyongchan.github.io/BattalionSystem/";
 
 // ─── ROUTING ───────────────────────────────────────────
 
