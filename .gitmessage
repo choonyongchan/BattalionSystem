@@ -1,0 +1,8 @@
+# <type>(<scope>): <subject>
+# Short imperative summary (max 50 chars). No period at the end.
+# Types: feat, fix, docs, style, refactor, test, chore
+
+# Body: Why is this change necessary? What does it address?
+# Wrap lines at 72 characters.
+
+# Footer: Closes #123 or BREAKING CHANGE: <description>
