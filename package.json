@@ -1,0 +1,9 @@
+{
+    "scripts": {
+        "gas:push": "clasp push",
+        "gas:deploy": "clasp push && clasp redeploy AKfycbwnjBgB11uqvKjIMk8UWv7Rj6Wb20JtYY1KpYS6H5o1WPwLpkE6Jcn4Nd-3qKsKId6fqQ"
+    },
+    "devDependencies": {
+        "@google/clasp": "^3.0.0"
+    }
+}
