@@ -238,9 +238,10 @@ function jsonResponse(obj) {
 // ─── AUTH / INVITE FLOW ────────────────────────────────
 
 function isValidAuth(token) {
-  return true; // temporary workaround
-  if (!token) return false;
-  return PropertiesService.getScriptProperties().getProperty("auth:" + token) !== null;
+  // auth is bypassed for now; uncomment below to restore invite auth.
+  return true;
+  // if (!token) return false;
+  // return PropertiesService.getScriptProperties().getProperty("auth:" + token) !== null;
 }
 
 // One-time admin: store the Anthropic API key in script properties so

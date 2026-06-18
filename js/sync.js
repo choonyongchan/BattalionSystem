@@ -3,7 +3,13 @@
 
 function renderSync(el) {
   const authed = !!STATE.authToken;
-  const authStatusHtml = authed
+  const authBypassed = typeof isAuthBypassed === "function" && isAuthBypassed();
+  const authStatusHtml = authBypassed
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+         <span style="color:var(--orange);font-weight:600">Auth bypass enabled</span>
+         <span class="mono" style="font-size:10px;color:var(--dim)">invite flow skipped</span>
+       </div>`
+    : authed
     ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
          <span style="color:var(--green);font-weight:600">✓ Authenticated</span>
          <span class="mono" style="font-size:10px;color:var(--dim)">${STATE.authToken.slice(0, 8)}…</span>

@@ -162,24 +162,23 @@ document.addEventListener("click", (e) => {
 // made (regardless of success); the URL param is scrubbed either way so a
 // failed redemption can't sit in the address bar.
 async function tryRedeemInviteFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  const inviteToken = params.get("token");
-  if (!inviteToken) return false;
-
-  // Scrub immediately so a refresh doesn't retry a doomed redemption.
-  history.replaceState({}, document.title, window.location.pathname);
-
-  try {
-    const res = await API.redeemInvite(inviteToken);
-    if (res && res.ok && res.authToken) {
-      setAuthToken(res.authToken);
-      return true;
-    }
-    alert("Invite link rejected: " + (res?.error || "unknown error") + "\n\nAsk your admin for a new link.");
-  } catch (e) {
-    alert("Failed to redeem invite: " + e.message);
-  }
-  return true;
+  // auth is bypassed for now; keep old invite flow commented for restore.
+  // const params = new URLSearchParams(window.location.search);
+  // const inviteToken = params.get("token");
+  // if (!inviteToken) return false;
+  // history.replaceState({}, document.title, window.location.pathname);
+  // try {
+  //   const res = await API.redeemInvite(inviteToken);
+  //   if (res && res.ok && res.authToken) {
+  //     setAuthToken(res.authToken);
+  //     return true;
+  //   }
+  //   alert("Invite link rejected: " + (res?.error || "unknown error") + "\n\nAsk your admin for a new link.");
+  // } catch (e) {
+  //   alert("Failed to redeem invite: " + e.message);
+  // }
+  // return true;
+  return false;
 }
 
 (async function bootstrap() {

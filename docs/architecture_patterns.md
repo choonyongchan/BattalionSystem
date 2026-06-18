@@ -43,8 +43,7 @@ dependency graph.
 - `js/forms.js` owns modal content, form submitters, CSV imports, report
   generation, conduct migration, and Polar photo import staging.
 - `js/sync.js` owns the Sync tab plus pull/push/ping/sign-out flows.
-- `js/main.js` wires nav, search, filters, invite redemption, bootstrap, and
-  launch-time sync.
+- `js/main.js` wires nav, search, filters, bootstrap, and launch-time sync.
 - `styles.css` provides global layout, tokens, component classes, modal rules,
   and mobile behavior.
 
@@ -52,12 +51,11 @@ dependency graph.
 
 1. `main.js` attaches event listeners to nav, search, sidebar, filters, and
    report menu controls.
-2. `tryRedeemInviteFromURL()` consumes `?token=...`, calls
-   `API.redeemInvite()`, stores the returned auth token under the active
-   company's scoped key, and scrubs only the token from the URL.
+2. `tryRedeemInviteFromURL()` is currently a no-op while auth is bypassed.
+   The old invite redemption flow is commented in `js/main.js` for restore.
 3. `loadLocal()` hydrates `STATE` from localStorage, running normalizers.
 4. `loadFilter()` restores scope filters.
-5. If authenticated and the cache is empty or an invite was just redeemed,
+5. If authenticated or bypassed and the cache is empty,
    bootstrap blocks on `API.pullAll()` before first meaningful render.
 6. Otherwise the app renders cached data immediately, then `autoSyncOnLaunch()`
    refreshes in the background.
@@ -71,8 +69,9 @@ Each company Apps Script backend is intentionally generic around sheet tabs:
 - `doGet`: `ping`, `readAll`, `read&tab=...`, `readRollup`.
 - `doPost`: `redeemInvite`, `write`, `append`, `appendMany`, `deleteRow`,
   `updateRow`, `sendEmail`, `getEmailInfo`, `analyzePhoto`.
-- Normal app auth is token-based. Invite and auth records live in
-  `PropertiesService` as `invite:<token>` and `auth:<token>`.
+- Normal app auth is token-based, but currently bypassed for local simplicity:
+  `js/state.js` supplies `AUTH_BYPASS_TOKEN`, `js/main.js` skips invite
+  redemption, and `apps-script-Code.gs:isValidAuth()` returns `true`.
 - Battalion rollups use a separate `ROLLUP_READ_TOKEN` Script Property and do
   not accept normal user invite tokens.
 - The browser stores the issued auth token in localStorage and sends it on

@@ -6,6 +6,7 @@
 // server-side by per-device tokens issued via the invite flow (see Apps Script).
 // PASTE YOUR DEPLOYMENT URL HERE after redeploying the updated Apps Script:
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDS7xf98_EbA7q6pnv1LvqnEPt9hqm5hZV8XQly9yb/dev";
+const AUTH_BYPASS_TOKEN = "auth-bypass";
 
 // Storage key is versioned so we can invalidate stale caches in users' browsers.
 const STORAGE_KEY = "cougar-data-v2";
@@ -118,7 +119,7 @@ function importFitnessSent(json) {
 const STATE = {
   nav: "dashboard",
   apiUrl: APPS_SCRIPT_URL,
-  authToken: localStorage.getItem(AUTH_KEY) || "",
+  authToken: localStorage.getItem(AUTH_KEY) || AUTH_BYPASS_TOKEN,
   roster: [], medical: [], attendance: [], ippt: [], rm: [], soc: [], polar: [], conductDetail: [], appointments: [], leave: [], msk: [],
   // Canonical conduct registry: [{id: "c001", name: "Orientation Run"}, ...].
   // Source of truth for the conduct dimension — records on attendance/polar/
@@ -311,9 +312,13 @@ function loadLocal() {
 }
 
 function setAuthToken(token) {
-  STATE.authToken = token || "";
+  STATE.authToken = token || AUTH_BYPASS_TOKEN;
   if (token) localStorage.setItem(AUTH_KEY, token);
   else localStorage.removeItem(AUTH_KEY);
+}
+
+function isAuthBypassed() {
+  return STATE.authToken === AUTH_BYPASS_TOKEN;
 }
 
 function loadFilter() {
