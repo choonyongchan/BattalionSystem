@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { Company } from '@/lib/companies'
+import { COMPANY_THEMES } from '@/lib/companies'
 import NominalRoll from './NominalRoll'
 import ParadeState from './ParadeState'
 
@@ -21,14 +22,15 @@ export default function CompanyContent({
   label: string
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('nominal-roll')
+  const theme = COMPANY_THEMES[company]
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="bg-green-800 text-white px-6 py-4 flex items-center gap-4 shadow">
-        <Link href="/" className="text-green-300 hover:text-white text-sm transition-colors">
+      <nav className={`${theme.navBg} text-white px-6 py-4 flex items-center gap-4 shadow`}>
+        <Link href="/" className={`${theme.navLinkText} text-sm transition-colors`}>
           ← Home
         </Link>
-        <span className="text-green-500">|</span>
+        <span className={theme.navDivider}>|</span>
         <h1 className="font-bold tracking-wide">{label} Company</h1>
       </nav>
 
@@ -40,7 +42,7 @@ export default function CompanyContent({
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-green-700 text-green-700'
+                  ? `${theme.tabActiveBorder} ${theme.tabActiveText}`
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
