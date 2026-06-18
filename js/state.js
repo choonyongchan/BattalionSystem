@@ -5,7 +5,7 @@
 // The Apps Script web app URL. This is no longer a secret — auth is enforced
 // server-side by per-device tokens issued via the invite flow (see Apps Script).
 // PASTE YOUR DEPLOYMENT URL HERE after redeploying the updated Apps Script:
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDS7xf98_EbA7q6pnv1LvqnEPt9hqm5hZV8XQly9yb/dev";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjHjCeogOAur9Y732spvwXw0D7VM2NwvQqgwhpk2by5lRbwUY4EVKWVeLB-N3HIojkYQ/exec";
 const AUTH_BYPASS_TOKEN = "auth-bypass";
 
 // Storage key is versioned so we can invalidate stale caches in users' browsers.
