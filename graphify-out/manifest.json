@@ -1,0 +1,92 @@
+{
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\.claude\\settings.json": {
+    "mtime": 1781772465.7982523,
+    "ast_hash": "639181b786325f4b1f41fbe506476c8e",
+    "semantic_hash": "639181b786325f4b1f41fbe506476c8e"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\.claude\\settings.local.json": {
+    "mtime": 1781792698.4458463,
+    "ast_hash": "29455eab1a2af722631d787b2f274261",
+    "semantic_hash": "29455eab1a2af722631d787b2f274261"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\.mcp.json": {
+    "mtime": 1781792683.6718009,
+    "ast_hash": "219de8dba72841a9ec32975afbee5b46",
+    "semantic_hash": "219de8dba72841a9ec32975afbee5b46"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\app\\[company]\\page.tsx": {
+    "mtime": 1781794144.724091,
+    "ast_hash": "74ca6c318be6ac9c74354756fa8eb9ef",
+    "semantic_hash": "74ca6c318be6ac9c74354756fa8eb9ef"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\app\\layout.tsx": {
+    "mtime": 1781794130.4391565,
+    "ast_hash": "40eb3e18ff0e351f1faff6a997ac3e0c",
+    "semantic_hash": "40eb3e18ff0e351f1faff6a997ac3e0c"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\app\\page.tsx": {
+    "mtime": 1781794142.6503637,
+    "ast_hash": "eb5fc29cc117d65bf2ac9d1905098e99",
+    "semantic_hash": "eb5fc29cc117d65bf2ac9d1905098e99"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\components\\CompanyContent.tsx": {
+    "mtime": 1781794154.6401691,
+    "ast_hash": "302ba481c7daccb6b1951a5fd66e2352",
+    "semantic_hash": "302ba481c7daccb6b1951a5fd66e2352"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\components\\NominalRoll.tsx": {
+    "mtime": 1781794183.3907464,
+    "ast_hash": "e647bdb4f9863497259bbe17ac0f35f9",
+    "semantic_hash": "e647bdb4f9863497259bbe17ac0f35f9"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\components\\ParadeState.tsx": {
+    "mtime": 1781794599.7108133,
+    "ast_hash": "cde580e089fed7f2e35c498cb67092c7",
+    "semantic_hash": "cde580e089fed7f2e35c498cb67092c7"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\lib\\companies.ts": {
+    "mtime": 1781794132.36725,
+    "ast_hash": "05a0347255c4d458ca62ae61a77f0141",
+    "semantic_hash": "05a0347255c4d458ca62ae61a77f0141"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\lib\\supabase.ts": {
+    "mtime": 1781794135.6618018,
+    "ast_hash": "f575e23e5c3749d66c725e7c9db671b1",
+    "semantic_hash": "f575e23e5c3749d66c725e7c9db671b1"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\next.config.mjs": {
+    "mtime": 1781794541.4039252,
+    "ast_hash": "40f0f9ea3eab7e9339c32b4ba0c2f6b4",
+    "semantic_hash": "40f0f9ea3eab7e9339c32b4ba0c2f6b4"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\package.json": {
+    "mtime": 1781794089.3420691,
+    "ast_hash": "18951e8dbdc806404d7e792bf6764876",
+    "semantic_hash": "18951e8dbdc806404d7e792bf6764876"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\postcss.config.mjs": {
+    "mtime": 1781794094.3305945,
+    "ast_hash": "9b6603c7cd7650cffc6036e05548e873",
+    "semantic_hash": "9b6603c7cd7650cffc6036e05548e873"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\tailwind.config.ts": {
+    "mtime": 1781794093.5731952,
+    "ast_hash": "7ff57de486f839ea16e29f02d536ecfc",
+    "semantic_hash": "7ff57de486f839ea16e29f02d536ecfc"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\tsconfig.json": {
+    "mtime": 1781794089.8525047,
+    "ast_hash": "1b472675188d3d4392b147db24ce9467",
+    "semantic_hash": "1b472675188d3d4392b147db24ce9467"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\CLAUDE.md": {
+    "mtime": 1781770994.717043,
+    "ast_hash": "23ff20a1e4676fd47a73b913ade0c6b9",
+    "semantic_hash": "23ff20a1e4676fd47a73b913ade0c6b9"
+  },
+  "C:\\Users\\Administrator\\Documents\\Projects\\batallion-system\\README.md": {
+    "mtime": 1781795734.9327404,
+    "ast_hash": "f417b96bbd1e75e6882f995c24bed2e2",
+    "semantic_hash": "f417b96bbd1e75e6882f995c24bed2e2"
+  }
+}
