@@ -30,6 +30,8 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
+
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
 
@@ -50,12 +52,12 @@ export default function NominalRoll({ company }: { company: Company }) {
   }
 
   async function addSoldier() {
-    if (!form.name.trim() || !form.platoon.trim()) return
+    if (!form.name.trim() || !form.platoon) return
     setSubmitting(true)
     const { error } = await supabase.from('NominalRoll').insert({
       rank: form.rank,
       name: form.name.trim().toUpperCase(),
-      platoon: form.platoon.trim().toUpperCase(),
+      platoon: form.platoon,
     })
     if (error) {
       setError(error.message)
@@ -138,19 +140,21 @@ export default function NominalRoll({ company }: { company: Company }) {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Platoon</label>
-              <input
-                type="text"
-                placeholder="1 PL"
+              <select
                 value={form.platoon}
                 onChange={(e) => setForm({ ...form, platoon: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                onKeyDown={(e) => e.key === 'Enter' && addSoldier()}
-              />
+              >
+                <option value="">Select platoon</option>
+                {PLATOONS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
           </div>
           <button
             onClick={addSoldier}
-            disabled={submitting || !form.name.trim() || !form.platoon.trim()}
+            disabled={submitting || !form.name.trim() || !form.platoon}
             className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? 'Adding...' : 'Add'}

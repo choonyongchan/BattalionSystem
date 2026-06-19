@@ -8,6 +8,22 @@ import type { Company } from '@/lib/companies'
 const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
 type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
+const REASON_HINTS: Record<ExceptionScope, string> = {
+  'Att C':       'e.g. Flu, Fever',
+  'Status':      'e.g. Excuse RMJ, Excuse Uniform',
+  'Off/Leave':   'e.g. Annual Leave, Off',
+  'Guard Duty':  'e.g. Regimental Guard, Guard Commander',
+  'Report Sick': 'e.g. Flu, Fever',
+  'MA':          'e.g. Skin Appt, IMH Appt',
+  'Others':      'e.g. ...',
+}
+
+const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
+
+const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
+
+const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
+
 type Section = 'exceptions' | 'duties' | 'config'
 
 function toSGDate(iso: string) {
@@ -44,8 +60,7 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
 
-  // Add exception form
-  const [showAddEx, setShowAddEx] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [exForm, setExForm] = useState<{
     name: string
     scope: ExceptionScope
@@ -53,14 +68,9 @@ export default function ParadeState({
     start: string
     end: string
   }>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
-
-  // Add duty form
-  const [showAddDuty, setShowAddDuty] = useState(false)
   const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
-
-  // Add config form
-  const [showAddConfig, setShowAddConfig] = useState(false)
-  const [configForm, setConfigForm] = useState({ parade_type: '', time: '' })
+  const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
+  const [savingParade, setSavingParade] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -79,7 +89,15 @@ export default function ParadeState({
     setSoldiers(soldiersRes.data ?? [])
     setExceptions(exceptionsRes.data ?? [])
     setDuties(dutiesRes.data ?? [])
-    setConfigs(configsRes.data ?? [])
+    const loadedConfigs = configsRes.data ?? []
+    setConfigs(loadedConfigs)
+    if (loadedConfigs.length > 0) {
+      setParadeTimes((prev) => {
+        const next = { ...prev }
+        loadedConfigs.forEach((c) => { next[c.parade_type] = c.time.substring(0, 5) })
+        return next
+      })
+    }
     setLoading(false)
   }
 
@@ -93,17 +111,23 @@ export default function ParadeState({
     return true
   })
 
+  function isExceptionValid() {
+    const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+    return !!(exForm.name && exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
+  }
+
   async function addException() {
-    if (!exForm.name) return
+    if (!isExceptionValid()) return
+    const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
     const { error } = await supabase.from('Exceptions').insert({
       name: exForm.name,
       scope: exForm.scope,
-      reason: exForm.reason || null,
-      start: exForm.start || null,
-      end: exForm.end || null,
+      reason: exForm.reason.trim(),
+      start: singleDate ? null : exForm.start,
+      end: exForm.end,
     })
     if (error) { setError(error.message); return }
-    setShowAddEx(false)
+    setShowForm(false)
     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
     await load()
   }
@@ -116,12 +140,12 @@ export default function ParadeState({
   async function addDuty() {
     if (!dutyForm.duty_type) return
     const { error } = await supabase.from('Duty').upsert({
-      duty_type: dutyForm.duty_type.toUpperCase(),
+      duty_type: dutyForm.duty_type,
       date,
       name: dutyForm.name.toUpperCase() || null,
     })
     if (error) { setError(error.message); return }
-    setShowAddDuty(false)
+    setShowForm(false)
     setDutyForm({ duty_type: '', name: '' })
     await load()
   }
@@ -131,21 +155,11 @@ export default function ParadeState({
     await load()
   }
 
-  async function addConfig() {
-    if (!configForm.parade_type || !configForm.time) return
-    const { error } = await supabase.from('Configuration').upsert({
-      parade_type: configForm.parade_type.toUpperCase(),
-      time: configForm.time,
-    })
-    if (error) { setError(error.message); return }
-    setShowAddConfig(false)
-    setConfigForm({ parade_type: '', time: '' })
-    await load()
-  }
-
-  async function deleteConfig(parade_type: string) {
-    await supabase.from('Configuration').delete().eq('parade_type', parade_type)
-    await load()
+  async function saveParadeTime(parade_type: string) {
+    setSavingParade(parade_type)
+    const { error } = await supabase.from('Configuration').upsert({ parade_type, time: paradeTimes[parade_type] })
+    if (error) setError(error.message)
+    setSavingParade(null)
   }
 
   function generate() {
@@ -279,7 +293,7 @@ export default function ParadeState({
         {sectionTabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setActiveSection(t.id)}
+            onClick={() => { setActiveSection(t.id); setShowForm(false) }}
             className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
               activeSection === t.id
                 ? 'border-green-700 text-green-700'
@@ -296,76 +310,95 @@ export default function ParadeState({
         <div className="space-y-4">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowAddEx(!showAddEx)}
+              onClick={() => setShowForm(!showForm)}
               className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 transition-colors"
             >
-              {showAddEx ? 'Cancel' : '+ Add Exception'}
+              {showForm ? 'Cancel' : '+ Add Exception'}
             </button>
           </div>
 
-          {showAddEx && (
+          {showForm && (
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
               <h3 className="font-medium text-gray-700 text-sm">New Exception</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Soldier Name</label>
-                  <select
-                    value={exForm.name}
-                    onChange={(e) => setExForm({ ...exForm, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Select soldier...</option>
-                    {soldiers.map((s) => (
-                      <option key={s.name} value={s.name}>
-                        {s.rank} {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Scope</label>
-                  <select
-                    value={exForm.scope}
-                    onChange={(e) => setExForm({ ...exForm, scope: e.target.value as ExceptionScope })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    {EXCEPTION_SCOPES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={exForm.start}
-                    onChange={(e) => setExForm({ ...exForm, start: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={exForm.end}
-                    onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Reason (optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Annual Leave, Follow-up appointment"
-                    value={exForm.reason}
-                    onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
+              {(() => {
+                const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Soldier Name</label>
+                      <select
+                        value={exForm.name}
+                        onChange={(e) => setExForm({ ...exForm, name: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        <option value="">Select soldier...</option>
+                        {soldiers.map((s) => (
+                          <option key={s.name} value={s.name}>
+                            {s.rank} {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Scope</label>
+                      <select
+                        value={exForm.scope}
+                        onChange={(e) => setExForm({ ...exForm, scope: e.target.value as ExceptionScope })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        {EXCEPTION_SCOPES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {singleDate ? (
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Date</label>
+                        <input
+                          type="date"
+                          value={exForm.end}
+                          onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                          <input
+                            type="date"
+                            value={exForm.start}
+                            onChange={(e) => setExForm({ ...exForm, start: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">End Date</label>
+                          <input
+                            type="date"
+                            value={exForm.end}
+                            onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <div className={singleDate ? '' : 'sm:col-span-2'}>
+                      <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                      <input
+                        type="text"
+                        placeholder={REASON_HINTS[exForm.scope]}
+                        value={exForm.reason}
+                        onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
               <button
                 onClick={addException}
-                disabled={!exForm.name}
+                disabled={!isExceptionValid()}
                 className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
               >
                 Add Exception
@@ -425,26 +458,29 @@ export default function ParadeState({
         <div className="space-y-4">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowAddDuty(!showAddDuty)}
+              onClick={() => setShowForm(!showForm)}
               className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 transition-colors"
             >
-              {showAddDuty ? 'Cancel' : '+ Add Duty'}
+              {showForm ? 'Cancel' : '+ Add Duty'}
             </button>
           </div>
 
-          {showAddDuty && (
+          {showForm && (
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
               <h3 className="font-medium text-gray-700 text-sm">New Duty for {toSGDate(date)}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Duty Type</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Orderly Officer"
+                  <select
                     value={dutyForm.duty_type}
                     onChange={(e) => setDutyForm({ ...dutyForm, duty_type: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
+                  >
+                    <option value="">Select duty...</option>
+                    {DUTY_TYPES.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Assigned To</label>
@@ -510,81 +546,41 @@ export default function ParadeState({
       {/* Configuration section */}
       {activeSection === 'config' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowAddConfig(!showAddConfig)}
-              className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 transition-colors"
-            >
-              {showAddConfig ? 'Cancel' : '+ Add Parade Type'}
-            </button>
-          </div>
-
-          {showAddConfig && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
-              <h3 className="font-medium text-gray-700 text-sm">New Parade Configuration</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Parade Type</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Morning, Afternoon"
-                    value={configForm.parade_type}
-                    onChange={(e) => setConfigForm({ ...configForm, parade_type: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Time</label>
-                  <input
-                    type="time"
-                    value={configForm.time}
-                    onChange={(e) => setConfigForm({ ...configForm, time: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={addConfig}
-                disabled={!configForm.parade_type || !configForm.time}
-                className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          )}
-
-          {configs.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">No parade types configured.</div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Parade Type</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
-                    <th className="w-10" />
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Parade Type</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
+                  <th className="w-28" />
+                </tr>
+              </thead>
+              <tbody>
+                {PARADE_TYPES.map((pt, i) => (
+                  <tr key={pt} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                    <td className="px-4 py-3 font-medium">{pt}</td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="time"
+                        value={paradeTimes[pt] ?? ''}
+                        onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
+                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => saveParadeTime(pt)}
+                        disabled={savingParade === pt}
+                        className="px-3 py-1 bg-green-700 text-white text-xs font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
+                      >
+                        {savingParade === pt ? 'Saving...' : 'Save'}
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {configs.map((c, i) => (
-                    <tr key={c.parade_type} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                      <td className="px-4 py-3 font-medium">{c.parade_type}</td>
-                      <td className="px-4 py-3 text-gray-600">{c.time.substring(0, 5)}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => deleteConfig(c.parade_type)}
-                          className="text-gray-300 hover:text-red-500 transition-colors text-xs"
-                          title="Remove"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

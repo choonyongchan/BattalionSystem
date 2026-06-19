@@ -76,7 +76,3 @@ export const COMPANY_THEMES: Record<Company, {
     tabActiveText: 'text-gray-900',
   },
 }
-
-export function isValidCompany(slug: string): slug is Company {
-  return (COMPANIES as readonly string[]).includes(slug)
-}
