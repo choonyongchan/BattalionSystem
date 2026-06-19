@@ -561,10 +561,13 @@ export default function ParadeState({
                     <td className="px-4 py-3 font-medium">{pt}</td>
                     <td className="px-4 py-3">
                       <input
-                        type="time"
+                        type="text"
+                        placeholder="HH:MM"
+                        pattern="[0-2][0-9]:[0-5][0-9]"
+                        maxLength={5}
                         value={paradeTimes[pt] ?? ''}
                         onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 w-20"
                       />
                     </td>
                     <td className="px-4 py-3">
