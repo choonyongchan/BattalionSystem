@@ -21,3 +21,8 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+.mcp.json
+
+.vercel
+.env*
