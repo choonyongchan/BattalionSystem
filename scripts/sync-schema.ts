@@ -10,6 +10,7 @@
 
 import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 
 const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 if (!ACCESS_TOKEN) {
@@ -17,17 +18,22 @@ if (!ACCESS_TOKEN) {
   process.exit(1)
 }
 
-// Project refs for companies that have their own dedicated Supabase projects.
-// Add new companies here as they are provisioned.
-const PROJECT_REFS: Record<string, string> = {
-  stallion: 'fscqxujtfewhjvphqtzw',
-  hercules: 'qwlqamrvcosyewqxbrqx',
+// Derive project refs from NEXT_PUBLIC_<COMPANY>_SUPABASE_URL env vars.
+// A company is included only if its URL env var is set and non-empty.
+const PROJECT_REFS: Record<string, string> = {}
+for (const [key, value] of Object.entries(process.env)) {
+  const match = key.match(/^NEXT_PUBLIC_([A-Z]+)_SUPABASE_URL$/)
+  if (match && value) {
+    const company = match[1].toLowerCase()
+    const ref = new URL(value).hostname.split('.')[0]
+    PROJECT_REFS[company] = ref
+  }
 }
 
 const targets = process.argv.slice(2)
 const companies = targets.length > 0 ? targets : Object.keys(PROJECT_REFS)
 
-const schemaPath = join(dirname(new URL(import.meta.url).pathname), '..', 'supabase', 'schema.sql')
+const schemaPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'schema.sql')
 const sql = readFileSync(schemaPath, 'utf-8')
 
 async function syncProject(company: string, ref: string) {
