@@ -9,9 +9,14 @@ const SUPABASE_CONFIGS: Record<Company, { url: string; key: string }> = {
   hercules: { url: process.env.NEXT_PUBLIC_SUPABASE_URL_HERCULES!, key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_HERCULES! },
 }
 
+const clients = new Map<Company, ReturnType<typeof createClient>>()
+
 export function getSupabaseClient(company: Company) {
-  const { url, key } = SUPABASE_CONFIGS[company]
-  return createClient(url, key)
+  if (!clients.has(company)) {
+    const { url, key } = SUPABASE_CONFIGS[company]
+    clients.set(company, createClient(url, key))
+  }
+  return clients.get(company)!
 }
 
 export interface Soldier {

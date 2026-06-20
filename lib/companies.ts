@@ -1,12 +1,8 @@
 export const COMPANIES = ['archer', 'braves', 'cougar', 'stallion', 'hercules'] as const
 export type Company = (typeof COMPANIES)[number]
 
-export const COMPANY_LABELS: Record<Company, string> = {
-  archer: 'Archer',
-  braves: 'Braves',
-  cougar: 'Cougar',
-  stallion: 'Stallion',
-  hercules: 'Hercules',
+export function companyLabel(company: Company) {
+  return company[0].toUpperCase() + company.slice(1)
 }
 
 export const COMPANY_THEMES: Record<Company, {
@@ -15,64 +11,100 @@ export const COMPANY_THEMES: Record<Company, {
   cardText: string
   cardHoverSubText: string
   navBg: string
+  navText: string
   navLinkText: string
   navDivider: string
-  tabActiveBorder: string
-  tabActiveText: string
+  activeBorder: string
+  activeText: string
+  buttonBg: string
+  buttonHoverBg: string
+  focusRing: string
+  badgeBg: string
+  badgeText: string
 }> = {
   archer: {
-    cardBorder: 'border-yellow-500',
-    cardHoverBg: 'hover:bg-yellow-500',
-    cardText: 'text-yellow-800',
-    cardHoverSubText: 'group-hover:text-yellow-100',
-    navBg: 'bg-yellow-600',
-    navLinkText: 'text-yellow-100 hover:text-white',
-    navDivider: 'text-yellow-400',
-    tabActiveBorder: 'border-yellow-600',
-    tabActiveText: 'text-yellow-700',
+    cardBorder: 'border-yellow-400',
+    cardHoverBg: 'hover:bg-yellow-400',
+    cardText: 'text-yellow-900',
+    cardHoverSubText: 'group-hover:text-yellow-900',
+    navBg: 'bg-yellow-300',
+    navText: 'text-yellow-900',
+    navLinkText: 'text-yellow-800 hover:text-yellow-600',
+    navDivider: 'text-yellow-500',
+    activeBorder: 'border-yellow-500',
+    activeText: 'text-yellow-700',
+    buttonBg: 'bg-yellow-500',
+    buttonHoverBg: 'hover:bg-yellow-600',
+    focusRing: 'focus:ring-yellow-400',
+    badgeBg: 'bg-yellow-100',
+    badgeText: 'text-yellow-800',
   },
   braves: {
-    cardBorder: 'border-red-700',
-    cardHoverBg: 'hover:bg-red-700',
-    cardText: 'text-red-800',
-    cardHoverSubText: 'group-hover:text-red-200',
-    navBg: 'bg-red-700',
-    navLinkText: 'text-red-200 hover:text-white',
-    navDivider: 'text-red-400',
-    tabActiveBorder: 'border-red-700',
-    tabActiveText: 'text-red-700',
+    cardBorder: 'border-red-400',
+    cardHoverBg: 'hover:bg-red-400',
+    cardText: 'text-red-900',
+    cardHoverSubText: 'group-hover:text-red-100',
+    navBg: 'bg-red-400',
+    navText: 'text-red-900',
+    navLinkText: 'text-red-900 hover:text-red-700',
+    navDivider: 'text-red-600',
+    activeBorder: 'border-red-500',
+    activeText: 'text-red-700',
+    buttonBg: 'bg-red-500',
+    buttonHoverBg: 'hover:bg-red-600',
+    focusRing: 'focus:ring-red-400',
+    badgeBg: 'bg-red-100',
+    badgeText: 'text-red-800',
   },
   cougar: {
-    cardBorder: 'border-green-700',
-    cardHoverBg: 'hover:bg-green-700',
-    cardText: 'text-green-800',
-    cardHoverSubText: 'group-hover:text-green-200',
-    navBg: 'bg-green-800',
-    navLinkText: 'text-green-300 hover:text-white',
-    navDivider: 'text-green-500',
-    tabActiveBorder: 'border-green-700',
-    tabActiveText: 'text-green-700',
+    cardBorder: 'border-green-400',
+    cardHoverBg: 'hover:bg-green-400',
+    cardText: 'text-green-900',
+    cardHoverSubText: 'group-hover:text-green-100',
+    navBg: 'bg-green-400',
+    navText: 'text-green-900',
+    navLinkText: 'text-green-900 hover:text-green-700',
+    navDivider: 'text-green-600',
+    activeBorder: 'border-green-600',
+    activeText: 'text-green-700',
+    buttonBg: 'bg-green-600',
+    buttonHoverBg: 'hover:bg-green-700',
+    focusRing: 'focus:ring-green-500',
+    badgeBg: 'bg-green-100',
+    badgeText: 'text-green-800',
   },
   stallion: {
-    cardBorder: 'border-blue-700',
-    cardHoverBg: 'hover:bg-blue-700',
-    cardText: 'text-blue-800',
-    cardHoverSubText: 'group-hover:text-blue-200',
-    navBg: 'bg-blue-800',
-    navLinkText: 'text-blue-300 hover:text-white',
-    navDivider: 'text-blue-500',
-    tabActiveBorder: 'border-blue-700',
-    tabActiveText: 'text-blue-700',
+    cardBorder: 'border-blue-400',
+    cardHoverBg: 'hover:bg-blue-400',
+    cardText: 'text-blue-900',
+    cardHoverSubText: 'group-hover:text-blue-100',
+    navBg: 'bg-blue-400',
+    navText: 'text-blue-900',
+    navLinkText: 'text-blue-900 hover:text-blue-700',
+    navDivider: 'text-blue-600',
+    activeBorder: 'border-blue-600',
+    activeText: 'text-blue-700',
+    buttonBg: 'bg-blue-600',
+    buttonHoverBg: 'hover:bg-blue-700',
+    focusRing: 'focus:ring-blue-500',
+    badgeBg: 'bg-blue-100',
+    badgeText: 'text-blue-800',
   },
   hercules: {
-    cardBorder: 'border-gray-900',
+    cardBorder: 'border-gray-800',
     cardHoverBg: 'hover:bg-gray-900',
     cardText: 'text-gray-900',
-    cardHoverSubText: 'group-hover:text-gray-400',
+    cardHoverSubText: 'group-hover:text-white',
     navBg: 'bg-gray-900',
-    navLinkText: 'text-gray-400 hover:text-white',
+    navText: 'text-white',
+    navLinkText: 'text-gray-200 hover:text-white',
     navDivider: 'text-gray-600',
-    tabActiveBorder: 'border-gray-900',
-    tabActiveText: 'text-gray-900',
+    activeBorder: 'border-gray-800',
+    activeText: 'text-gray-900',
+    buttonBg: 'bg-gray-900',
+    buttonHoverBg: 'hover:bg-black',
+    focusRing: 'focus:ring-gray-800',
+    badgeBg: 'bg-gray-100',
+    badgeText: 'text-gray-900',
   },
 }

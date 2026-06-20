@@ -1,12 +1,80 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
+import { COMPANY_THEMES } from '@/lib/companies'
 
-const OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'BG', 'MG', 'LG', 'GEN', 'ME']
-const WOSPEC_RANKS = ['3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
+function RankSearch({
+  value,
+  onChange,
+  inputClass,
+}: {
+  value: string
+  onChange: (rank: string) => void
+  inputClass: string
+}) {
+  const [query, setQuery] = useState(value)
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const filtered = query.trim()
+    ? ALL_RANKS.filter((r) => r.rank.toLowerCase().startsWith(query.toLowerCase()))
+    : ALL_RANKS
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function select(rank: string) {
+    onChange(rank)
+    setQuery(rank)
+    setOpen(false)
+  }
+
+  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value)
+    onChange('')
+    setOpen(true)
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={handleInput}
+        onFocus={() => setOpen(true)}
+        placeholder="e.g. CPL, 3SG, LTA"
+        className={inputClass}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
+          {filtered.map((r) => (
+            <li key={r.rank}>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); select(r.rank) }}
+                className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3 items-center"
+              >
+                <span className="font-mono font-medium text-gray-800 w-14 shrink-0">{r.rank}</span>
+                <span className="text-xs text-gray-400">{r.type}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 const RANKS_BY_TYPE = {
   Officer: ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME1', 'ME2', 'ME3', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
@@ -15,15 +83,19 @@ const RANKS_BY_TYPE = {
 }
 
 function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
-  if (OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
-  if (WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
+  if (RANKS_BY_TYPE.Officer.some((p) => rank.startsWith(p))) return 'Officer'
+  if (RANKS_BY_TYPE.WOSPEC.includes(rank)) return 'WOSPEC'
   return 'Enlistee'
 }
 
-const SECTION_ORDER: ('Officer' | 'WOSPEC' | 'Enlistee')[] = ['Officer', 'WOSPEC', 'Enlistee']
+const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
+
+const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =>
+  ranks.map((rank) => ({ rank, type })),
+)
 
 export default function NominalRoll({ company }: { company: Company }) {
-  const supabase = getSupabaseClient(company)
+  const theme = COMPANY_THEMES[company]
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,6 +112,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   }, [company])
 
   async function load() {
+    const supabase = getSupabaseClient(company)
     setLoading(true)
     setError(null)
     const { data, error } = await supabase
@@ -53,6 +126,7 @@ export default function NominalRoll({ company }: { company: Company }) {
 
   async function addSoldier() {
     if (!form.name.trim() || !form.platoon) return
+    const supabase = getSupabaseClient(company)
     setSubmitting(true)
     const { error } = await supabase.from('NominalRoll').insert({
       rank: form.rank,
@@ -70,6 +144,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   }
 
   async function deleteSoldier(name: string) {
+    const supabase = getSupabaseClient(company)
     setDeletingName(name)
     await supabase.from('NominalRoll').delete().eq('name', name)
     await load()
@@ -84,48 +159,41 @@ export default function NominalRoll({ company }: { company: Company }) {
     {} as Record<string, Soldier[]>,
   )
 
+  const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
+
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">Nominal Roll</h2>
-          <p className="text-sm text-gray-500">{soldiers.length} personnel</p>
+          <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
+          <p className="text-xs text-gray-500">{soldiers.length} personnel</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 transition-colors"
+          className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
         >
-          {showForm ? 'Cancel' : '+ Add Soldier'}
+          {showForm ? 'Cancel' : '+ Add'}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
           {error}
         </div>
       )}
 
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
-          <h3 className="font-medium text-gray-700 text-sm">New Soldier</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Rank</label>
-              <select
+              <RankSearch
                 value={form.rank}
-                onChange={(e) => setForm({ ...form, rank: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                {Object.entries(RANKS_BY_TYPE).map(([type, ranks]) => (
-                  <optgroup key={type} label={type}>
-                    {ranks.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                onChange={(rank) => setForm({ ...form, rank })}
+                inputClass={inputClass}
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Full Name</label>
@@ -134,7 +202,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                 placeholder="TAN AH KOW"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 onKeyDown={(e) => e.key === 'Enter' && addSoldier()}
               />
             </div>
@@ -143,7 +211,7 @@ export default function NominalRoll({ company }: { company: Company }) {
               <select
                 value={form.platoon}
                 onChange={(e) => setForm({ ...form, platoon: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
               >
                 <option value="">Select platoon</option>
                 {PLATOONS.map((p) => (
@@ -155,9 +223,9 @@ export default function NominalRoll({ company }: { company: Company }) {
           <button
             onClick={addSoldier}
             disabled={submitting || !form.name.trim() || !form.platoon}
-            className="px-4 py-2 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
           >
-            {submitting ? 'Adding...' : 'Add'}
+            {submitting ? 'Adding...' : 'Add Soldier'}
           </button>
         </div>
       )}
@@ -170,39 +238,41 @@ export default function NominalRoll({ company }: { company: Company }) {
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
               {type}s — {group.length}
             </h3>
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">Rank</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Platoon</th>
-                    <th className="w-10" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.map((s, i) => (
-                    <tr
-                      key={s.name}
-                      className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}
-                    >
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
-                      <td className="px-4 py-3 font-medium">{s.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => deleteSoldier(s.name)}
-                          disabled={deletingName === s.name}
-                          className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50"
-                          title="Remove"
-                        >
-                          ✕
-                        </button>
-                      </td>
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Rank</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Platoon</th>
+                      <th className="w-10" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {group.map((s, i) => (
+                      <tr
+                        key={s.name}
+                        className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
+                        <td className="px-4 py-3 font-medium">{s.name}</td>
+                        <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => deleteSoldier(s.name)}
+                            disabled={deletingName === s.name}
+                            className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50 p-1"
+                            title="Remove"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )
@@ -213,7 +283,7 @@ export default function NominalRoll({ company }: { company: Company }) {
           <p className="text-sm">No soldiers yet.</p>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-3 text-green-600 text-sm hover:underline"
+            className={`mt-3 text-sm ${theme.activeText} hover:underline`}
           >
             Add the first soldier
           </button>

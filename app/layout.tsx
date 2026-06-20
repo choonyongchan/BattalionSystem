@@ -3,13 +3,13 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Battalion System',
-  description: 'Military Battalion Management',
+  description: '40th Singapore Armoured Regiment',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-stone-50 text-gray-900 min-h-screen antialiased">{children}</body>
+      <body className="text-gray-900 min-h-screen antialiased">{children}</body>
     </html>
   )
 }

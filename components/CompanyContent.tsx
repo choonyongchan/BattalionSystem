@@ -25,24 +25,27 @@ export default function CompanyContent({
   const theme = COMPANY_THEMES[company]
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className={`${theme.navBg} text-white px-6 py-4 flex items-center gap-4 shadow`}>
-        <Link href="/" className={`${theme.navLinkText} text-sm transition-colors`}>
-          ← Home
+    <div className="min-h-screen flex flex-col bg-white">
+      <nav className="sticky top-0 z-20 bg-yellow-50 px-4 py-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
+        <div className="absolute inset-y-0 left-[16%] w-[5%] bg-red-300/50 pointer-events-none" />
+        <div className="absolute inset-y-0 left-[47%] w-[5%] bg-red-300/50 pointer-events-none" />
+        <div className="absolute inset-y-0 left-[78%] w-[5%] bg-red-300/50 pointer-events-none" />
+        <Link href="/" className="text-yellow-800 hover:text-yellow-600 text-sm font-medium transition-colors relative z-10">
+          ←
         </Link>
-        <span className={theme.navDivider}>|</span>
-        <h1 className="font-bold tracking-wide">{label} Company</h1>
+        <span className="text-yellow-500 relative z-10">|</span>
+        <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">{label} Coy</h1>
       </nav>
 
-      <div className="bg-white border-b border-gray-200 px-6">
-        <div className="max-w-5xl mx-auto flex">
+      <div className="bg-white border-b border-gray-200">
+        <div className="flex">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? `${theme.tabActiveBorder} ${theme.tabActiveText}`
+                  ? `${theme.activeBorder} ${theme.activeText}`
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -52,7 +55,7 @@ export default function CompanyContent({
         </div>
       </div>
 
-      <div className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
+      <div className="flex-1 w-full max-w-3xl mx-auto px-4 py-6">
         {activeTab === 'nominal-roll' ? (
           <NominalRoll company={company} />
         ) : (

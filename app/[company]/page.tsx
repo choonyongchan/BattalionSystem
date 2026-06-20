@@ -1,18 +1,19 @@
 import { notFound } from 'next/navigation'
-import { COMPANIES, COMPANY_LABELS } from '@/lib/companies'
+import { COMPANIES, companyLabel } from '@/lib/companies'
 import CompanyContent from '@/components/CompanyContent'
 
 export function generateStaticParams() {
   return COMPANIES.map((company) => ({ company }))
 }
 
-export default function CompanyPage({ params }: { params: { company: string } }) {
-  if (!(COMPANIES as readonly string[]).includes(params.company)) notFound()
-  const company = params.company as (typeof COMPANIES)[number]
+export default async function CompanyPage({ params }: { params: Promise<{ company: string }> }) {
+  const { company: companyParam } = await params
+  if (!(COMPANIES as readonly string[]).includes(companyParam)) notFound()
+  const company = companyParam as (typeof COMPANIES)[number]
   return (
     <CompanyContent
       company={company}
-      label={COMPANY_LABELS[company]}
+      label={companyLabel(company)}
     />
   )
 }
