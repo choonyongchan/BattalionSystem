@@ -9,7 +9,7 @@
  */
 
 import { readFileSync } from 'fs'
-import { join } from 'path'
+import { join, dirname } from 'path'
 
 const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 if (!ACCESS_TOKEN) {
@@ -27,7 +27,7 @@ const PROJECT_REFS: Record<string, string> = {
 const targets = process.argv.slice(2)
 const companies = targets.length > 0 ? targets : Object.keys(PROJECT_REFS)
 
-const schemaPath = join(import.meta.dir, '..', 'supabase', 'schema.sql')
+const schemaPath = join(dirname(new URL(import.meta.url).pathname), '..', 'supabase', 'schema.sql')
 const sql = readFileSync(schemaPath, 'utf-8')
 
 async function syncProject(company: string, ref: string) {
