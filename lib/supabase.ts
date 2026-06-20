@@ -35,11 +35,11 @@ type Database = {
 }
 
 const SUPABASE_CONFIGS: Record<Company, { url: string; key: string }> = {
-  archer:   { url: process.env.NEXT_PUBLIC_ARCHER_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_ARCHER_ANON_KEY! },
-  braves:   { url: process.env.NEXT_PUBLIC_BRAVES_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_BRAVES_ANON_KEY! },
-  cougar:   { url: process.env.NEXT_PUBLIC_COUGAR_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_COUGAR_ANON_KEY! },
-  stallion: { url: process.env.NEXT_PUBLIC_STALLION_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_STALLION_ANON_KEY! },
-  hercules: { url: process.env.NEXT_PUBLIC_HERCULES_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_HERCULES_ANON_KEY! },
+  archer:   { url: process.env.NEXT_PUBLIC_ARCHER_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_ARCHER_SUPABASE_PUBLISHABLE_KEY! },
+  braves:   { url: process.env.NEXT_PUBLIC_BRAVES_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_BRAVES_SUPABASE_PUBLISHABLE_KEY! },
+  cougar:   { url: process.env.NEXT_PUBLIC_COUGAR_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_COUGAR_SUPABASE_PUBLISHABLE_KEY! },
+  stallion: { url: process.env.NEXT_PUBLIC_STALLION_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_STALLION_SUPABASE_PUBLISHABLE_KEY! },
+  hercules: { url: process.env.NEXT_PUBLIC_HERCULES_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_HERCULES_SUPABASE_PUBLISHABLE_KEY! },
 }
 
 const clients = new Map<Company, ReturnType<typeof createClient<Database>>>()
