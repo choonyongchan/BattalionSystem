@@ -89,6 +89,7 @@ export default function CommanderLoginForm({
     } else {
       clearCooldown(companyLabel)
       trackEvent('login', { company: companyLabel.toLowerCase() })
+      setLoading(false)
     }
   }
 
