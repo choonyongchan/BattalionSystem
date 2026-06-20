@@ -2,9 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { COMPANIES, COMPANY_THEMES, companyLabel } from '@/lib/companies'
-
-const DISABLED_COMPANIES = new Set(['archer', 'braves', 'cougar'])
+import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, companyLabel } from '@/lib/companies'
 
 export default function HomePage() {
   const [showComingSoon, setShowComingSoon] = useState(false)

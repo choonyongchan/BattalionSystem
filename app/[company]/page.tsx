@@ -1,8 +1,6 @@
 import { notFound } from 'next/navigation'
-import { COMPANIES, companyLabel } from '@/lib/companies'
+import { COMPANIES, DISABLED_COMPANIES, companyLabel } from '@/lib/companies'
 import CompanyContent from '@/components/CompanyContent'
-
-const DISABLED_COMPANIES = new Set(['archer', 'braves', 'cougar'])
 
 export function generateStaticParams() {
   return COMPANIES.map((company) => ({ company }))

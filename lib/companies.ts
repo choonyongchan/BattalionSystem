@@ -1,6 +1,8 @@
 export const COMPANIES = ['archer', 'braves', 'cougar', 'stallion', 'hercules'] as const
 export type Company = (typeof COMPANIES)[number]
 
+export const DISABLED_COMPANIES = new Set<Company>(['archer', 'braves', 'cougar'])
+
 export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
 }
@@ -9,11 +11,6 @@ export const COMPANY_THEMES: Record<Company, {
   cardBorder: string
   cardHoverBg: string
   cardText: string
-  cardHoverSubText: string
-  navBg: string
-  navText: string
-  navLinkText: string
-  navDivider: string
   activeBorder: string
   activeText: string
   buttonBg: string
@@ -26,11 +23,6 @@ export const COMPANY_THEMES: Record<Company, {
     cardBorder: 'border-yellow-400',
     cardHoverBg: 'hover:bg-yellow-400',
     cardText: 'text-yellow-900',
-    cardHoverSubText: 'group-hover:text-yellow-900',
-    navBg: 'bg-yellow-300',
-    navText: 'text-yellow-900',
-    navLinkText: 'text-yellow-800 hover:text-yellow-600',
-    navDivider: 'text-yellow-500',
     activeBorder: 'border-yellow-500',
     activeText: 'text-yellow-700',
     buttonBg: 'bg-yellow-500',
@@ -43,11 +35,6 @@ export const COMPANY_THEMES: Record<Company, {
     cardBorder: 'border-red-400',
     cardHoverBg: 'hover:bg-red-400',
     cardText: 'text-red-900',
-    cardHoverSubText: 'group-hover:text-red-100',
-    navBg: 'bg-red-400',
-    navText: 'text-red-900',
-    navLinkText: 'text-red-900 hover:text-red-700',
-    navDivider: 'text-red-600',
     activeBorder: 'border-red-500',
     activeText: 'text-red-700',
     buttonBg: 'bg-red-500',
@@ -60,11 +47,6 @@ export const COMPANY_THEMES: Record<Company, {
     cardBorder: 'border-green-400',
     cardHoverBg: 'hover:bg-green-400',
     cardText: 'text-green-900',
-    cardHoverSubText: 'group-hover:text-green-100',
-    navBg: 'bg-green-400',
-    navText: 'text-green-900',
-    navLinkText: 'text-green-900 hover:text-green-700',
-    navDivider: 'text-green-600',
     activeBorder: 'border-green-600',
     activeText: 'text-green-700',
     buttonBg: 'bg-green-600',
@@ -77,11 +59,6 @@ export const COMPANY_THEMES: Record<Company, {
     cardBorder: 'border-blue-400',
     cardHoverBg: 'hover:bg-blue-400',
     cardText: 'text-blue-900',
-    cardHoverSubText: 'group-hover:text-blue-100',
-    navBg: 'bg-blue-400',
-    navText: 'text-blue-900',
-    navLinkText: 'text-blue-900 hover:text-blue-700',
-    navDivider: 'text-blue-600',
     activeBorder: 'border-blue-600',
     activeText: 'text-blue-700',
     buttonBg: 'bg-blue-600',
@@ -94,11 +71,6 @@ export const COMPANY_THEMES: Record<Company, {
     cardBorder: 'border-gray-800',
     cardHoverBg: 'hover:bg-gray-900',
     cardText: 'text-gray-900',
-    cardHoverSubText: 'group-hover:text-white',
-    navBg: 'bg-gray-900',
-    navText: 'text-white',
-    navLinkText: 'text-gray-200 hover:text-white',
-    navDivider: 'text-gray-600',
     activeBorder: 'border-gray-800',
     activeText: 'text-gray-900',
     buttonBg: 'bg-gray-900',
