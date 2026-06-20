@@ -28,16 +28,16 @@ export interface Soldier {
 export interface Exception {
   id: number
   name: string
-  scope: string | null
-  reason: string | null
-  start: string | null
-  end: string | null
+  scope: string
+  reason: string
+  start: string
+  end: string
 }
 
 export interface DutyEntry {
   duty_type: string
   date: string
-  name: string | null
+  name: string
 }
 
 export interface Configuration {

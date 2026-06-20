@@ -202,7 +202,7 @@ export default function ParadeState({
       name: exForm.name,
       scope: exForm.scope,
       reason: exForm.reason.trim(),
-      start: singleDate ? null : exForm.start,
+      start: singleDate ? exForm.end : exForm.start,
       end: exForm.end,
     })
     if (error) { setError(error.message); return }
@@ -223,7 +223,7 @@ export default function ParadeState({
     const { error } = await supabase.from('Duty').upsert({
       duty_type: dutyForm.duty_type,
       date,
-      name: dutyForm.name.toUpperCase() || null,
+      name: dutyForm.name.toUpperCase(),
     })
     if (error) { setError(error.message); return }
     setShowForm(false)

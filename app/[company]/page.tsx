@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { COMPANIES, companyLabel } from '@/lib/companies'
 import CompanyContent from '@/components/CompanyContent'
 
+const DISABLED_COMPANIES = new Set(['archer', 'braves', 'cougar'])
+
 export function generateStaticParams() {
   return COMPANIES.map((company) => ({ company }))
 }
@@ -10,6 +12,18 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
   const { company: companyParam } = await params
   if (!(COMPANIES as readonly string[]).includes(companyParam)) notFound()
   const company = companyParam as (typeof COMPANIES)[number]
+
+  if (DISABLED_COMPANIES.has(company)) {
+    return (
+      <main className="min-h-screen bg-yellow-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-gray-800 mb-1">Coming Soon</p>
+          <p className="text-sm text-gray-400">{companyLabel(company)} Company is not yet available.</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <CompanyContent
       company={company}

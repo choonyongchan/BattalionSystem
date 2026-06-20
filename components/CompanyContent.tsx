@@ -4,8 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
+import { useAuth } from '@/lib/useAuth'
 import NominalRoll from './NominalRoll'
 import ParadeState from './ParadeState'
+import CommanderLoginForm from './CommanderLoginForm'
 
 type Tab = 'nominal-roll' | 'parade-state'
 
@@ -23,6 +25,7 @@ export default function CompanyContent({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('nominal-roll')
   const theme = COMPANY_THEMES[company]
+  const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -35,6 +38,16 @@ export default function CompanyContent({
         </Link>
         <span className="text-yellow-500 relative z-10">|</span>
         <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">{label} Coy</h1>
+        {!authLoading && isCommander && (
+          <div className="ml-auto relative z-10">
+            <button
+              onClick={signOut}
+              className="text-xs text-yellow-700 hover:text-yellow-900 font-medium transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
       </nav>
 
       <div className="bg-white border-b border-gray-200">
@@ -56,7 +69,11 @@ export default function CompanyContent({
       </div>
 
       <div className="flex-1 w-full max-w-3xl mx-auto px-4 py-6">
-        {activeTab === 'nominal-roll' ? (
+        {authLoading ? (
+          <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
+        ) : !isCommander ? (
+          <CommanderLoginForm companyLabel={label} onSignIn={signIn} />
+        ) : activeTab === 'nominal-roll' ? (
           <NominalRoll company={company} />
         ) : (
           <ParadeState company={company} companyLabel={label} />
