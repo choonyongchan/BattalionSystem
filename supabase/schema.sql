@@ -71,3 +71,9 @@ CREATE POLICY "authenticated can manage Duty"
 
 CREATE POLICY "authenticated can manage Configuration"
   ON public."Configuration" FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Default parade times (safe to re-run; ON CONFLICT does nothing)
+INSERT INTO public."Configuration" (parade_type, time) VALUES
+  ('First Parade', '09:30:00'),
+  ('Last Parade',  '17:30:00')
+ON CONFLICT (parade_type) DO NOTHING;
