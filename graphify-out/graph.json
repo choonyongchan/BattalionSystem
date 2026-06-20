@@ -4,77 +4,79 @@
   "graph": {
     "hyperedges": [
       {
-        "id": "supabase_data_flow",
-        "label": "Per-Company Supabase Data Flow",
+        "id": "commander_auth_gate",
+        "label": "Commander Authentication Gate Flow",
         "nodes": [
-          "lib_companies_company",
-          "lib_supabase_getsupabseclient",
-          "components_nominalroll_nominalroll",
-          "components_paradestate_paradestate"
+          "components_companycontent",
+          "components_commanderloginform",
+          "concept_lockout_auth"
         ],
-        "relation": "participate_in",
+        "relation": "implement",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "components/CompanyContent.tsx"
+      },
+      {
+        "id": "company_data_layer",
+        "label": "Per-Company Data Access Pattern",
+        "nodes": [
+          "lib_supabase_getsupabaseclient",
+          "concept_per_company_supabase",
+          "lib_companies"
+        ],
+        "relation": "implement",
         "confidence": "INFERRED",
         "confidence_score": 0.9,
         "source_file": "lib/supabase.ts"
       },
       {
-        "id": "parade_state_data_sources",
-        "label": "Parade State Report: Data Sources Aggregated at Generate",
+        "id": "parade_state_data_flow",
+        "label": "Parade State Multi-Table Data Flow",
         "nodes": [
+          "components_paradestate",
           "lib_supabase_soldier",
           "lib_supabase_exception",
           "lib_supabase_dutyentry",
-          "lib_supabase_configuration",
-          "components_paradestate_generate"
+          "lib_supabase_configuration"
         ],
         "relation": "participate_in",
-        "confidence": "INFERRED",
-        "confidence_score": 0.95,
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
         "source_file": "components/ParadeState.tsx"
       },
       {
-        "id": "company_routing_pattern",
-        "label": "Company Dynamic Routing Pattern",
+        "id": "auth_rls_commander_pattern",
+        "label": "Commander Authentication and RLS Access Control Flow",
         "nodes": [
-          "lib_companies_companies",
-          "company_page_generatestaticparams",
-          "company_page_companypage",
-          "components_companycontent_companycontent"
+          "lib_useauth_useauth",
+          "supabase_schema_rls",
+          "concept_commander_access_control",
+          "concept_password_auth"
         ],
         "relation": "implement",
-        "confidence": "EXTRACTED",
-        "confidence_score": 0.95,
-        "source_file": "app/[company]/page.tsx"
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "lib/useAuth.ts"
+      },
+      {
+        "id": "canonical_schema_sync_pattern",
+        "label": "Canonical Schema Definition and Multi-Company Sync",
+        "nodes": [
+          "supabase_schema_nominalroll",
+          "supabase_schema_exceptions",
+          "supabase_schema_duty",
+          "supabase_schema_configuration",
+          "scripts_sync_schema",
+          "concept_canonical_schema"
+        ],
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.9,
+        "source_file": "supabase/schema.sql"
       }
     ]
   },
   "nodes": [
-    {
-      "label": ".mcp.json",
-      "file_type": "code",
-      "source_file": ".mcp.json",
-      "source_location": "L1",
-      "metadata": {
-        "mcp_kind": "mcp_config_file"
-      },
-      "_origin": "ast",
-      "id": "mcp",
-      "community": 8,
-      "norm_label": ".mcp.json"
-    },
-    {
-      "label": "supabase",
-      "file_type": "code",
-      "source_file": ".mcp.json",
-      "source_location": "L1",
-      "metadata": {
-        "mcp_kind": "mcp_server"
-      },
-      "_origin": "ast",
-      "id": "mcp_mcp_server_supabase",
-      "community": 8,
-      "norm_label": "supabase"
-    },
     {
       "label": "page.tsx",
       "file_type": "code",
@@ -82,7 +84,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "company_page",
-      "community": 3,
+      "community": 5,
       "norm_label": "page.tsx"
     },
     {
@@ -92,7 +94,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "company_page_generatestaticparams",
-      "community": 3,
+      "community": 5,
       "norm_label": "generatestaticparams()"
     },
     {
@@ -102,7 +104,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "company_page_companypage",
-      "community": 3,
+      "community": 5,
       "norm_label": "companypage()"
     },
     {
@@ -142,18 +144,78 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_page",
-      "community": 3,
+      "community": 5,
       "norm_label": "page.tsx"
     },
     {
       "label": "HomePage()",
       "file_type": "code",
       "source_file": "app/page.tsx",
-      "source_location": "L4",
+      "source_location": "L7",
       "_origin": "ast",
       "id": "app_page_homepage",
-      "community": 3,
+      "community": 5,
       "norm_label": "homepage()"
+    },
+    {
+      "label": "CommanderLoginForm.tsx",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "components_commanderloginform",
+      "community": 2,
+      "norm_label": "commanderloginform.tsx"
+    },
+    {
+      "label": "storageKey()",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "components_commanderloginform_storagekey",
+      "community": 2,
+      "norm_label": "storagekey()"
+    },
+    {
+      "label": "readCooldown()",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "components_commanderloginform_readcooldown",
+      "community": 2,
+      "norm_label": "readcooldown()"
+    },
+    {
+      "label": "saveCooldown()",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "components_commanderloginform_savecooldown",
+      "community": 2,
+      "norm_label": "savecooldown()"
+    },
+    {
+      "label": "clearCooldown()",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "id": "components_commanderloginform_clearcooldown",
+      "community": 2,
+      "norm_label": "clearcooldown()"
+    },
+    {
+      "label": "CommanderLoginForm()",
+      "file_type": "code",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L28",
+      "_origin": "ast",
+      "id": "components_commanderloginform_commanderloginform",
+      "community": 2,
+      "norm_label": "commanderloginform()"
     },
     {
       "label": "CompanyContent.tsx",
@@ -162,37 +224,37 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_companycontent",
-      "community": 3,
+      "community": 2,
       "norm_label": "companycontent.tsx"
     },
     {
       "label": "Tab",
       "file_type": "code",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L9",
+      "source_location": "L12",
       "_origin": "ast",
       "id": "components_companycontent_tab",
-      "community": 3,
+      "community": 2,
       "norm_label": "tab"
     },
     {
       "label": "TABS",
       "file_type": "code",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L11",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "components_companycontent_tabs",
-      "community": 3,
+      "community": 2,
       "norm_label": "tabs"
     },
     {
       "label": "CompanyContent()",
       "file_type": "code",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L16",
+      "source_location": "L19",
       "_origin": "ast",
       "id": "components_companycontent_companycontent",
-      "community": 3,
+      "community": 2,
       "norm_label": "companycontent()"
     },
     {
@@ -202,67 +264,67 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "components_nominalroll",
-      "community": 4,
+      "community": 0,
       "norm_label": "nominalroll.tsx"
     },
     {
-      "label": "OFFICER_PREFIXES",
-      "file_type": "code",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "L8",
-      "_origin": "ast",
-      "id": "components_nominalroll_officer_prefixes",
-      "community": 4,
-      "norm_label": "officer_prefixes"
-    },
-    {
-      "label": "WOSPEC_RANKS",
+      "label": "RankSearch()",
       "file_type": "code",
       "source_file": "components/NominalRoll.tsx",
       "source_location": "L9",
       "_origin": "ast",
-      "id": "components_nominalroll_wospec_ranks",
-      "community": 4,
-      "norm_label": "wospec_ranks"
+      "id": "components_nominalroll_ranksearch",
+      "community": 0,
+      "norm_label": "ranksearch()"
     },
     {
       "label": "RANKS_BY_TYPE",
       "file_type": "code",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L11",
+      "source_location": "L79",
       "_origin": "ast",
       "id": "components_nominalroll_ranks_by_type",
-      "community": 4,
+      "community": 0,
       "norm_label": "ranks_by_type"
     },
     {
       "label": "getRankType()",
       "file_type": "code",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L17",
+      "source_location": "L85",
       "_origin": "ast",
       "id": "components_nominalroll_getranktype",
-      "community": 4,
+      "community": 0,
       "norm_label": "getranktype()"
     },
     {
       "label": "SECTION_ORDER",
       "file_type": "code",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L23",
+      "source_location": "L91",
       "_origin": "ast",
       "id": "components_nominalroll_section_order",
-      "community": 4,
+      "community": 0,
       "norm_label": "section_order"
+    },
+    {
+      "label": "ALL_RANKS",
+      "file_type": "code",
+      "source_file": "components/NominalRoll.tsx",
+      "source_location": "L93",
+      "_origin": "ast",
+      "id": "components_nominalroll_all_ranks",
+      "community": 0,
+      "norm_label": "all_ranks"
     },
     {
       "label": "NominalRoll()",
       "file_type": "code",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L25",
+      "source_location": "L97",
       "_origin": "ast",
       "id": "components_nominalroll_nominalroll",
-      "community": 4,
+      "community": 0,
       "norm_label": "nominalroll()"
     },
     {
@@ -276,10 +338,20 @@
       "norm_label": "paradestate.tsx"
     },
     {
+      "label": "SoldierSearch()",
+      "file_type": "code",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "id": "components_paradestate_soldiersearch",
+      "community": 0,
+      "norm_label": "soldiersearch()"
+    },
+    {
       "label": "EXCEPTION_SCOPES",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L8",
+      "source_location": "L86",
       "_origin": "ast",
       "id": "components_paradestate_exception_scopes",
       "community": 0,
@@ -289,17 +361,57 @@
       "label": "ExceptionScope",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L9",
+      "source_location": "L87",
       "_origin": "ast",
       "id": "components_paradestate_exceptionscope",
       "community": 0,
       "norm_label": "exceptionscope"
     },
     {
+      "label": "REASON_HINTS",
+      "file_type": "code",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L89",
+      "_origin": "ast",
+      "id": "components_paradestate_reason_hints",
+      "community": 0,
+      "norm_label": "reason_hints"
+    },
+    {
+      "label": "SINGLE_DATE_SCOPES",
+      "file_type": "code",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L99",
+      "_origin": "ast",
+      "id": "components_paradestate_single_date_scopes",
+      "community": 0,
+      "norm_label": "single_date_scopes"
+    },
+    {
+      "label": "DUTY_TYPES",
+      "file_type": "code",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L101",
+      "_origin": "ast",
+      "id": "components_paradestate_duty_types",
+      "community": 0,
+      "norm_label": "duty_types"
+    },
+    {
+      "label": "PARADE_TYPES",
+      "file_type": "code",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L103",
+      "_origin": "ast",
+      "id": "components_paradestate_parade_types",
+      "community": 0,
+      "norm_label": "parade_types"
+    },
+    {
       "label": "Section",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L11",
+      "source_location": "L105",
       "_origin": "ast",
       "id": "components_paradestate_section",
       "community": 0,
@@ -309,7 +421,7 @@
       "label": "toSGDate()",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L13",
+      "source_location": "L107",
       "_origin": "ast",
       "id": "components_paradestate_tosgdate",
       "community": 0,
@@ -319,7 +431,7 @@
       "label": "todayISO()",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L21",
+      "source_location": "L115",
       "_origin": "ast",
       "id": "components_paradestate_todayiso",
       "community": 0,
@@ -329,7 +441,7 @@
       "label": "ParadeState()",
       "file_type": "code",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L25",
+      "source_location": "L119",
       "_origin": "ast",
       "id": "components_paradestate_paradestate",
       "community": 0,
@@ -342,7 +454,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_companies",
-      "community": 3,
+      "community": 5,
       "norm_label": "companies.ts"
     },
     {
@@ -352,7 +464,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "lib_companies_companies",
-      "community": 3,
+      "community": 5,
       "norm_label": "companies"
     },
     {
@@ -362,28 +474,38 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "lib_companies_company",
-      "community": 3,
+      "community": 0,
       "norm_label": "company"
     },
     {
-      "label": "COMPANY_LABELS",
+      "label": "DISABLED_COMPANIES",
       "file_type": "code",
       "source_file": "lib/companies.ts",
       "source_location": "L4",
       "_origin": "ast",
-      "id": "lib_companies_company_labels",
-      "community": 3,
-      "norm_label": "company_labels"
+      "id": "lib_companies_disabled_companies",
+      "community": 5,
+      "norm_label": "disabled_companies"
     },
     {
-      "label": "isValidCompany()",
+      "label": "companyLabel()",
       "file_type": "code",
       "source_file": "lib/companies.ts",
-      "source_location": "L12",
+      "source_location": "L6",
       "_origin": "ast",
-      "id": "lib_companies_isvalidcompany",
-      "community": 3,
-      "norm_label": "isvalidcompany()"
+      "id": "lib_companies_companylabel",
+      "community": 5,
+      "norm_label": "companylabel()"
+    },
+    {
+      "label": "COMPANY_THEMES",
+      "file_type": "code",
+      "source_file": "lib/companies.ts",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "lib_companies_company_themes",
+      "community": 5,
+      "norm_label": "company_themes"
     },
     {
       "label": "supabase.ts",
@@ -396,30 +518,50 @@
       "norm_label": "supabase.ts"
     },
     {
-      "label": "getSupabaseClient()",
+      "label": "SUPABASE_CONFIGS",
       "file_type": "code",
       "source_file": "lib/supabase.ts",
       "source_location": "L4",
       "_origin": "ast",
+      "id": "lib_supabase_supabase_configs",
+      "community": 0,
+      "norm_label": "supabase_configs"
+    },
+    {
+      "label": "clients",
+      "file_type": "code",
+      "source_file": "lib/supabase.ts",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "lib_supabase_clients",
+      "community": 0,
+      "norm_label": "clients"
+    },
+    {
+      "label": "getSupabaseClient()",
+      "file_type": "code",
+      "source_file": "lib/supabase.ts",
+      "source_location": "L14",
+      "_origin": "ast",
       "id": "lib_supabase_getsupabaseclient",
-      "community": 4,
+      "community": 0,
       "norm_label": "getsupabaseclient()"
     },
     {
       "label": "Soldier",
       "file_type": "code",
       "source_file": "lib/supabase.ts",
-      "source_location": "L11",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "lib_supabase_soldier",
-      "community": 4,
+      "community": 0,
       "norm_label": "soldier"
     },
     {
       "label": "Exception",
       "file_type": "code",
       "source_file": "lib/supabase.ts",
-      "source_location": "L17",
+      "source_location": "L28",
       "_origin": "ast",
       "id": "lib_supabase_exception",
       "community": 0,
@@ -429,7 +571,7 @@
       "label": "DutyEntry",
       "file_type": "code",
       "source_file": "lib/supabase.ts",
-      "source_location": "L26",
+      "source_location": "L37",
       "_origin": "ast",
       "id": "lib_supabase_dutyentry",
       "community": 0,
@@ -439,11 +581,31 @@
       "label": "Configuration",
       "file_type": "code",
       "source_file": "lib/supabase.ts",
-      "source_location": "L32",
+      "source_location": "L43",
       "_origin": "ast",
       "id": "lib_supabase_configuration",
       "community": 0,
       "norm_label": "configuration"
+    },
+    {
+      "label": "useAuth.ts",
+      "file_type": "code",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "lib_useauth",
+      "community": 0,
+      "norm_label": "useauth.ts"
+    },
+    {
+      "label": "useAuth()",
+      "file_type": "code",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "lib_useauth_useauth",
+      "community": 2,
+      "norm_label": "useauth()"
     },
     {
       "label": "next.config.mjs",
@@ -452,7 +614,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "next_config",
-      "community": 2,
+      "community": 8,
       "norm_label": "next.config.mjs"
     },
     {
@@ -462,7 +624,7 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "next_config_nextconfig",
-      "community": 2,
+      "community": 8,
       "norm_label": "nextconfig"
     },
     {
@@ -472,7 +634,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "package",
-      "community": 2,
+      "community": 3,
       "norm_label": "package.json"
     },
     {
@@ -482,7 +644,7 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "package_name",
-      "community": 2,
+      "community": 3,
       "norm_label": "name"
     },
     {
@@ -492,7 +654,7 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "package_version",
-      "community": 2,
+      "community": 3,
       "norm_label": "version"
     },
     {
@@ -502,7 +664,7 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "package_private",
-      "community": 2,
+      "community": 3,
       "norm_label": "private"
     },
     {
@@ -512,7 +674,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "package_scripts",
-      "community": 2,
+      "community": 3,
       "norm_label": "scripts"
     },
     {
@@ -522,7 +684,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "package_scripts_dev",
-      "community": 2,
+      "community": 3,
       "norm_label": "dev"
     },
     {
@@ -532,7 +694,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "package_scripts_build",
-      "community": 2,
+      "community": 3,
       "norm_label": "build"
     },
     {
@@ -542,7 +704,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "package_scripts_start",
-      "community": 2,
+      "community": 3,
       "norm_label": "start"
     },
     {
@@ -552,7 +714,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "package_scripts_lint",
-      "community": 2,
+      "community": 3,
       "norm_label": "lint"
     },
     {
@@ -562,7 +724,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "package_dependencies",
-      "community": 2,
+      "community": 3,
       "norm_label": "dependencies"
     },
     {
@@ -572,7 +734,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "package_dependencies_supabase_supabase_js",
-      "community": 2,
+      "community": 3,
       "norm_label": "@supabase/supabase-js"
     },
     {
@@ -582,7 +744,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "package_dependencies_next",
-      "community": 2,
+      "community": 3,
       "norm_label": "next"
     },
     {
@@ -592,7 +754,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "package_dependencies_react",
-      "community": 2,
+      "community": 3,
       "norm_label": "react"
     },
     {
@@ -602,7 +764,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "package_dependencies_react_dom",
-      "community": 2,
+      "community": 3,
       "norm_label": "react-dom"
     },
     {
@@ -612,48 +774,48 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "package_devdependencies",
-      "community": 5,
+      "community": 6,
       "norm_label": "devdependencies"
+    },
+    {
+      "label": "@tailwindcss/postcss",
+      "file_type": "code",
+      "source_file": "package.json",
+      "source_location": "L18",
+      "_origin": "ast",
+      "id": "package_devdependencies_tailwindcss_postcss",
+      "community": 6,
+      "norm_label": "@tailwindcss/postcss"
     },
     {
       "label": "@types/node",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L18",
+      "source_location": "L19",
       "_origin": "ast",
       "id": "package_devdependencies_types_node",
-      "community": 5,
+      "community": 6,
       "norm_label": "@types/node"
     },
     {
       "label": "@types/react",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L19",
+      "source_location": "L20",
       "_origin": "ast",
       "id": "package_devdependencies_types_react",
-      "community": 5,
+      "community": 6,
       "norm_label": "@types/react"
     },
     {
       "label": "@types/react-dom",
       "file_type": "code",
       "source_file": "package.json",
-      "source_location": "L20",
-      "_origin": "ast",
-      "id": "package_devdependencies_types_react_dom",
-      "community": 5,
-      "norm_label": "@types/react-dom"
-    },
-    {
-      "label": "autoprefixer",
-      "file_type": "code",
-      "source_file": "package.json",
       "source_location": "L21",
       "_origin": "ast",
-      "id": "package_devdependencies_autoprefixer",
-      "community": 5,
-      "norm_label": "autoprefixer"
+      "id": "package_devdependencies_types_react_dom",
+      "community": 6,
+      "norm_label": "@types/react-dom"
     },
     {
       "label": "postcss",
@@ -662,7 +824,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "package_devdependencies_postcss",
-      "community": 5,
+      "community": 6,
       "norm_label": "postcss"
     },
     {
@@ -672,7 +834,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "package_devdependencies_tailwindcss",
-      "community": 5,
+      "community": 6,
       "norm_label": "tailwindcss"
     },
     {
@@ -682,7 +844,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "package_devdependencies_typescript",
-      "community": 5,
+      "community": 6,
       "norm_label": "typescript"
     },
     {
@@ -706,24 +868,74 @@
       "norm_label": "config"
     },
     {
+      "label": "sync-schema.ts",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_sync_schema",
+      "community": 4,
+      "norm_label": "sync-schema.ts"
+    },
+    {
+      "label": "PROJECT_REFS",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L22",
+      "_origin": "ast",
+      "id": "scripts_sync_schema_project_refs",
+      "community": 4,
+      "norm_label": "project_refs"
+    },
+    {
+      "label": "targets",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L27",
+      "_origin": "ast",
+      "id": "scripts_sync_schema_targets",
+      "community": 4,
+      "norm_label": "targets"
+    },
+    {
+      "label": "schemaPath",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "scripts_sync_schema_schemapath",
+      "community": 4,
+      "norm_label": "schemapath"
+    },
+    {
+      "label": "sql",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L31",
+      "_origin": "ast",
+      "id": "scripts_sync_schema_sql",
+      "community": 4,
+      "norm_label": "sql"
+    },
+    {
+      "label": "syncProject()",
+      "file_type": "code",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L33",
+      "_origin": "ast",
+      "id": "scripts_sync_schema_syncproject",
+      "community": 4,
+      "norm_label": "syncproject()"
+    },
+    {
       "label": "tailwind.config.ts",
       "file_type": "code",
       "source_file": "tailwind.config.ts",
       "source_location": "L1",
       "_origin": "ast",
       "id": "tailwind_config",
-      "community": 10,
+      "community": 14,
       "norm_label": "tailwind.config.ts"
-    },
-    {
-      "label": "config",
-      "file_type": "code",
-      "source_file": "tailwind.config.ts",
-      "source_location": "L3",
-      "_origin": "ast",
-      "id": "tailwind_config_config",
-      "community": 10,
-      "norm_label": "config"
     },
     {
       "label": "tsconfig.json",
@@ -759,7 +971,7 @@
       "label": "allowJs",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L4",
+      "source_location": "L8",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_allowjs",
       "community": 1,
@@ -769,7 +981,7 @@
       "label": "skipLibCheck",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L5",
+      "source_location": "L9",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_skiplibcheck",
       "community": 1,
@@ -779,7 +991,7 @@
       "label": "strict",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L6",
+      "source_location": "L10",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_strict",
       "community": 1,
@@ -789,7 +1001,7 @@
       "label": "noEmit",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L7",
+      "source_location": "L11",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_noemit",
       "community": 1,
@@ -799,7 +1011,7 @@
       "label": "esModuleInterop",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L8",
+      "source_location": "L12",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_esmoduleinterop",
       "community": 1,
@@ -809,7 +1021,7 @@
       "label": "module",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L9",
+      "source_location": "L13",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_module",
       "community": 1,
@@ -819,7 +1031,7 @@
       "label": "moduleResolution",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L10",
+      "source_location": "L14",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_moduleresolution",
       "community": 1,
@@ -829,7 +1041,7 @@
       "label": "resolveJsonModule",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L11",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_resolvejsonmodule",
       "community": 1,
@@ -839,7 +1051,7 @@
       "label": "isolatedModules",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L12",
+      "source_location": "L16",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_isolatedmodules",
       "community": 1,
@@ -849,7 +1061,7 @@
       "label": "jsx",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L13",
+      "source_location": "L17",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_jsx",
       "community": 1,
@@ -859,7 +1071,7 @@
       "label": "incremental",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L14",
+      "source_location": "L18",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_incremental",
       "community": 1,
@@ -869,7 +1081,7 @@
       "label": "plugins",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L15",
+      "source_location": "L19",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_plugins",
       "community": 1,
@@ -879,7 +1091,7 @@
       "label": "paths",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L16",
+      "source_location": "L24",
       "_origin": "ast",
       "id": "tsconfig_compileroptions_paths",
       "community": 1,
@@ -889,17 +1101,27 @@
       "label": "@/*",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L16",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "tsconfig_paths",
       "community": 1,
       "norm_label": "@/*"
     },
     {
+      "label": "target",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "tsconfig_compileroptions_target",
+      "community": 1,
+      "norm_label": "target"
+    },
+    {
       "label": "include",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L18",
+      "source_location": "L31",
       "_origin": "ast",
       "id": "tsconfig_include",
       "community": 1,
@@ -909,7 +1131,7 @@
       "label": "exclude",
       "file_type": "code",
       "source_file": "tsconfig.json",
-      "source_location": "L19",
+      "source_location": "L38",
       "_origin": "ast",
       "id": "tsconfig_exclude",
       "community": 1,
@@ -918,19 +1140,19 @@
     {
       "label": "Claude Settings (Project)",
       "file_type": "document",
-      "source_file": ".claude/settings.json",
+      "source_file": "C:/Users/Administrator/Documents/Projects/batallion-system/.claude/settings.json",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
       "id": "claude_settings",
-      "community": 6,
+      "community": 11,
       "norm_label": "claude settings (project)"
     },
     {
-      "label": "Claude Settings Local",
-      "file_type": "document",
+      "label": "Claude Settings Local (Project Permissions)",
+      "file_type": "code",
       "source_file": ".claude/settings.local.json",
       "source_location": null,
       "source_url": null,
@@ -938,177 +1160,177 @@
       "author": null,
       "contributor": null,
       "id": "claude_settings_local",
-      "community": 6,
-      "norm_label": "claude settings local"
+      "community": 12,
+      "norm_label": "claude settings local (project permissions)"
     },
     {
-      "label": "MCP Server Configuration",
-      "file_type": "document",
-      "source_file": ".mcp.json",
+      "label": "Per-Company Pastel Color Token System",
+      "file_type": "rationale",
+      "source_file": "lib/companies.ts",
+      "source_location": "COMPANY_THEMES",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "concept_pastel_theme_system",
+      "community": 5,
+      "norm_label": "per-company pastel color token system"
+    },
+    {
+      "label": "Per-Company Supabase Instance Pattern",
+      "file_type": "rationale",
+      "source_file": "lib/supabase.ts",
+      "source_location": "SUPABASE_CONFIGS",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "concept_per_company_supabase",
+      "community": 0,
+      "norm_label": "per-company supabase instance pattern"
+    },
+    {
+      "label": "Client-Side Lockout Auth with localStorage",
+      "file_type": "rationale",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "MAX_ATTEMPTS, LOCKOUT_SECONDS",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "concept_lockout_auth",
+      "community": 2,
+      "norm_label": "client-side lockout auth with localstorage"
+    },
+    {
+      "label": "Disabled Companies Gate (Coming Soon)",
+      "file_type": "rationale",
+      "source_file": "lib/companies.ts",
+      "source_location": "DISABLED_COMPANIES",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "concept_disabled_companies",
+      "community": 5,
+      "norm_label": "disabled companies gate (coming soon)"
+    },
+    {
+      "label": "signIn Function",
+      "file_type": "code",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "26",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "lib_useauth_signin",
+      "community": 2,
+      "norm_label": "signin function"
+    },
+    {
+      "label": "signOut Function",
+      "file_type": "code",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "32",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "lib_useauth_signout",
+      "community": 2,
+      "norm_label": "signout function"
+    },
+    {
+      "label": "package.json - Project Manifest",
+      "file_type": "code",
+      "source_file": "package.json",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "mcp_json",
-      "community": 6,
-      "norm_label": "mcp server configuration"
+      "id": "package_json",
+      "community": 8,
+      "norm_label": "package.json - project manifest"
     },
     {
-      "label": "NominalRoll.load",
+      "label": "PostCSS Config",
       "file_type": "code",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 40",
+      "source_file": "postcss.config.mjs",
+      "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_nominalroll_load",
+      "id": "postcss_config_mjs",
+      "community": 10,
+      "norm_label": "postcss config"
+    },
+    {
+      "label": "NominalRoll Table",
+      "file_type": "code",
+      "source_file": "supabase/schema.sql",
+      "source_location": "5",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "supabase_schema_nominalroll",
       "community": 4,
-      "norm_label": "nominalroll.load"
+      "norm_label": "nominalroll table"
     },
     {
-      "label": "NominalRoll.addSoldier",
+      "label": "Exceptions Table",
       "file_type": "code",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 52",
+      "source_file": "supabase/schema.sql",
+      "source_location": "13",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_nominalroll_addsoldier",
+      "id": "supabase_schema_exceptions",
       "community": 4,
-      "norm_label": "nominalroll.addsoldier"
+      "norm_label": "exceptions table"
     },
     {
-      "label": "NominalRoll.deleteSoldier",
+      "label": "Duty Table",
       "file_type": "code",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 70",
+      "source_file": "supabase/schema.sql",
+      "source_location": "23",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_nominalroll_deletesoldier",
+      "id": "supabase_schema_duty",
       "community": 4,
-      "norm_label": "nominalroll.deletesoldier"
+      "norm_label": "duty table"
     },
     {
-      "label": "ParadeState.load",
+      "label": "Configuration Table",
       "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 69",
+      "source_file": "supabase/schema.sql",
+      "source_location": "31",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_paradestate_load",
-      "community": 0,
-      "norm_label": "paradestate.load"
+      "id": "supabase_schema_configuration",
+      "community": 4,
+      "norm_label": "configuration table"
     },
     {
-      "label": "ParadeState.addException",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 96",
+      "label": "Row Level Security Policies",
+      "file_type": "rationale",
+      "source_file": "supabase/schema.sql",
+      "source_location": "47",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_paradestate_addexception",
-      "community": 0,
-      "norm_label": "paradestate.addexception"
-    },
-    {
-      "label": "ParadeState.deleteException",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 111",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_deleteexception",
-      "community": 0,
-      "norm_label": "paradestate.deleteexception"
-    },
-    {
-      "label": "ParadeState.addDuty",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 116",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_addduty",
-      "community": 0,
-      "norm_label": "paradestate.addduty"
-    },
-    {
-      "label": "ParadeState.deleteDuty",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 129",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_deleteduty",
-      "community": 0,
-      "norm_label": "paradestate.deleteduty"
-    },
-    {
-      "label": "ParadeState.addConfig",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 134",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_addconfig",
-      "community": 0,
-      "norm_label": "paradestate.addconfig"
-    },
-    {
-      "label": "ParadeState.deleteConfig",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 146",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_deleteconfig",
-      "community": 0,
-      "norm_label": "paradestate.deleteconfig"
-    },
-    {
-      "label": "ParadeState.generate",
-      "file_type": "code",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 151",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "components_paradestate_generate",
-      "community": 0,
-      "norm_label": "paradestate.generate"
-    },
-    {
-      "label": "getSupabaseClient",
-      "file_type": "code",
-      "source_file": "lib/supabase.ts",
-      "source_location": "line 4",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "lib_supabase_getsupabseclient",
-      "community": 6,
-      "norm_label": "getsupabaseclient"
+      "id": "supabase_schema_rls",
+      "community": 4,
+      "norm_label": "row level security policies"
     },
     {
       "label": "Tailwind Config",
@@ -1119,13 +1341,26 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "tailwind_config_tailwindconfig",
-      "community": 2,
+      "id": "tailwind_config_ts",
+      "community": 10,
       "norm_label": "tailwind config"
     },
     {
-      "label": "CLAUDE.md Behavioral Guidelines",
-      "file_type": "rationale",
+      "label": "TypeScript Config",
+      "file_type": "code",
+      "source_file": "tsconfig.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "tsconfig_json",
+      "community": 15,
+      "norm_label": "typescript config"
+    },
+    {
+      "label": "CLAUDE.md - Behavioral Guidelines",
+      "file_type": "document",
       "source_file": "CLAUDE.md",
       "source_location": null,
       "source_url": null,
@@ -1133,11 +1368,11 @@
       "author": null,
       "contributor": null,
       "id": "claude_md",
-      "community": 11,
-      "norm_label": "claude.md behavioral guidelines"
+      "community": 4,
+      "norm_label": "claude.md - behavioral guidelines"
     },
     {
-      "label": "README - Company Colour Themes",
+      "label": "README - Project Roadmap",
       "file_type": "document",
       "source_file": "README.md",
       "source_location": null,
@@ -1145,61 +1380,51 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_readme",
-      "community": 3,
-      "norm_label": "readme - company colour themes"
+      "id": "readme_md",
+      "community": 13,
+      "norm_label": "readme - project roadmap"
     },
     {
-      "label": "Per-Company Supabase Client Pattern",
-      "file_type": "concept",
-      "source_file": "lib/supabase.ts",
-      "source_location": "line 4",
+      "label": "Password-Based Authentication Pattern",
+      "file_type": "rationale",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "27",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "concept_per_company_supabase",
-      "community": 6,
-      "norm_label": "per-company supabase client pattern"
+      "id": "concept_password_auth",
+      "community": 2,
+      "norm_label": "password-based authentication pattern"
     },
     {
-      "label": "Parade State Report Generation",
-      "file_type": "concept",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 151",
+      "label": "Canonical Schema Across All Companies",
+      "file_type": "rationale",
+      "source_file": "supabase/schema.sql",
+      "source_location": "1",
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "concept_parade_state_generation",
-      "community": 0,
-      "norm_label": "parade state report generation"
-    },
-    {
-      "label": "Military Rank Classification (Officer/WOSPEC/Enlistee)",
-      "file_type": "concept",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 17",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "concept_rank_classification",
+      "id": "concept_canonical_schema",
       "community": 4,
-      "norm_label": "military rank classification (officer/wospec/enlistee)"
+      "norm_label": "canonical schema across all companies"
+    },
+    {
+      "label": "Commander-Only Access Control Pattern",
+      "file_type": "rationale",
+      "source_file": "supabase/schema.sql",
+      "source_location": "62",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "concept_commander_access_control",
+      "community": 2,
+      "norm_label": "commander-only access control pattern"
     }
   ],
   "links": [
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".mcp.json",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "mcp",
-      "target": "mcp_mcp_server_supabase"
-    },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
@@ -1221,26 +1446,26 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "app/[company]/page.tsx",
-      "source_location": "L3",
+      "source_location": "import CompanyContent",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "company_page",
-      "target": "components_companycontent",
-      "confidence_score": 1.0
+      "target": "components_companycontent"
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "app/[company]/page.tsx",
-      "source_location": "L2",
+      "source_location": "import { COMPANIES, DISABLED_COMPANIES, companyLabel }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "company_page",
-      "target": "lib_companies",
-      "confidence_score": 1.0
+      "target": "lib_companies"
     },
     {
       "relation": "imports",
@@ -1261,7 +1486,7 @@
       "source_location": "L2",
       "weight": 1.0,
       "source": "company_page",
-      "target": "lib_companies_company_labels",
+      "target": "lib_companies_companylabel",
       "confidence_score": 1.0
     },
     {
@@ -1272,38 +1497,18 @@
       "source_location": "L2",
       "weight": 1.0,
       "source": "company_page",
-      "target": "lib_companies_isvalidcompany",
+      "target": "lib_companies_disabled_companies",
       "confidence_score": 1.0
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
       "source_file": "app/[company]/page.tsx",
-      "source_location": "line 6",
+      "source_location": "if (DISABLED_COMPANIES.has(company))",
       "weight": 1.0,
-      "source": "company_page_generatestaticparams",
-      "target": "lib_companies_companies"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/[company]/page.tsx",
-      "source_location": "line 12",
-      "weight": 1.0,
-      "source": "company_page_companypage",
-      "target": "components_companycontent_companycontent"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/[company]/page.tsx",
-      "source_location": "line 14",
-      "weight": 1.0,
-      "source": "company_page_companypage",
-      "target": "lib_companies_company_labels"
+      "source": "concept_disabled_companies",
+      "target": "company_page"
     },
     {
       "relation": "calls",
@@ -1311,10 +1516,10 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/[company]/page.tsx",
-      "source_location": "line 10",
+      "source_location": "L19",
       "weight": 1.0,
       "source": "company_page_companypage",
-      "target": "lib_companies_isvalidcompany"
+      "target": "lib_companies_companylabel"
     },
     {
       "relation": "contains",
@@ -1340,29 +1545,39 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "app/page.tsx",
-      "source_location": "L4",
+      "source_location": "L7",
       "weight": 1.0,
       "source": "app_page",
       "target": "app_page_homepage",
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "app/page.tsx",
+      "source_location": "const theme = COMPANY_THEMES[company]",
+      "weight": 1.0,
+      "source": "app_page",
+      "target": "concept_pastel_theme_system"
+    },
+    {
+      "relation": "references",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "app/page.tsx",
-      "source_location": "L2",
+      "source_location": "import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, companyLabel }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_page",
-      "target": "lib_companies",
-      "confidence_score": 1.0
+      "target": "lib_companies"
     },
     {
       "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "app/page.tsx",
-      "source_location": "L2",
+      "source_location": "L5",
       "weight": 1.0,
       "source": "app_page",
       "target": "lib_companies_companies",
@@ -1373,37 +1588,164 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "app/page.tsx",
-      "source_location": "L2",
+      "source_location": "L5",
       "weight": 1.0,
       "source": "app_page",
-      "target": "lib_companies_company_labels",
+      "target": "lib_companies_company_themes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "app_page",
+      "target": "lib_companies_companylabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/page.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "app_page",
+      "target": "lib_companies_disabled_companies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "app/page.tsx",
+      "source_location": "const disabled = DISABLED_COMPANIES.has(company)",
+      "weight": 1.0,
+      "source": "concept_disabled_companies",
+      "target": "app_page"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "components_commanderloginform",
+      "target": "components_commanderloginform_clearcooldown",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "components_commanderloginform",
+      "target": "components_commanderloginform_commanderloginform",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "components_commanderloginform",
+      "target": "components_commanderloginform_readcooldown",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "components_commanderloginform",
+      "target": "components_commanderloginform_savecooldown",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "components_commanderloginform",
+      "target": "components_commanderloginform_storagekey",
       "confidence_score": 1.0
     },
     {
       "relation": "references",
+      "context": "import",
       "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/page.tsx",
-      "source_location": "line 15",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "import CommanderLoginForm",
       "weight": 1.0,
-      "source": "app_page_homepage",
-      "target": "lib_companies_companies"
+      "confidence_score": 1.0,
+      "source": "components_companycontent",
+      "target": "components_commanderloginform"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/page.tsx",
-      "source_location": "line 18",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "MAX_ATTEMPTS, LOCKOUT_SECONDS, readCooldown, saveCooldown",
       "weight": 1.0,
-      "source": "app_page_homepage",
-      "target": "lib_companies_company_labels"
+      "source": "concept_lockout_auth",
+      "target": "components_commanderloginform"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "components_commanderloginform_clearcooldown",
+      "target": "components_commanderloginform_storagekey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "components_commanderloginform_readcooldown",
+      "target": "components_commanderloginform_storagekey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CommanderLoginForm.tsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "components_commanderloginform_savecooldown",
+      "target": "components_commanderloginform_storagekey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "components_companycontent",
+      "target": "components_commanderloginform_commanderloginform",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L16",
+      "source_location": "L19",
       "weight": 1.0,
       "source": "components_companycontent",
       "target": "components_companycontent_companycontent",
@@ -1413,7 +1755,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L9",
+      "source_location": "L12",
       "weight": 1.0,
       "source": "components_companycontent",
       "target": "components_companycontent_tab",
@@ -1423,21 +1765,75 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L11",
+      "source_location": "L14",
       "weight": 1.0,
       "source": "components_companycontent",
       "target": "components_companycontent_tabs",
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "import NominalRoll",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_companycontent",
+      "target": "components_nominalroll"
+    },
+    {
+      "relation": "references",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "import ParadeState",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_companycontent",
+      "target": "components_paradestate"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "const theme = COMPANY_THEMES[company]",
+      "weight": 1.0,
+      "source": "components_companycontent",
+      "target": "concept_pastel_theme_system"
+    },
+    {
+      "relation": "references",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "import type { Company }, { COMPANY_THEMES }",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "components_companycontent",
+      "target": "lib_companies"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/CompanyContent.tsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "components_companycontent",
+      "target": "lib_companies_company",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/CompanyContent.tsx",
       "source_location": "L6",
       "weight": 1.0,
       "source": "components_companycontent",
-      "target": "components_nominalroll",
+      "target": "lib_companies_company_themes",
       "confidence_score": 1.0
     },
     {
@@ -1448,18 +1844,7 @@
       "source_location": "L7",
       "weight": 1.0,
       "source": "components_companycontent",
-      "target": "components_paradestate",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "components/CompanyContent.tsx",
-      "source_location": "L5",
-      "weight": 1.0,
-      "source": "components_companycontent",
-      "target": "lib_companies",
+      "target": "lib_useauth",
       "confidence_score": 1.0
     },
     {
@@ -1467,37 +1852,38 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "L5",
+      "source_location": "L7",
       "weight": 1.0,
       "source": "components_companycontent",
-      "target": "lib_companies_company",
+      "target": "lib_useauth_useauth",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
+      "context": "call",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/CompanyContent.tsx",
-      "source_location": "line 55",
+      "source_location": "L28",
       "weight": 1.0,
       "source": "components_companycontent_companycontent",
-      "target": "components_nominalroll_nominalroll"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/CompanyContent.tsx",
-      "source_location": "line 57",
-      "weight": 1.0,
-      "source": "components_companycontent_companycontent",
-      "target": "components_paradestate_paradestate"
+      "target": "lib_useauth_useauth"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L17",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "components_nominalroll",
+      "target": "components_nominalroll_all_ranks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/NominalRoll.tsx",
+      "source_location": "L85",
       "weight": 1.0,
       "source": "components_nominalroll",
       "target": "components_nominalroll_getranktype",
@@ -1507,7 +1893,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L25",
+      "source_location": "L97",
       "weight": 1.0,
       "source": "components_nominalroll",
       "target": "components_nominalroll_nominalroll",
@@ -1517,17 +1903,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L8",
-      "weight": 1.0,
-      "source": "components_nominalroll",
-      "target": "components_nominalroll_officer_prefixes",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "L11",
+      "source_location": "L79",
       "weight": 1.0,
       "source": "components_nominalroll",
       "target": "components_nominalroll_ranks_by_type",
@@ -1536,33 +1912,43 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L23",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "components_nominalroll",
+      "target": "components_nominalroll_ranksearch"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/NominalRoll.tsx",
+      "source_location": "L91",
       "weight": 1.0,
       "source": "components_nominalroll",
       "target": "components_nominalroll_section_order",
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L9",
+      "source_location": "const theme = COMPANY_THEMES[company]",
       "weight": 1.0,
       "source": "components_nominalroll",
-      "target": "components_nominalroll_wospec_ranks",
-      "confidence_score": 1.0
+      "target": "concept_pastel_theme_system"
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "L6",
+      "source_location": "import type { Company }, { COMPANY_THEMES }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_nominalroll",
-      "target": "lib_companies",
-      "confidence_score": 1.0
+      "target": "lib_companies"
     },
     {
       "relation": "imports",
@@ -1573,6 +1959,17 @@
       "weight": 1.0,
       "source": "components_nominalroll",
       "target": "lib_companies_company",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/NominalRoll.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_nominalroll",
+      "target": "lib_companies_company_themes",
       "confidence_score": 1.0
     },
     {
@@ -1588,112 +1985,51 @@
     },
     {
       "relation": "imports",
-      "context": "import",
       "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "components/NominalRoll.tsx",
       "source_location": "L4",
       "weight": 1.0,
-      "source": "components_nominalroll",
-      "target": "lib_supabase_getsupabaseclient",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports",
       "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "L5",
-      "weight": 1.0,
       "source": "components_nominalroll",
-      "target": "lib_supabase_soldier",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 17",
-      "weight": 1.0,
-      "source": "components_nominalroll_getranktype",
-      "target": "concept_rank_classification"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 79",
-      "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "components_nominalroll_getranktype"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 96",
-      "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "components_nominalroll_addsoldier"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 189",
-      "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "components_nominalroll_deletesoldier"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 37",
-      "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "components_nominalroll_load"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "L26",
-      "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
       "target": "lib_supabase_getsupabaseclient"
     },
     {
-      "relation": "calls",
+      "relation": "shares_data_with",
+      "context": "import",
       "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 26",
+      "source_location": "import type { Soldier }",
       "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "lib_supabase_getsupabseclient"
+      "confidence_score": 1.0,
+      "source": "components_nominalroll",
+      "target": "lib_supabase_soldier"
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
       "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 28",
+      "source_location": "function RankSearch vs function SoldierSearch",
       "weight": 1.0,
-      "source": "components_nominalroll_nominalroll",
-      "target": "lib_supabase_soldier"
+      "source": "components_nominalroll_ranksearch",
+      "target": "components_paradestate_soldiersearch"
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L8",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "components_paradestate_duty_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L86",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_exception_scopes",
@@ -1703,7 +2039,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L9",
+      "source_location": "L87",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_exceptionscope",
@@ -1713,7 +2049,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L25",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "components_paradestate_parade_types",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L119",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_paradestate",
@@ -1723,7 +2069,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L11",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "components_paradestate_reason_hints",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L105",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_section",
@@ -1733,7 +2089,27 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L21",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "components_paradestate_single_date_scopes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "components_paradestate_soldiersearch"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L115",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_todayiso",
@@ -1743,22 +2119,32 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L13",
+      "source_location": "L107",
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "components_paradestate_tosgdate",
       "confidence_score": 1.0
     },
     {
-      "relation": "imports_from",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "const theme = COMPANY_THEMES[company]",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "concept_pastel_theme_system"
+    },
+    {
+      "relation": "references",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L6",
+      "source_location": "import type { Company }, { COMPANY_THEMES }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_paradestate",
-      "target": "lib_companies",
-      "confidence_score": 1.0
+      "target": "lib_companies"
     },
     {
       "relation": "imports",
@@ -1769,6 +2155,17 @@
       "weight": 1.0,
       "source": "components_paradestate",
       "target": "lib_companies_company",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ParadeState.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "components_paradestate",
+      "target": "lib_companies_company_themes",
       "confidence_score": 1.0
     },
     {
@@ -1783,232 +2180,90 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "imports",
+      "relation": "shares_data_with",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L5",
+      "source_location": "import type { Configuration }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_paradestate",
-      "target": "lib_supabase_configuration",
-      "confidence_score": 1.0
+      "target": "lib_supabase_configuration"
     },
     {
-      "relation": "imports",
+      "relation": "shares_data_with",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L5",
+      "source_location": "import type { DutyEntry }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_paradestate",
-      "target": "lib_supabase_dutyentry",
-      "confidence_score": 1.0
+      "target": "lib_supabase_dutyentry"
     },
     {
-      "relation": "imports",
+      "relation": "shares_data_with",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L5",
+      "source_location": "import type { Exception }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_paradestate",
-      "target": "lib_supabase_exception",
-      "confidence_score": 1.0
+      "target": "lib_supabase_exception"
     },
     {
       "relation": "imports",
-      "context": "import",
       "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "components/ParadeState.tsx",
       "source_location": "L4",
       "weight": 1.0,
+      "context": "import",
       "source": "components_paradestate",
-      "target": "lib_supabase_getsupabaseclient",
-      "confidence_score": 1.0
+      "target": "lib_supabase_getsupabaseclient"
     },
     {
-      "relation": "imports",
+      "relation": "shares_data_with",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "L5",
+      "source_location": "import type { Soldier }",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_paradestate",
-      "target": "lib_supabase_soldier",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 190",
-      "weight": 1.0,
-      "source": "components_paradestate_generate",
-      "target": "components_paradestate_tosgdate"
+      "target": "lib_supabase_soldier"
     },
     {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "components/ParadeState.tsx",
-      "source_location": "line 402",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_tosgdate"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "L34",
+      "source_location": "L128",
       "weight": 1.0,
       "source": "components_paradestate_paradestate",
       "target": "components_paradestate_todayiso",
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
+      "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 547",
+      "source_file": "lib/companies.ts",
+      "source_location": "DISABLED_COMPANIES",
       "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_addconfig"
+      "source": "concept_disabled_companies",
+      "target": "lib_companies"
     },
     {
-      "relation": "calls",
+      "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 465",
+      "source_file": "lib/companies.ts",
+      "source_location": "COMPANY_THEMES",
       "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_addduty"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 367",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_addexception"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 578",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_deleteconfig"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 494",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_deleteduty"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 408",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_deleteexception"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 594",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_generate"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 66",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 38",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_configuration"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 37",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_dutyentry"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 36",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_exception"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "L32",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_getsupabaseclient"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 32",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_getsupabseclient"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 35",
-      "weight": 1.0,
-      "source": "components_paradestate_paradestate",
-      "target": "lib_supabase_soldier"
+      "source": "concept_pastel_theme_system",
+      "target": "lib_companies"
     },
     {
       "relation": "contains",
@@ -2034,62 +2289,63 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/companies.ts",
-      "source_location": "L4",
+      "source_location": "L10",
       "weight": 1.0,
       "source": "lib_companies",
-      "target": "lib_companies_company_labels",
+      "target": "lib_companies_company_themes",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/companies.ts",
-      "source_location": "L12",
+      "source_location": "L6",
       "weight": 1.0,
       "source": "lib_companies",
-      "target": "lib_companies_isvalidcompany",
+      "target": "lib_companies_companylabel",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/companies.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "lib_companies",
+      "target": "lib_companies_disabled_companies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase.ts",
+      "source_location": "import type { Company } from './companies'",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "lib_supabase",
+      "target": "lib_companies"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/supabase.ts",
+      "source_location": "import type { Company }",
+      "weight": 1.0,
+      "source": "lib_supabase_getsupabaseclient",
+      "target": "lib_companies"
     },
     {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "lib/supabase.ts",
-      "source_location": "L2",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L5",
       "weight": 1.0,
-      "source": "lib_supabase",
+      "source": "lib_useauth",
       "target": "lib_companies",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/companies.ts",
-      "source_location": "line 2",
-      "weight": 1.0,
-      "source": "lib_companies_company",
-      "target": "lib_companies_companies"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/companies.ts",
-      "source_location": "line 13",
-      "weight": 1.0,
-      "source": "lib_companies_isvalidcompany",
-      "target": "lib_companies_companies"
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "README.md",
-      "source_location": null,
-      "weight": 0.8,
-      "source": "readme_readme",
-      "target": "lib_companies_companies"
     },
     {
       "relation": "imports",
@@ -2103,20 +2359,31 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "references",
+      "relation": "imports",
+      "context": "import",
       "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/supabase.ts",
-      "source_location": "line 4",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L5",
       "weight": 1.0,
-      "source": "lib_supabase_getsupabseclient",
-      "target": "lib_companies_company"
+      "source": "lib_useauth",
+      "target": "lib_companies_company",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/supabase.ts",
-      "source_location": "L32",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "lib_supabase",
+      "target": "lib_supabase_clients",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase.ts",
+      "source_location": "L43",
       "weight": 1.0,
       "source": "lib_supabase",
       "target": "lib_supabase_configuration",
@@ -2126,7 +2393,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/supabase.ts",
-      "source_location": "L26",
+      "source_location": "L37",
       "weight": 1.0,
       "source": "lib_supabase",
       "target": "lib_supabase_dutyentry",
@@ -2136,7 +2403,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/supabase.ts",
-      "source_location": "L17",
+      "source_location": "L28",
       "weight": 1.0,
       "source": "lib_supabase",
       "target": "lib_supabase_exception",
@@ -2146,7 +2413,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/supabase.ts",
-      "source_location": "L4",
+      "source_location": "L14",
       "weight": 1.0,
       "source": "lib_supabase",
       "target": "lib_supabase_getsupabaseclient",
@@ -2156,11 +2423,93 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "lib/supabase.ts",
-      "source_location": "L11",
+      "source_location": "L22",
       "weight": 1.0,
       "source": "lib_supabase",
       "target": "lib_supabase_soldier",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/supabase.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "lib_supabase",
+      "target": "lib_supabase_supabase_configs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "lib_useauth",
+      "target": "lib_supabase",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "lib/supabase.ts",
+      "source_location": "SUPABASE_CONFIGS, clients Map",
+      "weight": 1.0,
+      "source": "concept_per_company_supabase",
+      "target": "lib_supabase_getsupabaseclient"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "lib_useauth",
+      "target": "lib_supabase_getsupabaseclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "lib/useAuth.ts",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "lib_useauth",
+      "target": "lib_useauth_useauth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "lib/useAuth.ts",
+      "source_location": "8",
+      "weight": 1.0,
+      "source": "lib_useauth_useauth",
+      "target": "concept_commander_access_control"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/useAuth.ts",
+      "source_location": "36",
+      "weight": 1.0,
+      "source": "lib_useauth_useauth",
+      "target": "lib_useauth_signin"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/useAuth.ts",
+      "source_location": "36",
+      "weight": 1.0,
+      "source": "lib_useauth_useauth",
+      "target": "lib_useauth_signout"
     },
     {
       "relation": "contains",
@@ -2176,11 +2525,11 @@
       "relation": "references",
       "confidence": "INFERRED",
       "confidence_score": 0.75,
-      "source_file": "next.config.mjs",
+      "source_file": "C:/Users/Administrator/Documents/Projects/batallion-system/next.config.mjs",
       "source_location": null,
       "weight": 0.7,
       "source": "next_config_nextconfig",
-      "target": "package"
+      "target": "package_json"
     },
     {
       "relation": "contains",
@@ -2241,16 +2590,6 @@
       "source": "package",
       "target": "package_version",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.75,
-      "source_file": "tailwind.config.ts",
-      "source_location": null,
-      "weight": 0.7,
-      "source": "tailwind_config_tailwindconfig",
-      "target": "package"
     },
     {
       "relation": "contains",
@@ -2336,16 +2675,6 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "package.json",
-      "source_location": "L21",
-      "weight": 1.0,
-      "source": "package_devdependencies",
-      "target": "package_devdependencies_autoprefixer",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "package.json",
       "source_location": "L22",
       "weight": 1.0,
       "source": "package_devdependencies",
@@ -2369,7 +2698,7 @@
       "source_location": "L18",
       "weight": 1.0,
       "source": "package_devdependencies",
-      "target": "package_devdependencies_types_node",
+      "target": "package_devdependencies_tailwindcss_postcss",
       "confidence_score": 1.0
     },
     {
@@ -2379,7 +2708,7 @@
       "source_location": "L19",
       "weight": 1.0,
       "source": "package_devdependencies",
-      "target": "package_devdependencies_types_react",
+      "target": "package_devdependencies_types_node",
       "confidence_score": 1.0
     },
     {
@@ -2387,6 +2716,16 @@
       "confidence": "EXTRACTED",
       "source_file": "package.json",
       "source_location": "L20",
+      "weight": 1.0,
+      "source": "package_devdependencies",
+      "target": "package_devdependencies_types_react",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "package.json",
+      "source_location": "L21",
       "weight": 1.0,
       "source": "package_devdependencies",
       "target": "package_devdependencies_types_react_dom",
@@ -2413,14 +2752,74 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "1",
+      "weight": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "concept_canonical_schema"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "tailwind.config.ts",
-      "source_location": "L3",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L22",
       "weight": 1.0,
-      "source": "tailwind_config",
-      "target": "tailwind_config_config",
+      "source": "scripts_sync_schema",
+      "target": "scripts_sync_schema_project_refs",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "scripts_sync_schema_schemapath",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "scripts_sync_schema_sql",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "60",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "scripts_sync_schema_syncproject"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "scripts_sync_schema_targets",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "scripts/sync-schema.ts",
+      "source_location": "30",
+      "weight": 1.0,
+      "source": "scripts_sync_schema",
+      "target": "supabase_schema_nominalroll"
     },
     {
       "relation": "contains",
@@ -2436,7 +2835,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L19",
+      "source_location": "L38",
       "weight": 1.0,
       "source": "tsconfig",
       "target": "tsconfig_exclude",
@@ -2446,7 +2845,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L18",
+      "source_location": "L31",
       "weight": 1.0,
       "source": "tsconfig",
       "target": "tsconfig_include",
@@ -2456,7 +2855,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L4",
+      "source_location": "L8",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_allowjs",
@@ -2466,7 +2865,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L8",
+      "source_location": "L12",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_esmoduleinterop",
@@ -2476,7 +2875,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L14",
+      "source_location": "L18",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_incremental",
@@ -2486,7 +2885,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L12",
+      "source_location": "L16",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_isolatedmodules",
@@ -2496,7 +2895,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L13",
+      "source_location": "L17",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_jsx",
@@ -2516,7 +2915,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_module",
@@ -2526,7 +2925,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L10",
+      "source_location": "L14",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_moduleresolution",
@@ -2536,7 +2935,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L7",
+      "source_location": "L11",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_noemit",
@@ -2546,7 +2945,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L16",
+      "source_location": "L24",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_paths",
@@ -2556,7 +2955,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L15",
+      "source_location": "L19",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_plugins",
@@ -2566,7 +2965,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L11",
+      "source_location": "L15",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_resolvejsonmodule",
@@ -2576,7 +2975,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L5",
+      "source_location": "L9",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_skiplibcheck",
@@ -2586,7 +2985,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L6",
+      "source_location": "L10",
       "weight": 1.0,
       "source": "tsconfig_compileroptions",
       "target": "tsconfig_compileroptions_strict",
@@ -2596,197 +2995,225 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tsconfig.json",
-      "source_location": "L16",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "tsconfig_compileroptions",
+      "target": "tsconfig_compileroptions_target",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tsconfig.json",
+      "source_location": "L25",
       "weight": 1.0,
       "source": "tsconfig_compileroptions_paths",
       "target": "tsconfig_paths",
       "confidence_score": 1.0
     },
     {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/settings.json",
-      "source_location": null,
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "lib/useAuth.ts",
+      "source_location": "26",
       "weight": 1.0,
-      "source": "claude_settings",
-      "target": "mcp_json"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": ".claude/settings.local.json",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claude_settings_local",
-      "target": "mcp_json"
+      "source": "lib_useauth_signin",
+      "target": "concept_password_auth"
     },
     {
       "relation": "conceptually_related_to",
       "confidence": "INFERRED",
-      "confidence_score": 0.75,
-      "source_file": ".mcp.json",
+      "confidence_score": 0.85,
+      "source_file": "postcss.config.mjs",
       "source_location": null,
-      "weight": 0.7,
-      "source": "mcp_json",
-      "target": "concept_per_company_supabase"
+      "weight": 1.0,
+      "source": "postcss_config_mjs",
+      "target": "tailwind_config_ts"
     },
     {
-      "relation": "calls",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "supabase/schema.sql",
+      "source_location": "5",
+      "weight": 1.0,
+      "source": "concept_canonical_schema",
+      "target": "supabase_schema_nominalroll"
+    },
+    {
+      "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 65",
+      "source_file": "supabase/schema.sql",
+      "source_location": "47",
       "weight": 1.0,
-      "source": "components_nominalroll_addsoldier",
-      "target": "components_nominalroll_load"
+      "source": "supabase_schema_rls",
+      "target": "supabase_schema_nominalroll"
     },
     {
-      "relation": "calls",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "supabase/schema.sql",
+      "source_location": "13",
+      "weight": 1.0,
+      "source": "concept_canonical_schema",
+      "target": "supabase_schema_exceptions"
+    },
+    {
+      "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 73",
+      "source_file": "supabase/schema.sql",
+      "source_location": "48",
       "weight": 1.0,
-      "source": "components_nominalroll_deletesoldier",
-      "target": "components_nominalroll_load"
+      "source": "supabase_schema_rls",
+      "target": "supabase_schema_exceptions"
     },
     {
-      "relation": "semantically_similar_to",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "supabase/schema.sql",
+      "source_location": "23",
+      "weight": 1.0,
+      "source": "concept_canonical_schema",
+      "target": "supabase_schema_duty"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/schema.sql",
+      "source_location": "49",
+      "weight": 1.0,
+      "source": "supabase_schema_rls",
+      "target": "supabase_schema_duty"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "supabase/schema.sql",
+      "source_location": "31",
+      "weight": 1.0,
+      "source": "concept_canonical_schema",
+      "target": "supabase_schema_configuration"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "supabase/schema.sql",
+      "source_location": "50",
+      "weight": 1.0,
+      "source": "supabase_schema_rls",
+      "target": "supabase_schema_configuration"
+    },
+    {
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "supabase/schema.sql",
+      "source_location": "47",
+      "weight": 1.0,
+      "source": "supabase_schema_rls",
+      "target": "concept_commander_access_control"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.65,
+      "source_file": "CLAUDE.md",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "claude_md",
+      "target": "concept_canonical_schema"
+    },
+    {
+      "relation": "rationale_for",
       "confidence": "INFERRED",
       "confidence_score": 0.85,
-      "source_file": "components/NominalRoll.tsx",
-      "source_location": "line 40",
-      "weight": 0.85,
-      "source": "components_nominalroll_load",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 143",
+      "source_file": "lib/useAuth.ts",
+      "source_location": null,
       "weight": 1.0,
-      "source": "components_paradestate_addconfig",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 126",
-      "weight": 1.0,
-      "source": "components_paradestate_addduty",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 108",
-      "weight": 1.0,
-      "source": "components_paradestate_addexception",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 148",
-      "weight": 1.0,
-      "source": "components_paradestate_deleteconfig",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 131",
-      "weight": 1.0,
-      "source": "components_paradestate_deleteduty",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 113",
-      "weight": 1.0,
-      "source": "components_paradestate_deleteexception",
-      "target": "components_paradestate_load"
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "components/ParadeState.tsx",
-      "source_location": "line 151",
-      "weight": 1.0,
-      "source": "components_paradestate_generate",
-      "target": "concept_parade_state_generation"
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "lib/supabase.ts",
-      "source_location": "line 4",
-      "weight": 1.0,
-      "source": "lib_supabase_getsupabseclient",
-      "target": "concept_per_company_supabase"
+      "source": "concept_password_auth",
+      "target": "concept_commander_access_control"
     }
   ],
   "hyperedges": [
     {
-      "id": "supabase_data_flow",
-      "label": "Per-Company Supabase Data Flow",
+      "id": "commander_auth_gate",
+      "label": "Commander Authentication Gate Flow",
       "nodes": [
-        "lib_companies_company",
-        "lib_supabase_getsupabseclient",
-        "components_nominalroll_nominalroll",
-        "components_paradestate_paradestate"
+        "components_companycontent",
+        "components_commanderloginform",
+        "concept_lockout_auth"
       ],
-      "relation": "participate_in",
+      "relation": "implement",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "components/CompanyContent.tsx"
+    },
+    {
+      "id": "company_data_layer",
+      "label": "Per-Company Data Access Pattern",
+      "nodes": [
+        "lib_supabase_getsupabaseclient",
+        "concept_per_company_supabase",
+        "lib_companies"
+      ],
+      "relation": "implement",
       "confidence": "INFERRED",
       "confidence_score": 0.9,
       "source_file": "lib/supabase.ts"
     },
     {
-      "id": "parade_state_data_sources",
-      "label": "Parade State Report: Data Sources Aggregated at Generate",
+      "id": "parade_state_data_flow",
+      "label": "Parade State Multi-Table Data Flow",
       "nodes": [
+        "components_paradestate",
         "lib_supabase_soldier",
         "lib_supabase_exception",
         "lib_supabase_dutyentry",
-        "lib_supabase_configuration",
-        "components_paradestate_generate"
+        "lib_supabase_configuration"
       ],
       "relation": "participate_in",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "components/ParadeState.tsx"
     },
     {
-      "id": "company_routing_pattern",
-      "label": "Company Dynamic Routing Pattern",
+      "id": "auth_rls_commander_pattern",
+      "label": "Commander Authentication and RLS Access Control Flow",
       "nodes": [
-        "lib_companies_companies",
-        "company_page_generatestaticparams",
-        "company_page_companypage",
-        "components_companycontent_companycontent"
+        "lib_useauth_useauth",
+        "supabase_schema_rls",
+        "concept_commander_access_control",
+        "concept_password_auth"
       ],
       "relation": "implement",
-      "confidence": "EXTRACTED",
-      "confidence_score": 0.95,
-      "source_file": "app/[company]/page.tsx"
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "lib/useAuth.ts"
+    },
+    {
+      "id": "canonical_schema_sync_pattern",
+      "label": "Canonical Schema Definition and Multi-Company Sync",
+      "nodes": [
+        "supabase_schema_nominalroll",
+        "supabase_schema_exceptions",
+        "supabase_schema_duty",
+        "supabase_schema_configuration",
+        "scripts_sync_schema",
+        "concept_canonical_schema"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "supabase/schema.sql"
     }
   ],
-  "built_at_commit": "d732ed21b86706cd6c07e415bddb7eb04c559ed4"
+  "built_at_commit": "370b84bfb00d16068ed0c180907f0c93c014ab1d"
 }
