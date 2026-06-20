@@ -5,6 +5,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
+import { trackEvent } from '@/lib/analytics'
 
 function SoldierSearch({
   soldiers,
@@ -324,6 +325,7 @@ export default function ParadeState({
     )
 
     setOutput(lines.join('\n'))
+    trackEvent('parade_state_generated', { company, soldierCount: total, date })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 

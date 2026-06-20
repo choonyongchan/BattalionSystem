@@ -8,11 +8,11 @@ export default function HomePage() {
   const [showComingSoon, setShowComingSoon] = useState(false)
 
   return (
-    <main className="relative min-h-screen bg-yellow-50 flex flex-col items-center justify-center px-5 py-14 overflow-hidden">
-      {/* Three vertical pastel red stripes — 40SAR motif */}
-      <div className="absolute inset-y-0 left-[16%] w-[5%] bg-red-300/50 pointer-events-none" />
-      <div className="absolute inset-y-0 left-[47%] w-[5%] bg-red-300/50 pointer-events-none" />
-      <div className="absolute inset-y-0 left-[78%] w-[5%] bg-red-300/50 pointer-events-none" />
+    <main className="relative min-h-screen bg-amber-100 flex flex-col items-center justify-center px-5 py-14 overflow-hidden">
+      {/* Three vertical pastel red stripes — 40SAR motif: thin | wide | thin, 7:16:7 ratio, 1% gaps, centred */}
+      <div className="absolute inset-y-0 left-[34%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
+      <div className="absolute inset-y-0 left-[42%] w-[16%] min-w-16 bg-red-300/50 pointer-events-none" />
+      <div className="absolute inset-y-0 left-[59%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
 
       {showComingSoon && (
         <div
@@ -28,8 +28,8 @@ export default function HomePage() {
 
       <div className="relative z-10 w-full max-w-sm sm:max-w-2xl">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-yellow-900 tracking-tight">Battalion System</h1>
-          <p className="text-yellow-700/70 text-xs tracking-widest uppercase mt-2">40th Singapore Armoured Regiment</p>
+          <h1 className="text-4xl font-bold text-amber-900 tracking-tight">Battalion System</h1>
+          <p className="text-amber-700/70 text-xs tracking-widest uppercase mt-2">40th Singapore Armoured Regiment</p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

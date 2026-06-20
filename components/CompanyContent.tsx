@@ -29,10 +29,10 @@ export default function CompanyContent({
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <nav className="sticky top-0 z-20 bg-yellow-50 px-4 py-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
-        <div className="absolute inset-y-0 left-[16%] w-[5%] bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[47%] w-[5%] bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[78%] w-[5%] bg-red-300/50 pointer-events-none" />
+      <nav className="sticky top-0 z-20 bg-amber-100 px-4 py-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
+        <div className="absolute inset-y-0 left-[34%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
+        <div className="absolute inset-y-0 left-[42%] w-[16%] min-w-16 bg-red-300/50 pointer-events-none" />
+        <div className="absolute inset-y-0 left-[59%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
         <Link href="/" className="text-yellow-800 hover:text-yellow-600 text-sm font-medium transition-colors relative z-10">
           ←
         </Link>

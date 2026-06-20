@@ -13,7 +13,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
 
   if (DISABLED_COMPANIES.has(company)) {
     return (
-      <main className="min-h-screen bg-yellow-50 flex items-center justify-center">
+      <main className="min-h-screen bg-amber-100 flex items-center justify-center">
         <div className="text-center">
           <p className="text-2xl font-bold text-gray-800 mb-1">Coming Soon</p>
           <p className="text-sm text-gray-400">{companyLabel(company)} Company is not yet available.</p>
