@@ -47,6 +47,10 @@ const clients = new Map<Company, ReturnType<typeof createClient<Database>>>()
 export function getSupabaseClient(company: Company) {
   if (!clients.has(company)) {
     const { url, key } = SUPABASE_CONFIGS[company]
+    if (!url) {
+      const defined = Object.entries(SUPABASE_CONFIGS).map(([c, cfg]) => `${c}:url=${!!cfg.url},key=${!!cfg.key}`).join(' | ')
+      throw new Error(`[supabase] NEXT_PUBLIC_${company.toUpperCase()}_SUPABASE_URL is not set. All configs: ${defined}`)
+    }
     clients.set(company, createClient<Database>(url, key))
   }
   return clients.get(company)!
