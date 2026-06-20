@@ -43,7 +43,7 @@ export function generateParadeReport(input: ParadeReportInput): string {
   if (configs.length > 0) {
     configs.forEach((c) => {
       const t = c.time.substring(0, 5).replace(':', '')
-      lines.push(`${c.parade_type.toUpperCase()} PARADE — ${t}H`)
+      lines.push(`${c.parade_type.toUpperCase()} — ${t}H`)
     })
     lines.push('')
   }
