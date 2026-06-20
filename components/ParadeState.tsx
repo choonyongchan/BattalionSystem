@@ -6,6 +6,7 @@ import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabas
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
 import { trackEvent } from '@/lib/analytics'
+import { generateParadeReport } from '@/lib/parade-report'
 
 function SoldierSearch({
   soldiers,
@@ -246,86 +247,16 @@ export default function ParadeState({
   }
 
   function generate() {
-    const d = new Date(date)
-    const dateStr = d
-      .toLocaleDateString('en-SG', { weekday: 'long', day: '2-digit', month: 'short', year: '2-digit' })
-      .toUpperCase()
-
-    const absentNames = new Set(activeExceptions.map((e) => e.name))
-    const total = soldiers.length
-    const absent = absentNames.size
-    const present = total - absent
-
-    const lines: string[] = [
-      `${companyLabel.toUpperCase()} COY PARADE STATE`,
-      `DATE: ${dateStr}`,
-      '',
-    ]
-
-    if (configs.length > 0) {
-      configs.forEach((c) => {
-        const t = c.time.substring(0, 5).replace(':', '')
-        lines.push(`${c.parade_type.toUpperCase()} PARADE — ${t}H`)
-      })
-      lines.push('')
-    }
-
-    lines.push(`TOTAL STRENGTH : ${total}`)
-    lines.push(`PRESENT        : ${present}`)
-    lines.push(`ABSENT         : ${absent}`)
-
-    if (activeExceptions.length > 0) {
-      lines.push('')
-      lines.push('EXCEPTIONS:')
-
-      EXCEPTION_SCOPES.forEach((scope) => {
-        const group = activeExceptions.filter((e) => e.scope === scope)
-        if (group.length === 0) return
-        lines.push(`  ${scope.toUpperCase()}:`)
-        group.forEach((e) => {
-          let line = `    - ${e.name}`
-          if (e.start && e.end) line += ` (${toSGDate(e.start)} - ${toSGDate(e.end)})`
-          if (e.reason) line += ` — ${e.reason}`
-          lines.push(line)
-        })
-      })
-
-      const other = activeExceptions.filter(
-        (e) => !e.scope || !(EXCEPTION_SCOPES as readonly string[]).includes(e.scope),
-      )
-      if (other.length > 0) {
-        lines.push('  OTHERS:')
-        other.forEach((e) => {
-          let line = `    - ${e.name}`
-          if (e.reason) line += ` — ${e.reason}`
-          lines.push(line)
-        })
-      }
-    }
-
-    if (duties.length > 0) {
-      lines.push('')
-      lines.push('DUTIES:')
-      duties.forEach((du) => {
-        lines.push(`  ${du.duty_type}: ${du.name ?? 'TBC'}`)
-      })
-    }
-
-    lines.push('')
-    lines.push(
-      `Generated: ${new Date().toLocaleString('en-SG', {
-        timeZone: 'Asia/Singapore',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })}`,
-    )
-
-    setOutput(lines.join('\n'))
-    trackEvent('parade_state_generated', { company, soldierCount: total, date })
+    const report = generateParadeReport({
+      date,
+      companyLabel,
+      soldiers,
+      activeExceptions,
+      configs,
+      duties,
+    })
+    setOutput(report)
+    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
