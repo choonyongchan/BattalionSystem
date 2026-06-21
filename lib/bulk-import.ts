@@ -35,13 +35,14 @@ export function parseCSV(text: string): string[][] {
 }
 
 export function validateAndTransform(rows: string[][], existing: Soldier[]): ParseResult {
-  if (rows.length === 0) return { valid: [], errors: [{ row: 0, message: 'CSV is empty' }] }
+  // Row 0 is the description/hint row from the Google Sheets template; row 1 is the header
+  if (rows.length < 2) return { valid: [], errors: [{ row: 0, message: 'CSV is empty' }] }
 
-  const header = rows[0].map((h) => h.toLowerCase())
+  const header = rows[1].map((h) => h.toLowerCase())
   const required = ['4d', 'rank', 'name', 'platoon']
   const missing = required.filter((col) => !header.includes(col))
   if (missing.length > 0) {
-    return { valid: [], errors: [{ row: 1, message: `Missing columns: ${missing.join(', ')}` }] }
+    return { valid: [], errors: [{ row: 2, message: `Missing columns: ${missing.join(', ')}` }] }
   }
 
   const idx = {
@@ -56,7 +57,7 @@ export function validateAndTransform(rows: string[][], existing: Soldier[]): Par
   const valid: ParsedRow[] = []
   const errors: RowError[] = []
 
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = 2; i < rows.length; i++) {
     const row = rows[i]
     const rowNum = i + 1
     const name = (row[idx.name] ?? '').trim().toUpperCase()
@@ -90,5 +91,7 @@ export function validateAndTransform(rows: string[][], existing: Soldier[]): Par
     })
   }
 
+  // ponytail: all-or-nothing — one error blocks the whole import
+  if (errors.length > 0) return { valid: [], errors }
   return { valid, errors }
 }

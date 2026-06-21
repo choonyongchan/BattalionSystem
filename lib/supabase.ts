@@ -3,9 +3,9 @@ import type { Company } from './companies'
 import { companyLabel } from './companies'
 
 type NominalRollTable = {
-  Row:           { rank: string; name: string; platoon: string }
-  Insert:        { rank: string; name: string; platoon: string }
-  Update:        { rank?: string; name?: string; platoon?: string }
+  Row:           { rank: string; name: string; platoon: string; four_d: string | null }
+  Insert:        { rank: string; name: string; platoon: string; four_d?: string | null }
+  Update:        { rank?: string; name?: string; platoon?: string; four_d?: string | null }
   Relationships: []
 }
 type ExceptionsTable = {
@@ -58,6 +58,7 @@ export interface Soldier {
   rank: string
   name: string
   platoon: string
+  four_d?: string | null
 }
 
 export interface Exception {

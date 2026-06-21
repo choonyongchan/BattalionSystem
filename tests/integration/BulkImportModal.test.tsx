@@ -24,8 +24,14 @@ async function waitForLoad() {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 
+const HINTS_ROW = '(Optional e.g. 1234),(Compulsory e.g. REC PTE),(Compulsory),(Compulsory i.e. HQ 1 2 3 or 4)'
+
 function makeCSVFile(content: string) {
   return new File([content], 'import.csv', { type: 'text/csv' })
+}
+
+function makeTemplateCSV(rows: string) {
+  return makeCSVFile(`${HINTS_ROW}\n4D,RANK,NAME,PLATOON\n${rows}`)
 }
 
 describe('Bulk Import', () => {
@@ -49,7 +55,7 @@ describe('Bulk Import', () => {
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
     const input = screen.getByTestId('csv-upload')
-    const csv = makeCSVFile('4D,Rank,Name,Platoon\n,BRANK,TEST_BAD,9')
+    const csv = makeTemplateCSV(',BRANK,TEST_BAD,9')
     await userEvent.upload(input, csv)
 
     await waitFor(() => {
@@ -66,7 +72,7 @@ describe('Bulk Import', () => {
 
     const input = screen.getByTestId('csv-upload')
     // TEST_SOLDIER_ONE already exists in the seeded DB
-    const csv = makeCSVFile('4D,Rank,Name,Platoon\n,CPL,TEST_SOLDIER_ONE,1\n1234,PTE,TEST_BULK_NEW,2')
+    const csv = makeTemplateCSV(',CPL,TEST_SOLDIER_ONE,1\n1234,PTE,TEST_BULK_NEW,2')
     await userEvent.upload(input, csv)
 
     await waitFor(() => {
@@ -83,14 +89,14 @@ describe('Bulk Import', () => {
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
     const input = screen.getByTestId('csv-upload')
-    const csv = makeCSVFile('4D,Rank,Name,Platoon\n,PTE,TEST_BULK_IMPORT_A,3\n,CPL,TEST_BULK_IMPORT_B,HQ')
+    const csv = makeTemplateCSV(',PTE,TEST_BULK_IMPORT_A,3\n,CPL,TEST_BULK_IMPORT_B,HQ')
     await userEvent.upload(input, csv)
 
     await waitFor(() => expect(screen.getByText('TEST_BULK_IMPORT_A')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: /import 2 soldiers/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/2 added/i)).toBeInTheDocument()
+      expect(screen.getByText(/done: 2 added/i)).toBeInTheDocument()
     }, { timeout: 10000 })
 
     const { data } = await getSupabaseClient('test')
@@ -100,22 +106,19 @@ describe('Bulk Import', () => {
     expect(data).toHaveLength(2)
   })
 
-  it('skips intra-CSV duplicates and still imports unique rows', async () => {
+  it('blocks entire import when any row has an error (all-or-nothing)', async () => {
     render(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
     const input = screen.getByTestId('csv-upload')
-    const csv = makeCSVFile(
-      '4D,Rank,Name,Platoon\n,CPL,TEST_BULK_DUP,1\n,CPL,TEST_BULK_DUP,2\n,PTE,TEST_BULK_UNIQUE,1'
-    )
+    const csv = makeTemplateCSV(',CPL,TEST_BULK_DUP,1\n,CPL,TEST_BULK_DUP,2\n,PTE,TEST_BULK_UNIQUE,1')
     await userEvent.upload(input, csv)
 
     await waitFor(() => expect(screen.getByText(/errors found/i)).toBeInTheDocument())
     expect(screen.getByText(/duplicate name/i)).toBeInTheDocument()
-    // preview shows the two valid rows (first occurrence of dup + unique)
-    expect(screen.getByText('TEST_BULK_DUP')).toBeInTheDocument()
-    expect(screen.getByText('TEST_BULK_UNIQUE')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /import 2 soldiers/i })).toBeInTheDocument()
+    // all-or-nothing: no preview, no import button
+    expect(screen.queryByText('TEST_BULK_DUP')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /import/i })).not.toBeInTheDocument()
   })
 })

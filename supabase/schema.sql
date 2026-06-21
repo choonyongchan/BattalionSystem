@@ -17,8 +17,10 @@ BEGIN
         rank    text NOT NULL,
         name    text NOT NULL,
         platoon text NOT NULL CHECK (platoon = ANY (ARRAY[''HQ'',''1'',''2'',''3'',''4''])),
+        four_d  text,
         PRIMARY KEY (name)
       )', c);
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS four_d text', c);
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Exceptions" (

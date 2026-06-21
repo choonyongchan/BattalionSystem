@@ -8,7 +8,7 @@ import { COMPANY_THEMES } from '@/lib/companies'
 import { parseCSV, validateAndTransform } from '@/lib/bulk-import'
 import type { ParsedRow, RowError } from '@/lib/bulk-import'
 
-const TEMPLATE_CSV = `4D,Rank,Name,Platoon\n1234,CPL,TAN AH KOW,1\n,PTE,LEE AH SENG,2\n5678,LTA,ONG AH BENG,HQ\n`
+const TEMPLATE_CSV = `(Optional e.g. 1234),(Compulsory e.g. REC PTE),(Compulsory),(Compulsory i.e. HQ 1 2 3 or 4)\n4D,RANK,NAME,PLATOON\n`
 
 export default function BulkImportModal({
   company,
@@ -26,7 +26,7 @@ export default function BulkImportModal({
   const [valid, setValid] = useState<ParsedRow[] | null>(null)
   const [errors, setErrors] = useState<RowError[]>([])
   const [importing, setImporting] = useState(false)
-  const [importResult, setImportResult] = useState<{ added: number; updated: number; skipped: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ added: number; updated: number } | null>(null)
 
   function downloadTemplate() {
     const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
@@ -58,15 +58,13 @@ export default function BulkImportModal({
     setImporting(true)
     const supabase = getSupabaseClient(company)
     const overwriteCount = valid.filter((r) => r.isOverwrite).length
-    // ponytail: fourD excluded until DB schema adds the column
-    const payload = valid.map(({ rank, name, platoon }) => ({ rank, name, platoon }))
-    const { error } = await supabase
-      .from(tbl(company, 'NominalRoll'))
-      .upsert(payload, { onConflict: 'name' })
+    const payload = valid.map(({ rank, name, platoon, fourD }) => ({ rank, name, platoon, four_d: fourD }))
+    // @ts-ignore — tbl() return type can't narrow to a table literal so Insert resolves to never
+    const { error } = await supabase.from(tbl(company, 'NominalRoll')).upsert(payload, { onConflict: 'name' })
     if (error) {
       setErrors((prev) => [{ row: 0, message: error.message }, ...prev])
     } else {
-      setImportResult({ added: valid.length - overwriteCount, updated: overwriteCount, skipped: errors.length })
+      setImportResult({ added: valid.length - overwriteCount, updated: overwriteCount })
       onImported()
     }
     setImporting(false)
@@ -147,7 +145,7 @@ export default function BulkImportModal({
 
           {importResult && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-700">
-              Done: {importResult.added} added, {importResult.updated} updated, {importResult.skipped} skipped (errors)
+              Done: {importResult.added} added, {importResult.updated} updated
             </div>
           )}
         </div>
