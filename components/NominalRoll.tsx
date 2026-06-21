@@ -5,6 +5,7 @@ import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
+import BulkImportModal from '@/components/BulkImportModal'
 
 function RankSearch({
   value,
@@ -104,6 +105,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [submitting, setSubmitting] = useState(false)
   const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
+  const [showImport, setShowImport] = useState(false)
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
 
@@ -170,12 +172,20 @@ export default function NominalRoll({ company }: { company: Company }) {
           <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
           <p className="text-xs text-gray-500">{soldiers.length} personnel</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
-        >
-          {showForm ? 'Cancel' : '+ Add'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="px-4 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
+          >
+            Bulk Import
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+          >
+            {showForm ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -288,6 +298,15 @@ export default function NominalRoll({ company }: { company: Company }) {
             Add the first soldier
           </button>
         </div>
+      )}
+
+      {showImport && (
+        <BulkImportModal
+          company={company}
+          soldiers={soldiers}
+          onClose={() => setShowImport(false)}
+          onImported={async () => { await load(); setShowImport(false) }}
+        />
       )}
     </div>
   )
