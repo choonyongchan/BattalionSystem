@@ -7,7 +7,7 @@ import { truncateTestDb, seedTestDb } from '../fixtures/db'
 import { FIXTURE_DATE } from '../fixtures/exceptions'
 
 beforeAll(async () => {
-  const supabase = getSupabaseClient('stallion')
+  const supabase = getSupabaseClient('hercules')
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -18,13 +18,13 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await getSupabaseClient('stallion').auth.signOut()
+  await getSupabaseClient('hercules').auth.signOut()
 })
 
 // ParadeState defaults the date picker to today — we need to set it to FIXTURE_DATE
 // so the fixture exceptions/duties are visible
 async function renderParadeStateOnFixtureDate() {
-  render(<ParadeState company="stallion" companyLabel="Stallion" />)
+  render(<ParadeState company="hercules" companyLabel="Hercules" />)
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
   // Change date to the fixture date so fixture exceptions/duties are active
   const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement

@@ -7,7 +7,7 @@ import { truncateTestDb, seedTestDb } from '../fixtures/db'
 
 beforeAll(async () => {
   // Sign in via the same singleton client the component will use
-  const supabase = getSupabaseClient('stallion')
+  const supabase = getSupabaseClient('hercules')
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -19,12 +19,12 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await getSupabaseClient('stallion').auth.signOut()
+  await getSupabaseClient('hercules').auth.signOut()
 })
 
 describe('NominalRoll', () => {
   it('renders fixture soldiers after load', async () => {
-    render(<NominalRoll company="stallion" />)
+    render(<NominalRoll company="hercules" />)
 
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
@@ -36,7 +36,7 @@ describe('NominalRoll', () => {
   })
 
   it('adds a new soldier and shows them in the list', async () => {
-    render(<NominalRoll company="stallion" />)
+    render(<NominalRoll company="hercules" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
     // Open the add form
@@ -61,15 +61,15 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     // Verify it's in the DB
-    const { data } = await getSupabaseClient('stallion')
-      .from('NominalRoll')
+    const { data } = await getSupabaseClient('hercules')
+      .from('Hercules_NominalRoll')
       .select('*')
       .eq('name', 'TEST_NEW_SOLDIER')
     expect(data).toHaveLength(1)
   })
 
   it('deletes a soldier and removes them from list and DB', async () => {
-    render(<NominalRoll company="stallion" />)
+    render(<NominalRoll company="hercules" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
     // Find the delete button for TEST_SOLDIER_TWO
@@ -82,8 +82,8 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     // Verify removed from DB
-    const { data } = await getSupabaseClient('stallion')
-      .from('NominalRoll')
+    const { data } = await getSupabaseClient('hercules')
+      .from('Hercules_NominalRoll')
       .select('*')
       .eq('name', 'TEST_SOLDIER_TWO')
     expect(data).toHaveLength(0)
