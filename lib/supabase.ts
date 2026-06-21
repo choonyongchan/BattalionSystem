@@ -1,60 +1,65 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Company } from './companies'
+import { companyLabel } from './companies'
+
+type NominalRollTable = {
+  Row:           { rank: string; name: string; platoon: string }
+  Insert:        { rank: string; name: string; platoon: string }
+  Update:        { rank?: string; name?: string; platoon?: string }
+  Relationships: []
+}
+type ExceptionsTable = {
+  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string }
+  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string }
+  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string }
+  Relationships: []
+}
+type DutyTable = {
+  Row:           { duty_type: string; date: string; name: string }
+  Insert:        { duty_type: string; date: string; name: string }
+  Update:        { duty_type?: string; date?: string; name?: string }
+  Relationships: []
+}
+type ConfigTable = {
+  Row:           { parade_type: string; time: string }
+  Insert:        { parade_type: string; time: string }
+  Update:        { parade_type?: string; time?: string }
+  Relationships: []
+}
+
+type CompanyTables =
+  { [C in Company as `${Capitalize<C>}_NominalRoll`]:   NominalRollTable } &
+  { [C in Company as `${Capitalize<C>}_Exceptions`]:    ExceptionsTable  } &
+  { [C in Company as `${Capitalize<C>}_Duty`]:          DutyTable        } &
+  { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      }
+
+type TestTables = {
+  Test_NominalRoll:   NominalRollTable
+  Test_Exceptions:    ExceptionsTable
+  Test_Duty:          DutyTable
+  Test_Configuration: ConfigTable
+}
 
 type Database = {
   public: {
-    Tables: {
-      NominalRoll: {
-        Row:           { rank: string; name: string; platoon: string }
-        Insert:        { rank: string; name: string; platoon: string }
-        Update:        { rank?: string; name?: string; platoon?: string }
-        Relationships: []
-      }
-      Exceptions: {
-        Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string }
-        Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string }
-        Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string }
-        Relationships: []
-      }
-      Duty: {
-        Row:           { duty_type: string; date: string; name: string }
-        Insert:        { duty_type: string; date: string; name: string }
-        Update:        { duty_type?: string; date?: string; name?: string }
-        Relationships: []
-      }
-      Configuration: {
-        Row:           { parade_type: string; time: string }
-        Insert:        { parade_type: string; time: string }
-        Update:        { parade_type?: string; time?: string }
-        Relationships: []
-      }
-    }
+    Tables:    CompanyTables & TestTables
     Views:     Record<string, never>
     Functions: Record<string, never>
   }
 }
 
-const SUPABASE_CONFIGS: Record<Company, { url: string; key: string }> = {
-  archer:   { url: process.env.NEXT_PUBLIC_ARCHER_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_ARCHER_SUPABASE_PUBLISHABLE_KEY! },
-  braves:   { url: process.env.NEXT_PUBLIC_BRAVES_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_BRAVES_SUPABASE_PUBLISHABLE_KEY! },
-  cougar:   { url: process.env.NEXT_PUBLIC_COUGAR_SUPABASE_URL!,   key: process.env.NEXT_PUBLIC_COUGAR_SUPABASE_PUBLISHABLE_KEY! },
-  stallion: { url: process.env.NEXT_PUBLIC_STALLION_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_STALLION_SUPABASE_PUBLISHABLE_KEY! },
-  hercules: { url: process.env.NEXT_PUBLIC_HERCULES_SUPABASE_URL!, key: process.env.NEXT_PUBLIC_HERCULES_SUPABASE_PUBLISHABLE_KEY! },
+// ponytail: company arg kept so call sites don't change; all companies share one project now
+const _client = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+)
+
+export function getSupabaseClient(_company: Company) {
+  return _client
 }
 
-const clients = new Map<Company, ReturnType<typeof createClient<Database>>>()
-
-export function getSupabaseClient(company: Company) {
-  if (!clients.has(company)) {
-    const { url, key } = SUPABASE_CONFIGS[company]
-    if (!url) {
-      const defined = Object.entries(SUPABASE_CONFIGS).map(([c, cfg]) => `${c}:url=${!!cfg.url},key=${!!cfg.key}`).join(' | ')
-      throw new Error(`[supabase] NEXT_PUBLIC_${company.toUpperCase()}_SUPABASE_URL is not set. All configs: ${defined}`)
-    }
-    clients.set(company, createClient<Database>(url, key))
-  }
-  return clients.get(company)!
-}
+export const tbl = (company: Company, table: string) =>
+  `${companyLabel(company)}_${table}` as const
 
 export interface Soldier {
   rank: string
