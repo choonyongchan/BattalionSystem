@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
@@ -116,7 +116,7 @@ export default function NominalRoll({ company }: { company: Company }) {
     setLoading(true)
     setError(null)
     const { data, error } = await supabase
-      .from('NominalRoll')
+      .from(tbl(company, 'NominalRoll'))
       .select('*')
       .order('platoon')
     if (error) setError(error.message)
@@ -128,7 +128,7 @@ export default function NominalRoll({ company }: { company: Company }) {
     if (!form.name.trim() || !form.platoon) return
     const supabase = getSupabaseClient(company)
     setSubmitting(true)
-    const { error } = await supabase.from('NominalRoll').insert({
+    const { error } = await supabase.from(tbl(company, 'NominalRoll')).insert({
       rank: form.rank,
       name: form.name.trim().toUpperCase(),
       platoon: form.platoon,
@@ -146,7 +146,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   async function deleteSoldier(name: string) {
     const supabase = getSupabaseClient(company)
     setDeletingName(name)
-    await supabase.from('NominalRoll').delete().eq('name', name)
+    await supabase.from(tbl(company, 'NominalRoll')).delete().eq('name', name)
     await load()
     setDeletingName(null)
   }

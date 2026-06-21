@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
@@ -160,10 +160,10 @@ export default function ParadeState({
     setLoading(true)
     setError(null)
     const [soldiersRes, exceptionsRes, dutiesRes, configsRes] = await Promise.all([
-      supabase.from('NominalRoll').select('*'),
-      supabase.from('Exceptions').select('*'),
-      supabase.from('Duty').select('*').eq('date', date),
-      supabase.from('Configuration').select('*'),
+      supabase.from(tbl(company, 'NominalRoll')).select('*'),
+      supabase.from(tbl(company, 'Exceptions')).select('*'),
+      supabase.from(tbl(company, 'Duty')).select('*').eq('date', date),
+      supabase.from(tbl(company, 'Configuration')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
     setSoldiers(soldiersRes.data ?? [])
@@ -199,7 +199,7 @@ export default function ParadeState({
     if (!isExceptionValid()) return
     const supabase = getSupabaseClient(company)
     const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    const { error } = await supabase.from('Exceptions').insert({
+    const { error } = await supabase.from(tbl(company, 'Exceptions')).insert({
       name: exForm.name,
       scope: exForm.scope,
       reason: exForm.reason.trim(),
@@ -214,14 +214,14 @@ export default function ParadeState({
 
   async function deleteException(id: number) {
     const supabase = getSupabaseClient(company)
-    await supabase.from('Exceptions').delete().eq('id', id)
+    await supabase.from(tbl(company, 'Exceptions')).delete().eq('id', id)
     await load()
   }
 
   async function addDuty() {
     if (!dutyForm.duty_type) return
     const supabase = getSupabaseClient(company)
-    const { error } = await supabase.from('Duty').upsert({
+    const { error } = await supabase.from(tbl(company, 'Duty')).upsert({
       duty_type: dutyForm.duty_type,
       date,
       name: dutyForm.name.toUpperCase(),
@@ -234,14 +234,14 @@ export default function ParadeState({
 
   async function deleteDuty(duty_type: string) {
     const supabase = getSupabaseClient(company)
-    await supabase.from('Duty').delete().eq('duty_type', duty_type).eq('date', date)
+    await supabase.from(tbl(company, 'Duty')).delete().eq('duty_type', duty_type).eq('date', date)
     await load()
   }
 
   async function saveParadeTime(parade_type: string) {
     const supabase = getSupabaseClient(company)
     setSavingParade(parade_type)
-    const { error } = await supabase.from('Configuration').upsert({ parade_type, time: paradeTimes[parade_type] })
+    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert({ parade_type, time: paradeTimes[parade_type] })
     if (error) setError(error.message)
     setSavingParade(null)
   }
