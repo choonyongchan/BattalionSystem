@@ -1,0 +1,94 @@
+import type { Soldier } from './supabase'
+
+const VALID_RANKS = new Set([
+  '2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8',
+  '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO', 'ME1', 'ME2', 'ME3',
+  'REC', 'PTE', 'LCP', 'CPL', 'CFC', '3SG', '2SG', '1SG', 'SSG', 'MSG',
+])
+
+const VALID_PLATOONS = new Set(['HQ', '1', '2', '3', '4'])
+
+export interface ParsedRow {
+  rank: string
+  name: string
+  platoon: string
+  fourD: string | null
+  isOverwrite: boolean
+}
+
+export interface RowError {
+  row: number
+  message: string
+}
+
+export interface ParseResult {
+  valid: ParsedRow[]
+  errors: RowError[]
+}
+
+export function parseCSV(text: string): string[][] {
+  return text
+    .replace(/^﻿/, '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => line.split(',').map((cell) => cell.trim()))
+}
+
+export function validateAndTransform(rows: string[][], existing: Soldier[]): ParseResult {
+  if (rows.length === 0) return { valid: [], errors: [{ row: 0, message: 'CSV is empty' }] }
+
+  const header = rows[0].map((h) => h.toLowerCase())
+  const required = ['4d', 'rank', 'name', 'platoon']
+  const missing = required.filter((col) => !header.includes(col))
+  if (missing.length > 0) {
+    return { valid: [], errors: [{ row: 1, message: `Missing columns: ${missing.join(', ')}` }] }
+  }
+
+  const idx = {
+    fourD: header.indexOf('4d'),
+    rank: header.indexOf('rank'),
+    name: header.indexOf('name'),
+    platoon: header.indexOf('platoon'),
+  }
+
+  const existingNames = new Set(existing.map((s) => s.name.toUpperCase()))
+  const seenInCSV = new Set<string>()
+  const valid: ParsedRow[] = []
+  const errors: RowError[] = []
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    const rowNum = i + 1
+    const name = (row[idx.name] ?? '').trim().toUpperCase()
+    const rank = (row[idx.rank] ?? '').trim()
+    const platoon = (row[idx.platoon] ?? '').trim()
+    const fourDRaw = (row[idx.fourD] ?? '').trim()
+
+    if (name && seenInCSV.has(name)) {
+      errors.push({ row: rowNum, message: `Duplicate name in CSV: ${name}` })
+      continue
+    }
+    if (name) seenInCSV.add(name)
+
+    const rowErrors: string[] = []
+    if (!name) rowErrors.push('Name is empty')
+    if (!VALID_RANKS.has(rank)) rowErrors.push(`"${rank}" is not a valid rank`)
+    if (!VALID_PLATOONS.has(platoon)) rowErrors.push(`"${platoon}" is not a valid platoon`)
+    if (fourDRaw && !/^\d{4}$/.test(fourDRaw)) rowErrors.push(`4D "${fourDRaw}" must be exactly 4 digits`)
+
+    if (rowErrors.length > 0) {
+      rowErrors.forEach((msg) => errors.push({ row: rowNum, message: msg }))
+      continue
+    }
+
+    valid.push({
+      rank,
+      name,
+      platoon,
+      fourD: fourDRaw || null,
+      isOverwrite: existingNames.has(name),
+    })
+  }
+
+  return { valid, errors }
+}
