@@ -9,9 +9,9 @@ test.describe('Auth flow', () => {
 
   test('logs in with correct credentials and shows company content', async ({ page }) => {
     // Credentials come from .env.test (loaded by playwright.config.ts and globalSetup)
-    const password = process.env.TEST_SUPABASE_PASSWORD
+    const password = process.env.TEST_E2E_PASSWORD
     const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
-    test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
+    test.skip(!hasRealCreds, 'TEST_E2E_PASSWORD not configured in .env.test')
 
     await page.goto('/hercules/')
     await page.getByPlaceholder('Password').fill(password || '')
@@ -23,9 +23,9 @@ test.describe('Auth flow', () => {
 
   test('after login, logout shows login form again', async ({ page }) => {
     // Credentials come from .env.test (loaded by playwright.config.ts and globalSetup)
-    const password = process.env.TEST_SUPABASE_PASSWORD
+    const password = process.env.TEST_E2E_PASSWORD
     const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
-    test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
+    test.skip(!hasRealCreds, 'TEST_E2E_PASSWORD not configured in .env.test')
 
     // Log in first
     await page.goto('/hercules/')

@@ -33,16 +33,9 @@ type CompanyTables =
   { [C in Company as `${Capitalize<C>}_Duty`]:          DutyTable        } &
   { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      }
 
-type TestTables = {
-  Test_NominalRoll:   NominalRollTable
-  Test_Exceptions:    ExceptionsTable
-  Test_Duty:          DutyTable
-  Test_Configuration: ConfigTable
-}
-
 type Database = {
   public: {
-    Tables:    CompanyTables & TestTables
+    Tables:    CompanyTables
     Views:     Record<string, never>
     Functions: Record<string, never>
   }

@@ -13,16 +13,16 @@ function serviceClient() {
 
 export async function truncateTestDb() {
   const db = serviceClient()
-  await db.from('Hercules_Duty').delete().like('name', 'TEST_%')
-  await db.from('Hercules_Exceptions').delete().like('name', 'TEST_%')
-  await db.from('Hercules_NominalRoll').delete().like('name', 'TEST_%')
-  await db.from('Hercules_Configuration').delete().in('parade_type', ['First Parade', 'Last Parade'])
+  await db.from('Test_Duty').delete().like('name', 'TEST_%')
+  await db.from('Test_Exceptions').delete().like('name', 'TEST_%')
+  await db.from('Test_NominalRoll').delete().like('name', 'TEST_%')
+  await db.from('Test_Configuration').delete().in('parade_type', ['First Parade', 'Last Parade'])
 }
 
 export async function seedTestDb() {
   const db = serviceClient()
-  await db.from('Hercules_NominalRoll').insert(FIXTURE_SOLDIERS)
-  await db.from('Hercules_Exceptions').insert(FIXTURE_EXCEPTIONS)
-  await db.from('Hercules_Duty').insert(FIXTURE_DUTIES)
-  await db.from('Hercules_Configuration').upsert(FIXTURE_CONFIG)
+  await db.from('Test_NominalRoll').insert(FIXTURE_SOLDIERS)
+  await db.from('Test_Exceptions').insert(FIXTURE_EXCEPTIONS)
+  await db.from('Test_Duty').insert(FIXTURE_DUTIES)
+  await db.from('Test_Configuration').upsert(FIXTURE_CONFIG)
 }
