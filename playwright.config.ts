@@ -25,9 +25,5 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 60000,
-    env: {
-      NEXT_PUBLIC_STALLION_SUPABASE_URL: process.env.TEST_SUPABASE_URL ?? '',
-      NEXT_PUBLIC_STALLION_SUPABASE_PUBLISHABLE_KEY: process.env.TEST_SUPABASE_ANON_KEY ?? '',
-    },
   },
 })
