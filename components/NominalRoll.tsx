@@ -106,6 +106,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
   const [showImport, setShowImport] = useState(false)
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
 
@@ -153,9 +154,16 @@ export default function NominalRoll({ company }: { company: Company }) {
     setDeletingName(null)
   }
 
+  const query = search.toLowerCase()
+  const filtered = query
+    ? soldiers.filter((s) =>
+        [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
+      )
+    : soldiers
+
   const grouped = SECTION_ORDER.reduce(
     (acc, type) => {
-      acc[type] = soldiers.filter((s) => getRankType(s.rank) === type)
+      acc[type] = filtered.filter((s) => getRankType(s.rank) === type)
       return acc
     },
     {} as Record<string, Soldier[]>,
@@ -186,6 +194,16 @@ export default function NominalRoll({ company }: { company: Company }) {
             {showForm ? 'Cancel' : '+ Add'}
           </button>
         </div>
+      </div>
+
+      <div className="flex justify-center">
+        <input
+          type="search"
+          placeholder="Search by rank, name, platoon…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+        />
       </div>
 
       {error && (
