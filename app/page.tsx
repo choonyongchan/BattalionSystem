@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, companyLabel } from '@/lib/companies'
+import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, HIDDEN_COMPANIES, companyLabel } from '@/lib/companies'
 
 export default function HomePage() {
   const [showComingSoon, setShowComingSoon] = useState(false)
@@ -33,7 +33,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {COMPANIES.map((company) => {
+          {COMPANIES.filter(c => !HIDDEN_COMPANIES.has(c)).map((company) => {
             const theme = COMPANY_THEMES[company]
             const disabled = DISABLED_COMPANIES.has(company)
 

@@ -1,7 +1,8 @@
 export const COMPANIES = ['archer', 'braves', 'cougar', 'stallion', 'hercules', 'test'] as const
 export type Company = (typeof COMPANIES)[number]
 
-export const DISABLED_COMPANIES = new Set<Company>(['archer', 'braves', 'cougar', 'test'])
+export const DISABLED_COMPANIES = new Set<Company>(['archer', 'braves', 'cougar'])
+export const HIDDEN_COMPANIES = new Set<Company>(['test'])
 
 export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
