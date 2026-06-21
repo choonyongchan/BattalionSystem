@@ -110,6 +110,16 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
 
+  const [editRow, setEditRow] = useState<{
+    originalName: string
+    rank: string
+    name: string
+    platoon: string
+    four_d: string
+  } | null>(null)
+  const [editErrors, setEditErrors] = useState<Record<string, boolean>>({})
+  const [savingEdit, setSavingEdit] = useState(false)
+
   useEffect(() => {
     load()
   }, [company])
@@ -154,6 +164,39 @@ export default function NominalRoll({ company }: { company: Company }) {
     setDeletingName(null)
   }
 
+  function validateEdit() {
+    if (!editRow) return false
+    const errors: Record<string, boolean> = {}
+    if (!editRow.name.trim()) errors.name = true
+    if (!editRow.platoon) errors.platoon = true
+    if (!ALL_RANKS.some((r) => r.rank === editRow.rank)) errors.rank = true
+    setEditErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  async function updateSoldier() {
+    if (!editRow || !validateEdit()) return
+    const supabase = getSupabaseClient(company)
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from(tbl(company, 'NominalRoll'))
+      .update({
+        rank: editRow.rank,
+        name: editRow.name.trim().toUpperCase(),
+        platoon: editRow.platoon,
+        four_d: editRow.four_d.trim() || null,
+      })
+      .eq('name', editRow.originalName)
+    if (error) {
+      setError(error.message)
+    } else {
+      setEditRow(null)
+      setEditErrors({})
+      await load()
+    }
+    setSavingEdit(false)
+  }
+
   const query = search.toLowerCase()
   const filtered = query
     ? soldiers.filter((s) =>
@@ -170,6 +213,13 @@ export default function NominalRoll({ company }: { company: Company }) {
   )
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
+
+  function editInputClass(field: string) {
+    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+    return editErrors[field]
+      ? `${base} border-red-500 ring-2 ring-red-500`
+      : `${base} border-gray-300 ${theme.focusRing}`
+  }
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -274,30 +324,117 @@ export default function NominalRoll({ company }: { company: Company }) {
                       <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Rank</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Platoon</th>
-                      <th className="w-10" />
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">4D</th>
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {group.map((s, i) => (
-                      <tr
-                        key={s.name}
-                        className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}
-                      >
-                        <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
-                        <td className="px-4 py-3 font-medium">{s.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteSoldier(s.name)}
-                            disabled={deletingName === s.name}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50 p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {group.map((s, i) => {
+                      const isEditing = editRow?.originalName === s.name
+                      return (
+                        <tr
+                          key={s.name}
+                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                        >
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2">
+                                <RankSearch
+                                  value={editRow.rank}
+                                  onChange={(rank) => setEditRow({ ...editRow, rank })}
+                                  inputClass={editInputClass('rank')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editRow.name}
+                                  onChange={(e) => setEditRow({ ...editRow, name: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') updateSoldier()
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  className={editInputClass('name')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={editRow.platoon}
+                                  onChange={(e) => setEditRow({ ...editRow, platoon: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  className={editInputClass('platoon')}
+                                >
+                                  <option value="">—</option>
+                                  {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={editRow.four_d}
+                                  onChange={(e) => setEditRow({ ...editRow, four_d: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') updateSoldier()
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  placeholder="e.g. 1234A"
+                                  className={editInputClass('four_d')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={updateSoldier}
+                                    disabled={savingEdit}
+                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                  >
+                                    {savingEdit ? '…' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditRow(null); setEditErrors({}) }}
+                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
+                              <td className="px-4 py-3 font-medium">{s.name}</td>
+                              <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '—'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1 justify-end items-center">
+                                  <button
+                                    onClick={() => {
+                                      setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' })
+                                      setEditErrors({})
+                                    }}
+                                    className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
+                                    title="Edit"
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    onClick={() => deleteSoldier(s.name)}
+                                    disabled={deletingName === s.name}
+                                    className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50 p-1 opacity-0 group-hover:opacity-100"
+                                    title="Remove"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

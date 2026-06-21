@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
@@ -151,6 +151,15 @@ export default function ParadeState({
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
   const [savingParade, setSavingParade] = useState<string | null>(null)
 
+  // Duties inline edit
+  const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
+  const [savingDuty, setSavingDuty] = useState(false)
+
+  // Exceptions inline edit
+  const [editEx, setEditEx] = useState<Exception | null>(null)
+  const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
+  const [savingEx, setSavingEx] = useState(false)
+
   useEffect(() => {
     load()
   }, [company, date])
@@ -238,6 +247,50 @@ export default function ParadeState({
     await load()
   }
 
+  async function updateDuty() {
+    if (!editDuty) return
+    const supabase = getSupabaseClient(company)
+    setSavingDuty(true)
+    const { error } = await supabase
+      .from(tbl(company, 'Duty'))
+      .upsert({ duty_type: editDuty.duty_type, date, name: editDuty.name.toUpperCase() })
+    if (error) { setError(error.message) }
+    else { setEditDuty(null); await load() }
+    setSavingDuty(false)
+  }
+
+  function validateEditEx() {
+    if (!editEx) return false
+    const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
+    const errors: Record<string, boolean> = {}
+    if (!editEx.name) errors.name = true
+    if (!editEx.reason.trim()) errors.reason = true
+    if (!editEx.end) errors.end = true
+    if (!singleDate && !editEx.start) errors.start = true
+    setEditExErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  async function updateException() {
+    if (!editEx || !validateEditEx()) return
+    const supabase = getSupabaseClient(company)
+    setSavingEx(true)
+    const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
+    const { error } = await supabase
+      .from(tbl(company, 'Exceptions'))
+      .update({
+        name: editEx.name,
+        scope: editEx.scope,
+        reason: editEx.reason.trim(),
+        start: singleDate ? editEx.end : editEx.start,
+        end: editEx.end,
+      })
+      .eq('id', editEx.id)
+    if (error) { setError(error.message) }
+    else { setEditEx(null); setEditExErrors({}); await load() }
+    setSavingEx(false)
+  }
+
   async function saveParadeTime(parade_type: string) {
     const supabase = getSupabaseClient(company)
     setSavingParade(parade_type)
@@ -274,6 +327,15 @@ export default function ParadeState({
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
 
+  function exEditInputClass(field: string) {
+    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+    return editExErrors[field]
+      ? `${base} border-red-500 ring-2 ring-red-500`
+      : `${base} border-gray-300 ${theme.focusRing}`
+  }
+
+  const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
@@ -301,7 +363,7 @@ export default function ParadeState({
         </div>
       )}
 
-      {/* Section tabs — order: Config, Duties, Exceptions */}
+      {/* Section tabs */}
       <div className="flex border-b border-gray-200">
         {sectionTabs.map((t) => (
           <button
@@ -404,25 +466,72 @@ export default function ParadeState({
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
-                      <th className="w-10" />
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {duties.map((d, i) => (
-                      <tr key={d.duty_type} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                        <td className="px-4 py-3 font-medium">{d.duty_type}</td>
-                        <td className="px-4 py-3 text-gray-600">{d.name ?? 'TBC'}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteDuty(d.duty_type)}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {duties.map((d, i) => {
+                      const isEditing = editDuty?.duty_type === d.duty_type
+                      return (
+                        <tr
+                          key={d.duty_type}
+                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                        >
+                          <td className="px-4 py-3 font-medium">{d.duty_type}</td>
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2">
+                                <SoldierSearch
+                                  soldiers={soldiers}
+                                  value={editDuty.name}
+                                  onChange={(name) => setEditDuty({ ...editDuty, name })}
+                                  inputClass={dutyEditInputClass}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={updateDuty}
+                                    disabled={savingDuty}
+                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                  >
+                                    {savingDuty ? '…' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditDuty(null)}
+                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 text-gray-600">{d.name ?? 'TBC'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1 justify-end items-center">
+                                  <button
+                                    onClick={() => setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
+                                    className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
+                                    title="Edit"
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    onClick={() => deleteDuty(d.duty_type)}
+                                    className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1 opacity-0 group-hover:opacity-100"
+                                    title="Remove"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -546,33 +655,137 @@ export default function ParadeState({
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Period</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="w-10" />
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {activeExceptions.map((e, i) => (
-                      <tr key={e.id} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                        <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
-                            {e.scope ?? '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                          {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteException(e.id)}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {activeExceptions.map((e, i) => {
+                      const isEditing = editEx?.id === e.id
+                      const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
+                      return (
+                        <React.Fragment key={e.id}>
+                          <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
+                            {isEditing ? (
+                              <>
+                                <td className="px-2 py-2">
+                                  <SoldierSearch
+                                    soldiers={soldiers}
+                                    value={editEx!.name}
+                                    onChange={(name) => setEditEx({ ...editEx!, name })}
+                                    inputClass={exEditInputClass('name')}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {EXCEPTION_SCOPES.map((s) => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() => setEditEx({ ...editEx!, scope: s })}
+                                        className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${
+                                          editEx!.scope === s
+                                            ? `${theme.buttonBg} text-white border-transparent`
+                                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                                        }`}
+                                      >
+                                        {s}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-2">
+                                  {editSingleDate ? (
+                                    <input
+                                      type="date"
+                                      value={editEx!.end}
+                                      onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
+                                      className={exEditInputClass('end')}
+                                    />
+                                  ) : (
+                                    <div className="flex gap-1 items-center">
+                                      <input
+                                        type="date"
+                                        value={editEx!.start}
+                                        onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
+                                        className={exEditInputClass('start')}
+                                      />
+                                      <span className="text-gray-400 text-xs shrink-0">–</span>
+                                      <input
+                                        type="date"
+                                        value={editEx!.end}
+                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
+                                        className={exEditInputClass('end')}
+                                      />
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-2 py-2">
+                                  <input
+                                    type="text"
+                                    value={editEx!.reason}
+                                    onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
+                                    onKeyDown={(e2) => {
+                                      if (e2.key === 'Enter') updateException()
+                                      if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
+                                    }}
+                                    placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
+                                    className={exEditInputClass('reason')}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="flex gap-1 justify-end">
+                                    <button
+                                      onClick={updateException}
+                                      disabled={savingEx}
+                                      className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                    >
+                                      {savingEx ? '…' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setEditEx(null); setEditExErrors({}) }}
+                                      className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
+                                    {e.scope ?? '—'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex gap-1 justify-end items-center">
+                                    <button
+                                      onClick={() => { setEditEx({ ...e }); setEditExErrors({}) }}
+                                      className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
+                                      title="Edit"
+                                    >
+                                      ✎
+                                    </button>
+                                    <button
+                                      onClick={() => deleteException(e.id)}
+                                      className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1 opacity-0 group-hover:opacity-100"
+                                      title="Remove"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        </React.Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
