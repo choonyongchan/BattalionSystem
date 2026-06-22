@@ -152,6 +152,11 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
+  const [exceptionsSortDateAsc, setExceptionsSortAsc] = useState(true)
+  const [exceptionsSortNameAsc, setexceptionsSortNameAsc] = useState(true)
+  const [exceptionsLastSortAction, setexceptionsLastSortAction] = useState<'date' | 'name'>('date')
+  const [exceptionsShowAll, setexceptionsShowAll] = useState(false)
+
 
   // Strength overrides
   const [strOverrides, setStrOverrides] = useState<Record<string, Record<string, string>>>({})
@@ -219,6 +224,22 @@ export default function ParadeState({
     if (start && d < start) return false
     if (end && d > end) return false
     return true
+  }).sort((a, b) => {
+    const compareByDate = () => {
+      const dateA = new Date(a.start).getTime()
+      const dateB = new Date(b.start).getTime()
+      return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+    }
+    
+    const compareByName = () => {
+      const nameA = a.name.toLowerCase()
+      const nameB = b.name.toLowerCase()
+      return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+    }
+    
+    return exceptionsLastSortAction === 'date'
+      ? compareByDate() || compareByName()
+      : compareByName() || compareByDate()
   })
 
   const computedStrength = useMemo(() => {
@@ -874,9 +895,33 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Soldier</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button
+                          onClick={() => {
+                            setexceptionsSortNameAsc(!exceptionsSortNameAsc)
+                            setexceptionsLastSortAction('name')
+                          }}
+                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                          title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
+                        >
+                          Soldier
+                          <span className="text-xs">{exceptionsSortNameAsc ? '↑' : '↓'}</span>
+                        </button>
+                      </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Period</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button
+                          onClick={() => {
+                            setExceptionsSortAsc(!exceptionsSortDateAsc)
+                            setexceptionsLastSortAction('date')
+                          }}
+                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                          title={`Sort by date ${exceptionsSortDateAsc ? 'descending' : 'ascending'}`}
+                        >
+                          Period
+                          <span className="text-xs">{exceptionsSortDateAsc ? '↑' : '↓'}</span>
+                        </button>
+                      </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
                       <th className="w-24" />
                     </tr>
