@@ -80,3 +80,9 @@ export interface Configuration {
   parade_type: string
   time: string
 }
+
+export interface StrengthOverride {
+  platoon: string
+  rank_type: string
+  value: number
+}

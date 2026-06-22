@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
 import { trackEvent } from '@/lib/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
 
@@ -100,9 +100,22 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
 
 const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
+type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string }
+
 const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
+
+const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
+const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
+// ponytail: duplicated from NominalRoll.tsx; share only if a third consumer appears
+const _OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8']
+const _WOSPEC_RANKS     = ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
+function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
+  if (_OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
+  if (_WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
+  return 'Enlistee'
+}
 
 type Section = 'config' | 'duties' | 'exceptions'
 
@@ -139,14 +152,13 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
 
+  // Strength overrides
+  const [strOverrides, setStrOverrides] = useState<Record<string, Record<string, string>>>({})
+  const [showStrOverride, setShowStrOverride] = useState(false)
+
   const [showForm, setShowForm] = useState(false)
-  const [exForm, setExForm] = useState<{
-    name: string
-    scope: ExceptionScope
-    reason: string
-    start: string
-    end: string
-  }>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+  const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
   const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
   const [savingParade, setSavingParade] = useState<string | null>(null)
@@ -170,11 +182,12 @@ export default function ParadeState({
     const supabase = getSupabaseClient(company)
     setLoading(true)
     setError(null)
-    const [soldiersRes, exceptionsRes, dutiesRes, configsRes] = await Promise.all([
+    const [soldiersRes, exceptionsRes, dutiesRes, configsRes, strRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*'),
       supabase.from(tbl(company, 'Exceptions')).select('*'),
       supabase.from(tbl(company, 'Duty')).select('*').eq('date', date),
       supabase.from(tbl(company, 'Configuration')).select('*'),
+      supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
     setSoldiers(soldiersRes.data ?? [])
@@ -189,6 +202,12 @@ export default function ParadeState({
         return next
       })
     }
+    const loadedStr: Record<string, Record<string, string>> = {}
+    ;(strRes.data ?? []).forEach((row: { platoon: string; rank_type: string; value: number }) => {
+      if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
+      loadedStr[row.platoon][row.rank_type] = String(row.value)
+    })
+    setStrOverrides(loadedStr)
     setLoading(false)
   }
 
@@ -201,25 +220,77 @@ export default function ParadeState({
     return true
   })
 
+  const computedStrength = useMemo(() => {
+    const result: Record<string, Record<string, number>> = {}
+    for (const platoon of STR_PLATOONS) {
+      result[platoon] = {}
+      const pool = platoon === 'Total' ? soldiers : soldiers.filter((s) => s.platoon === platoon)
+      for (const rt of RANK_TYPES) {
+        result[platoon][rt] = pool.filter((s) => getRankType(s.rank) === rt).length
+      }
+    }
+    return result
+  }, [soldiers])
+
+  function strWarn(platoon: string, rt: string): string | null {
+    const raw = strOverrides[platoon]?.[rt]
+    if (!raw && raw !== '0') return null
+    const override = Number(raw)
+    if (isNaN(override)) return null
+    const computed = computedStrength[platoon]?.[rt] ?? 0
+    if (override !== computed) return `Nominal roll has ${computed} — override is ${override}`
+    return null
+  }
+
+  function anyMismatch(): boolean {
+    return STR_PLATOONS.some((p) => RANK_TYPES.some((rt) => strWarn(p, rt) !== null))
+  }
+
+  async function saveStrengthCell(platoon: string, rt: string, val: string) {
+    const supabase = getSupabaseClient(company)
+    if (val === '') {
+      await supabase.from(tbl(company, 'StrengthOverride')).delete()
+        .eq('platoon', platoon).eq('rank_type', rt)
+    } else {
+      const value = Number(val)
+      if (!isNaN(value)) {
+        await supabase.from(tbl(company, 'StrengthOverride')).upsert({ platoon, rank_type: rt, value })
+      }
+    }
+  }
+
   function isExceptionValid() {
+    if (!exForm.name) return false
+    if (exForm.scope === 'Status') {
+      if (!statusRows.every((r) => r.reason.trim() && r.start && r.end)) return false
+      const reasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+      return new Set(reasons).size === reasons.length
+    }
     const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    return !!(exForm.name && exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
+    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
   }
 
   async function addException() {
     if (!isExceptionValid()) return
     const supabase = getSupabaseClient(company)
-    const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    const { error } = await supabase.from(tbl(company, 'Exceptions')).insert({
-      name: exForm.name,
-      scope: exForm.scope,
-      reason: exForm.reason.trim(),
-      start: singleDate ? exForm.end : exForm.start,
-      end: exForm.end,
-    })
+    let error: { message: string } | null = null
+    if (exForm.scope === 'Status') {
+      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end }))
+      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
+    } else {
+      const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
+        name: exForm.name,
+        scope: exForm.scope,
+        reason: exForm.reason.trim(),
+        start: singleDate ? exForm.end : exForm.start,
+        end: exForm.end,
+      }))
+    }
     if (error) { setError(error.message); return }
     setShowForm(false)
     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+    setStatusRows([{ start: date, end: date, reason: '' }])
     await load()
   }
 
@@ -302,6 +373,13 @@ export default function ParadeState({
   }
 
   function generate() {
+    const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
+    for (const [platoon, rtMap] of Object.entries(strOverrides)) {
+      strOverridesAsNumbers[platoon] = {}
+      for (const [rt, val] of Object.entries(rtMap)) {
+        if (val !== '') strOverridesAsNumbers[platoon][rt] = Number(val)
+      }
+    }
     const report = generateParadeReport({
       date,
       companyLabel,
@@ -309,7 +387,8 @@ export default function ParadeState({
       activeExceptions,
       configs,
       duties,
-    })
+      strengthOverrides: strOverridesAsNumbers,
+    }, PARADE_CONFIG[company])
     setOutput(report)
     trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
@@ -336,7 +415,7 @@ export default function ParadeState({
       : `${base} border-gray-300 ${theme.focusRing}`
   }
 
-  const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -389,10 +468,13 @@ export default function ParadeState({
             <div key={pt} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
               <span className="text-sm font-medium text-gray-700 flex-1">{pt}</span>
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-2][0-9]:[0-5][0-9]"
+                placeholder="HH:MM"
                 value={paradeTimes[pt] ?? ''}
                 onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
+                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing} w-24`}
               />
               <button
                 onClick={() => saveParadeTime(pt)}
@@ -403,6 +485,62 @@ export default function ParadeState({
               </button>
             </div>
           ))}
+
+          {/* Strength Override accordion */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowStrOverride((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                Overwrite Strength
+                {anyMismatch() && (
+                  <span className="text-yellow-500 text-base leading-none" title="Some overrides differ from nominal roll">⚠</span>
+                )}
+              </span>
+              <span className="text-gray-400 text-xs">{showStrOverride ? '▲' : '▼'}</span>
+            </button>
+
+            {showStrOverride && (
+              <div className="border-t border-gray-100 p-4 space-y-3">
+                <div className="grid grid-cols-4 gap-2 text-xs font-medium text-gray-400 pb-1">
+                  <span />
+                  {RANK_TYPES.map((rt) => <span key={rt} className="text-center">{rt}</span>)}
+                </div>
+                {STR_PLATOONS.map((platoon) => (
+                  <div key={platoon} className="grid grid-cols-4 gap-2 items-center">
+                    <span className="text-xs font-medium text-gray-600">
+                      {platoon === 'Total' ? 'Total Coy' : platoon === 'HQ' ? 'HQ' : `PLT ${platoon}`}
+                    </span>
+                    {RANK_TYPES.map((rt) => {
+                      const warn = strWarn(platoon, rt)
+                      const computed = computedStrength[platoon]?.[rt] ?? 0
+                      return (
+                        <input
+                          key={rt}
+                          type="number"
+                          min="0"
+                          placeholder={String(computed)}
+                          value={strOverrides[platoon]?.[rt] ?? ''}
+                          title={warn ?? undefined}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setStrOverrides((prev) => ({
+                              ...prev,
+                              [platoon]: { ...prev[platoon], [rt]: val },
+                            }))
+                          }}
+                          onBlur={(e) => saveStrengthCell(platoon, rt, e.target.value)}
+                          className={`w-full border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 ${theme.focusRing} ${warn ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-300'}`}
+                        />
+                      )
+                    })}
+                  </div>
+                ))}
+                <p className="text-xs text-gray-400 pt-1">Placeholders show nominal roll counts. Edits auto-save on blur.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -553,7 +691,13 @@ export default function ParadeState({
         <div className="space-y-4">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                if (showForm) {
+                  setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+                  setStatusRows([{ start: date, end: date, reason: '' }])
+                }
+                setShowForm(!showForm)
+              }}
               className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
             >
               {showForm ? 'Cancel' : '+ Exception'}
@@ -594,7 +738,73 @@ export default function ParadeState({
                   </div>
                 </div>
 
-                {singleDate ? (
+                {exForm.scope === 'Status' ? (
+                  <>
+                    {statusRows.map((row, i) => {
+                      const allReasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+                      const isDupe = row.reason.trim() !== '' && allReasons.filter((r) => r === row.reason.trim().toLowerCase()).length > 1
+                      return (
+                      <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+                        {statusRows.length > 1 && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
+                              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              × Remove
+                            </button>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={row.start}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">To</label>
+                            <input
+                              type="date"
+                              value={row.end}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1">
+                            {isDupe
+                              ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
+                              : <span className="text-gray-500">Reason</span>
+                            }
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={REASON_HINTS['Status']}
+                            value={row.reason}
+                            onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
+                            className={isDupe
+                              ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
+                              : inputClass}
+                          />
+                        </div>
+                      </div>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
+                      className="w-full py-2 text-sm text-gray-500 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-colors"
+                    >
+                      + Add Status
+                    </button>
+                  </>
+                ) : singleDate ? (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Date</label>
                     <input
@@ -627,16 +837,18 @@ export default function ParadeState({
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Reason</label>
-                  <input
-                    type="text"
-                    placeholder={REASON_HINTS[exForm.scope]}
-                    value={exForm.reason}
-                    onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
+                {exForm.scope !== 'Status' && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                    <input
+                      type="text"
+                      placeholder={REASON_HINTS[exForm.scope]}
+                      value={exForm.reason}
+                      onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
 
                 <button
                   onClick={addException}

@@ -52,15 +52,26 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Duty"          TO authenticated', c);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Configuration" TO authenticated', c);
 
-    EXECUTE format('ALTER TABLE public."%s_NominalRoll"   ENABLE ROW LEVEL SECURITY', c);
-    EXECUTE format('ALTER TABLE public."%s_Exceptions"    ENABLE ROW LEVEL SECURITY', c);
-    EXECUTE format('ALTER TABLE public."%s_Duty"          ENABLE ROW LEVEL SECURITY', c);
-    EXECUTE format('ALTER TABLE public."%s_Configuration" ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_StrengthOverride" (
+        platoon   text NOT NULL,
+        rank_type text NOT NULL,
+        value     integer NOT NULL,
+        PRIMARY KEY (platoon, rank_type)
+      )', c);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_StrengthOverride" TO authenticated', c);
+
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll"       ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_Exceptions"        ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_Duty"              ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_Configuration"     ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_StrengthOverride"  ENABLE ROW LEVEL SECURITY', c);
 
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_NominalRoll"   ON public."%s_NominalRoll"',   c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Exceptions"    ON public."%s_Exceptions"',    c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Duty"          ON public."%s_Duty"',          c, c);
-    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Configuration" ON public."%s_Configuration"', c, c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Configuration"     ON public."%s_Configuration"',     c, c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"', c, c);
 
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_NominalRoll" ON public."%s_NominalRoll"
@@ -85,6 +96,13 @@ BEGIN
 
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_Configuration" ON public."%s_Configuration"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"
        FOR ALL TO authenticated
        USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
        WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
