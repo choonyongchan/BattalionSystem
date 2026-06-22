@@ -134,6 +134,12 @@ function todayISO() {
   return new Date().toISOString().split('T')[0]
 }
 
+function offsetDate(iso: string, days: number) {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
 export default function ParadeState({
   company,
   companyLabel,
@@ -444,21 +450,13 @@ export default function ParadeState({
 
   return (
     <div className="space-y-5">
-      {/* Header + date picker */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
-          <p className="text-xs text-gray-500">
-            {soldiers.length - new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
-            {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className={`border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
-        />
+      {/* Header */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
+        <p className="text-xs text-gray-500">
+          {soldiers.length - new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
+          {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {error && (
@@ -569,6 +567,16 @@ export default function ParadeState({
       {/* Duties section */}
       {activeSection === 'duties' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-center gap-2">
+            <button onClick={() => setDate(offsetDate(date, -1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
+            />
+            <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
+          </div>
           <div className="flex justify-end">
             <button
               onClick={() => setShowForm(!showForm)}
@@ -905,9 +913,9 @@ export default function ParadeState({
             )
           })()}
 
-          {activeExceptions.length === 0 ? (
+          {exceptions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
-              No exceptions for this date.
+              No exceptions.
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -924,7 +932,7 @@ export default function ParadeState({
                     </tr>
                   </thead>
                   <tbody>
-                    {activeExceptions.map((e, i) => {
+                    {exceptions.map((e, i) => {
                       const isEditing = editEx?.id === e.id
                       const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
                       const today = todayISO()
