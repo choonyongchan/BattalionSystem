@@ -173,7 +173,7 @@ export default function ParadeState({
   const [editEx, setEditEx] = useState<Exception | null>(null)
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
-  const [confirmDeleteEx, setConfirmDeleteEx] = useState<string | null>(null)
+  const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
 
   useEffect(() => {
     load()
@@ -191,10 +191,10 @@ export default function ParadeState({
       supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
-    setSoldiers(soldiersRes.data ?? [])
-    setExceptions(exceptionsRes.data ?? [])
-    setDuties(dutiesRes.data ?? [])
-    const loadedConfigs = configsRes.data ?? []
+    setSoldiers((soldiersRes.data ?? []) as unknown as Soldier[])
+    setExceptions((exceptionsRes.data ?? []) as unknown as Exception[])
+    setDuties((dutiesRes.data ?? []) as unknown as DutyEntry[])
+    const loadedConfigs = (configsRes.data ?? []) as unknown as Configuration[]
     setConfigs(loadedConfigs)
     if (loadedConfigs.length > 0) {
       setParadeTimes((prev) => {
@@ -204,7 +204,7 @@ export default function ParadeState({
       })
     }
     const loadedStr: Record<string, Record<string, string>> = {}
-    ;(strRes.data ?? []).forEach((row: { platoon: string; rank_type: string; value: number }) => {
+    ;(strRes.data as unknown as { platoon: string; rank_type: string; value: number }[] ?? []).forEach((row) => {
       if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
       loadedStr[row.platoon][row.rank_type] = String(row.value)
     })

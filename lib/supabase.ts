@@ -51,8 +51,9 @@ export function getSupabaseClient(_company: Company) {
   return _client
 }
 
+// ponytail: any cast — Supabase can't narrow dynamic table names; cast results at call sites
 export const tbl = (company: Company, table: string) =>
-  `${companyLabel(company)}_${table}` as const
+  `${companyLabel(company)}_${table}` as any
 
 export interface Soldier {
   rank: string

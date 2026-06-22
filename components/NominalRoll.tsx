@@ -135,7 +135,7 @@ export default function NominalRoll({ company }: { company: Company }) {
       .select('*')
       .order('platoon')
     if (error) setError(error.message)
-    else setSoldiers(data ?? [])
+    else setSoldiers((data ?? []) as unknown as Soldier[])
     setLoading(false)
   }
 

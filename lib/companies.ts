@@ -8,6 +8,23 @@ export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
 }
 
+export interface ParadeStateConfig {
+  header: string[]
+  visibleDutyTypes: string[]
+  format?: 'hercules'
+}
+
+const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+
+export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
+  archer:   { header: ['ARCHER COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
+  braves:   { header: ['BRAVES COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
+  cougar:   { header: ['COUGAR COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
+  stallion: { header: ['STALLION COY PARADE STATE'], visibleDutyTypes: ALL_DUTY_TYPES },
+  hercules: { header: ['FIRST PARADE STATE', 'HQ Company'], visibleDutyTypes: ['COS'], format: 'hercules' },
+  test:     { header: ['TEST COY PARADE STATE'],     visibleDutyTypes: ALL_DUTY_TYPES },
+}
+
 export const COMPANY_THEMES: Record<Company, {
   cardBorder: string
   cardHoverBg: string

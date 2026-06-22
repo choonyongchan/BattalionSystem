@@ -8,9 +8,6 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
-    environmentMatchGlobs: [
-      ['tests/unit/**', 'node'],
-    ],
     // Integration tests share a real Supabase DB — run files sequentially to
     // avoid seed/truncate race conditions between parallel test files
     fileParallelism: false,
