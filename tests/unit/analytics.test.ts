@@ -9,11 +9,12 @@ describe('trackEvent', () => {
   })
 
   it('calls vercel track for parade_state_generated', () => {
-    trackEvent('parade_state_generated', { company: 'stallion', soldierCount: 5, date: '2026-01-15' })
+    trackEvent('parade_state_generated', { company: 'stallion', soldierCount: 5, date: '2026-01-15', paradeType: 'First Parade' })
     expect(track).toHaveBeenCalledWith('parade_state_generated', {
       company: 'stallion',
       soldierCount: 5,
       date: '2026-01-15',
+      paradeType: 'First Parade',
     })
   })
 })

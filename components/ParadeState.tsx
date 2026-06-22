@@ -151,6 +151,7 @@ export default function ParadeState({
   const [output, setOutput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
+  const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
 
   // Strength overrides
   const [strOverrides, setStrOverrides] = useState<Record<string, Record<string, string>>>({})
@@ -372,7 +373,7 @@ export default function ParadeState({
     setSavingParade(null)
   }
 
-  function generate() {
+  function generate(paradeType: 'First Parade' | 'Last Parade') {
     const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
     for (const [platoon, rtMap] of Object.entries(strOverrides)) {
       strOverridesAsNumbers[platoon] = {}
@@ -380,17 +381,19 @@ export default function ParadeState({
         if (val !== '') strOverridesAsNumbers[platoon][rt] = Number(val)
       }
     }
+    const filteredConfigs = configs.filter((c) => c.parade_type === paradeType)
     const report = generateParadeReport({
       date,
       companyLabel,
       soldiers,
       activeExceptions,
-      configs,
+      configs: filteredConfigs,
       duties,
       strengthOverrides: strOverridesAsNumbers,
     }, PARADE_CONFIG[company])
     setOutput(report)
-    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date })
+    setLastParadeType(paradeType)
+    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
@@ -1020,21 +1023,28 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
         </div>
       )}
 
-      {/* Generate button */}
+      {/* Generate buttons */}
       <div className="pt-2 border-t border-gray-200">
-        <button
-          onClick={generate}
-          className={`w-full py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
-        >
-          Generate Parade State
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          {(['First Parade', 'Last Parade'] as const).map((pt) => (
+            <button
+              key={pt}
+              onClick={() => generate(pt)}
+              className={`py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
+            >
+              {pt}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Output */}
       {output && (
         <div ref={scrollRef} className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700">Report</h3>
+            <h3 className="text-sm font-medium text-gray-700">
+              Report{lastParadeType ? ` — ${lastParadeType}` : ''}
+            </h3>
             <button
               onClick={copyOutput}
               className="text-xs px-3 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors text-gray-600"
