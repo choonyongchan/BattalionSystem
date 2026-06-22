@@ -8,7 +8,7 @@ import { COMPANY_THEMES } from '@/lib/companies'
 import { parseCSV, validateAndTransform } from '@/lib/bulk-import'
 import type { ParsedRow, RowError } from '@/lib/bulk-import'
 
-const TEMPLATE_CSV = `(Optional e.g. 1234),(Compulsory e.g. REC PTE),(Compulsory),(Compulsory i.e. HQ 1 2 3 or 4)\n4D,RANK,NAME,PLATOON\n`
+const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/1IjFwbLWLSnoMelF92InkQBTGYk-4jal8URafSBKWEoc/edit?usp=sharing'
 
 export default function BulkImportModal({
   company,
@@ -27,16 +27,6 @@ export default function BulkImportModal({
   const [errors, setErrors] = useState<RowError[]>([])
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ added: number; updated: number } | null>(null)
-
-  function downloadTemplate() {
-    const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'nominal-roll-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -83,7 +73,7 @@ export default function BulkImportModal({
 
           <div className="flex gap-3">
             <button
-              onClick={downloadTemplate}
+              onClick={() => window.open(TEMPLATE_URL, '_blank')}
               className="flex-1 border border-gray-200 rounded-xl py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
             >
               Download Template
