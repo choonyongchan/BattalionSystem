@@ -154,11 +154,13 @@ export default function ParadeState({
   // Duties inline edit
   const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
   const [savingDuty, setSavingDuty] = useState(false)
+  const [confirmDeleteDuty, setConfirmDeleteDuty] = useState<string | null>(null)
 
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
+  const [confirmDeleteEx, setConfirmDeleteEx] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -512,18 +514,24 @@ export default function ParadeState({
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
-                                    onClick={() => setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
-                                    className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
-                                    title="Edit"
+                                    onClick={() => confirmDeleteDuty === d.duty_type
+                                      ? (setConfirmDeleteDuty(null), deleteDuty(d.duty_type))
+                                      : setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
+                                    className={confirmDeleteDuty === d.duty_type
+                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                    title={confirmDeleteDuty === d.duty_type ? 'Confirm delete' : 'Edit'}
                                   >
-                                    ✎
+                                    {confirmDeleteDuty === d.duty_type ? 'Yes' : '✎'}
                                   </button>
                                   <button
-                                    onClick={() => deleteDuty(d.duty_type)}
-                                    className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1 opacity-0 group-hover:opacity-100"
-                                    title="Remove"
+                                    onClick={() => confirmDeleteDuty === d.duty_type ? setConfirmDeleteDuty(null) : setConfirmDeleteDuty(d.duty_type)}
+                                    className={confirmDeleteDuty === d.duty_type
+                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                    title={confirmDeleteDuty === d.duty_type ? 'Cancel' : 'Remove'}
                                   >
-                                    ✕
+                                    {confirmDeleteDuty === d.duty_type ? 'No' : '✕'}
                                   </button>
                                 </div>
                               </td>
@@ -765,18 +773,24 @@ export default function ParadeState({
                                 <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
-                                      onClick={() => { setEditEx({ ...e }); setEditExErrors({}) }}
-                                      className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
-                                      title="Edit"
+                                      onClick={() => confirmDeleteEx === e.id
+                                        ? (setConfirmDeleteEx(null), deleteException(e.id))
+                                        : (setEditEx({ ...e }), setEditExErrors({}))}
+                                      className={confirmDeleteEx === e.id
+                                        ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                      title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
                                     >
-                                      ✎
+                                      {confirmDeleteEx === e.id ? 'Yes' : '✎'}
                                     </button>
                                     <button
-                                      onClick={() => deleteException(e.id)}
-                                      className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1 opacity-0 group-hover:opacity-100"
-                                      title="Remove"
+                                      onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
+                                      className={confirmDeleteEx === e.id
+                                        ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
+                                        : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                      title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
                                     >
-                                      ✕
+                                      {confirmDeleteEx === e.id ? 'No' : '✕'}
                                     </button>
                                   </div>
                                 </td>
