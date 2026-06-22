@@ -202,8 +202,8 @@ export default function NominalRoll({ company }: { company: Company }) {
   const query = search.toLowerCase()
   const filtered = query
     ? soldiers.filter((s) =>
-        [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
-      )
+      [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
+    )
     : soldiers
 
   const sorted = [...filtered].sort((a, b) =>
@@ -389,7 +389,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     if (e.key === 'Enter') updateSoldier()
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
-                                  placeholder="e.g. 1234A"
+                                  placeholder="e.g. 1234"
                                   className={editInputClass('four_d')}
                                 />
                               </td>

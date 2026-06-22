@@ -8,21 +8,100 @@ export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
 }
 
+export interface ScopeConfig {
+  key: string
+  label: string
+}
+
 export interface ParadeStateConfig {
   header: string[]
   visibleDutyTypes: string[]
-  format?: 'hercules'
+  scopeConfigs: ScopeConfig[]
+  format?: 'hercules' | 'stallion' | 'archer' | 'braves' | 'cougar'
 }
 
 const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
 
+const STD_SCOPES: ScopeConfig[] = [
+  { key: 'Att C',       label: 'ATT C' },
+  { key: 'Status',      label: 'STATUS' },
+  { key: 'Off/Leave',   label: 'OFF/LEAVE' },
+  { key: 'Guard Duty',  label: 'GUARD DUTY' },
+  { key: 'Report Sick', label: 'REPORT SICK' },
+  { key: 'MA',          label: 'MA' },
+  { key: 'Others',      label: 'OTHERS' },
+]
+
 export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
-  archer:   { header: ['ARCHER COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
-  braves:   { header: ['BRAVES COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
-  cougar:   { header: ['COUGAR COY PARADE STATE'],   visibleDutyTypes: ALL_DUTY_TYPES },
-  stallion: { header: ['STALLION COY PARADE STATE'], visibleDutyTypes: ALL_DUTY_TYPES },
-  hercules: { header: ['FIRST PARADE STATE', 'HQ Company'], visibleDutyTypes: ['COS'], format: 'hercules' },
-  test:     { header: ['TEST COY PARADE STATE'],     visibleDutyTypes: ALL_DUTY_TYPES },
+  archer: {
+    header: ['40 SAR ARCHER COMPANY FIRST PARADE STATE'],
+    visibleDutyTypes: ALL_DUTY_TYPES,
+    scopeConfigs: [
+      { key: 'Att C',       label: 'ATTC' },
+      { key: 'Status',      label: 'STATUS' },
+      { key: 'Report Sick', label: 'REPORT SICK/MEDICAL REVIEW' },
+      { key: 'Off/Leave',   label: 'LEAVE/MA/OFF/COURSE' },
+      { key: 'Guard Duty',  label: 'DUTY' },
+      { key: 'Others',      label: 'OTHERS' },
+    ],
+    format: 'archer',
+  },
+  braves: {
+    header: ['40 SAR BRAVES COMPANY PARADE STATE'],
+    visibleDutyTypes: [],
+    scopeConfigs: [
+      { key: 'Off/Leave',   label: 'AL/OIL' },
+      { key: 'MA',          label: 'MR' },
+      { key: 'Report Sick', label: 'REPORTING SICK' },
+      { key: 'Att C',       label: 'ATT C' },
+      { key: 'Status',      label: 'STATUS' },
+      { key: 'Others',      label: 'OTHERS' },
+    ],
+    format: 'braves',
+  },
+  cougar: {
+    header: ['COUGAR COMPANY', 'FIRST PARADE STATE'],
+    visibleDutyTypes: [],
+    scopeConfigs: [
+      { key: 'Att C',       label: 'ATTC' },
+      { key: 'Report Sick', label: 'REPORT SICK' },
+      { key: 'Status',      label: 'MEDICAL STATUS' },
+      { key: 'MA',          label: 'MEDICAL APPT' },
+      { key: 'Others',      label: 'OTHERS' },
+    ],
+    format: 'cougar',
+  },
+  stallion: {
+    header: ['STALLION COY FIRST PARADE'],
+    visibleDutyTypes: ALL_DUTY_TYPES,
+    scopeConfigs: [
+      { key: 'Att C',      label: 'ATTC' },
+      { key: 'Status',     label: 'STATUS' },
+      { key: 'Off/Leave',  label: 'OFF/LEAVE' },
+      { key: 'Guard Duty', label: 'GUARD DUTY' },
+      { key: 'Others',     label: 'OTHERS' },
+    ],
+    format: 'stallion',
+  },
+  hercules: {
+    header: ['FIRST PARADE STATE', 'HQ Company'],
+    visibleDutyTypes: ['COS'],
+    scopeConfigs: [
+      { key: 'Off/Leave',   label: 'Off/Leave' },
+      { key: 'MA',          label: 'MA' },
+      { key: 'Report Sick', label: 'Reporting sick' },
+      { key: 'Att C',       label: 'Att C' },
+      { key: 'Status',      label: 'Status' },
+      { key: 'Others',      label: 'Others' },
+      { key: 'Guard Duty',  label: 'Guard Duty' },
+    ],
+    format: 'hercules',
+  },
+  test: {
+    header: ['TEST COY PARADE STATE'],
+    visibleDutyTypes: ALL_DUTY_TYPES,
+    scopeConfigs: STD_SCOPES,
+  },
 }
 
 export const COMPANY_THEMES: Record<Company, {

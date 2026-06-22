@@ -9,9 +9,9 @@ type NominalRollTable = {
   Relationships: []
 }
 type ExceptionsTable = {
-  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string }
-  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string }
-  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string }
+  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence: boolean }
+  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence?: boolean }
+  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string; counts_as_absence?: boolean }
   Relationships: []
 }
 type DutyTable = {
@@ -69,6 +69,7 @@ export interface Exception {
   reason: string
   start: string
   end: string
+  counts_as_absence: boolean
 }
 
 export interface DutyEntry {
