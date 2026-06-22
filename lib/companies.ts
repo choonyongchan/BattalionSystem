@@ -1,7 +1,8 @@
-export const COMPANIES = ['archer', 'braves', 'cougar', 'stallion', 'hercules'] as const
+export const COMPANIES = ['archer', 'braves', 'cougar', 'stallion', 'hercules', 'test'] as const
 export type Company = (typeof COMPANIES)[number]
 
 export const DISABLED_COMPANIES = new Set<Company>(['archer', 'braves', 'cougar'])
+export const HIDDEN_COMPANIES = new Set<Company>(['test'])
 
 export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
@@ -78,5 +79,17 @@ export const COMPANY_THEMES: Record<Company, {
     focusRing: 'focus:ring-gray-800',
     badgeBg: 'bg-gray-100',
     badgeText: 'text-gray-900',
+  },
+  test: {
+    cardBorder: 'border-gray-400',
+    cardHoverBg: 'hover:bg-gray-400',
+    cardText: 'text-gray-700',
+    activeBorder: 'border-gray-500',
+    activeText: 'text-gray-600',
+    buttonBg: 'bg-gray-500',
+    buttonHoverBg: 'hover:bg-gray-600',
+    focusRing: 'focus:ring-gray-400',
+    badgeBg: 'bg-gray-100',
+    badgeText: 'text-gray-700',
   },
 }

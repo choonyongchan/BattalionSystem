@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
+import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
 import { trackEvent } from '@/lib/analytics'
+import { generateParadeReport } from '@/lib/parade-report'
 
 function SoldierSearch({
   soldiers,
@@ -99,9 +100,22 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
 
 const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
+type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string }
+
 const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
+
+const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
+const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
+// ponytail: duplicated from NominalRoll.tsx; share only if a third consumer appears
+const _OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8']
+const _WOSPEC_RANKS     = ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
+function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
+  if (_OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
+  if (_WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
+  return 'Enlistee'
+}
 
 type Section = 'config' | 'duties' | 'exceptions'
 
@@ -138,17 +152,27 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
 
+  // Strength overrides
+  const [strOverrides, setStrOverrides] = useState<Record<string, Record<string, string>>>({})
+  const [showStrOverride, setShowStrOverride] = useState(false)
+
   const [showForm, setShowForm] = useState(false)
-  const [exForm, setExForm] = useState<{
-    name: string
-    scope: ExceptionScope
-    reason: string
-    start: string
-    end: string
-  }>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+  const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
   const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
   const [savingParade, setSavingParade] = useState<string | null>(null)
+
+  // Duties inline edit
+  const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
+  const [savingDuty, setSavingDuty] = useState(false)
+  const [confirmDeleteDuty, setConfirmDeleteDuty] = useState<string | null>(null)
+
+  // Exceptions inline edit
+  const [editEx, setEditEx] = useState<Exception | null>(null)
+  const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
+  const [savingEx, setSavingEx] = useState(false)
+  const [confirmDeleteEx, setConfirmDeleteEx] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -158,11 +182,12 @@ export default function ParadeState({
     const supabase = getSupabaseClient(company)
     setLoading(true)
     setError(null)
-    const [soldiersRes, exceptionsRes, dutiesRes, configsRes] = await Promise.all([
-      supabase.from('NominalRoll').select('*'),
-      supabase.from('Exceptions').select('*'),
-      supabase.from('Duty').select('*').eq('date', date),
-      supabase.from('Configuration').select('*'),
+    const [soldiersRes, exceptionsRes, dutiesRes, configsRes, strRes] = await Promise.all([
+      supabase.from(tbl(company, 'NominalRoll')).select('*'),
+      supabase.from(tbl(company, 'Exceptions')).select('*'),
+      supabase.from(tbl(company, 'Duty')).select('*').eq('date', date),
+      supabase.from(tbl(company, 'Configuration')).select('*'),
+      supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
     setSoldiers(soldiersRes.data ?? [])
@@ -177,6 +202,12 @@ export default function ParadeState({
         return next
       })
     }
+    const loadedStr: Record<string, Record<string, string>> = {}
+    ;(strRes.data ?? []).forEach((row: { platoon: string; rank_type: string; value: number }) => {
+      if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
+      loadedStr[row.platoon][row.rank_type] = String(row.value)
+    })
+    setStrOverrides(loadedStr)
     setLoading(false)
   }
 
@@ -189,38 +220,90 @@ export default function ParadeState({
     return true
   })
 
+  const computedStrength = useMemo(() => {
+    const result: Record<string, Record<string, number>> = {}
+    for (const platoon of STR_PLATOONS) {
+      result[platoon] = {}
+      const pool = platoon === 'Total' ? soldiers : soldiers.filter((s) => s.platoon === platoon)
+      for (const rt of RANK_TYPES) {
+        result[platoon][rt] = pool.filter((s) => getRankType(s.rank) === rt).length
+      }
+    }
+    return result
+  }, [soldiers])
+
+  function strWarn(platoon: string, rt: string): string | null {
+    const raw = strOverrides[platoon]?.[rt]
+    if (!raw && raw !== '0') return null
+    const override = Number(raw)
+    if (isNaN(override)) return null
+    const computed = computedStrength[platoon]?.[rt] ?? 0
+    if (override !== computed) return `Nominal roll has ${computed} — override is ${override}`
+    return null
+  }
+
+  function anyMismatch(): boolean {
+    return STR_PLATOONS.some((p) => RANK_TYPES.some((rt) => strWarn(p, rt) !== null))
+  }
+
+  async function saveStrengthCell(platoon: string, rt: string, val: string) {
+    const supabase = getSupabaseClient(company)
+    if (val === '') {
+      await supabase.from(tbl(company, 'StrengthOverride')).delete()
+        .eq('platoon', platoon).eq('rank_type', rt)
+    } else {
+      const value = Number(val)
+      if (!isNaN(value)) {
+        await supabase.from(tbl(company, 'StrengthOverride')).upsert({ platoon, rank_type: rt, value })
+      }
+    }
+  }
+
   function isExceptionValid() {
+    if (!exForm.name) return false
+    if (exForm.scope === 'Status') {
+      if (!statusRows.every((r) => r.reason.trim() && r.start && r.end)) return false
+      const reasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+      return new Set(reasons).size === reasons.length
+    }
     const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    return !!(exForm.name && exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
+    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
   }
 
   async function addException() {
     if (!isExceptionValid()) return
     const supabase = getSupabaseClient(company)
-    const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    const { error } = await supabase.from('Exceptions').insert({
-      name: exForm.name,
-      scope: exForm.scope,
-      reason: exForm.reason.trim(),
-      start: singleDate ? exForm.end : exForm.start,
-      end: exForm.end,
-    })
+    let error: { message: string } | null = null
+    if (exForm.scope === 'Status') {
+      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end }))
+      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
+    } else {
+      const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
+        name: exForm.name,
+        scope: exForm.scope,
+        reason: exForm.reason.trim(),
+        start: singleDate ? exForm.end : exForm.start,
+        end: exForm.end,
+      }))
+    }
     if (error) { setError(error.message); return }
     setShowForm(false)
     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+    setStatusRows([{ start: date, end: date, reason: '' }])
     await load()
   }
 
   async function deleteException(id: number) {
     const supabase = getSupabaseClient(company)
-    await supabase.from('Exceptions').delete().eq('id', id)
+    await supabase.from(tbl(company, 'Exceptions')).delete().eq('id', id)
     await load()
   }
 
   async function addDuty() {
     if (!dutyForm.duty_type) return
     const supabase = getSupabaseClient(company)
-    const { error } = await supabase.from('Duty').upsert({
+    const { error } = await supabase.from(tbl(company, 'Duty')).upsert({
       duty_type: dutyForm.duty_type,
       date,
       name: dutyForm.name.toUpperCase(),
@@ -233,99 +316,81 @@ export default function ParadeState({
 
   async function deleteDuty(duty_type: string) {
     const supabase = getSupabaseClient(company)
-    await supabase.from('Duty').delete().eq('duty_type', duty_type).eq('date', date)
+    await supabase.from(tbl(company, 'Duty')).delete().eq('duty_type', duty_type).eq('date', date)
     await load()
+  }
+
+  async function updateDuty() {
+    if (!editDuty) return
+    const supabase = getSupabaseClient(company)
+    setSavingDuty(true)
+    const { error } = await supabase
+      .from(tbl(company, 'Duty'))
+      .upsert({ duty_type: editDuty.duty_type, date, name: editDuty.name.toUpperCase() })
+    if (error) { setError(error.message) }
+    else { setEditDuty(null); await load() }
+    setSavingDuty(false)
+  }
+
+  function validateEditEx() {
+    if (!editEx) return false
+    const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
+    const errors: Record<string, boolean> = {}
+    if (!editEx.name) errors.name = true
+    if (!editEx.reason.trim()) errors.reason = true
+    if (!editEx.end) errors.end = true
+    if (!singleDate && !editEx.start) errors.start = true
+    setEditExErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  async function updateException() {
+    if (!editEx || !validateEditEx()) return
+    const supabase = getSupabaseClient(company)
+    setSavingEx(true)
+    const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
+    const { error } = await supabase
+      .from(tbl(company, 'Exceptions'))
+      .update({
+        name: editEx.name,
+        scope: editEx.scope,
+        reason: editEx.reason.trim(),
+        start: singleDate ? editEx.end : editEx.start,
+        end: editEx.end,
+      })
+      .eq('id', editEx.id)
+    if (error) { setError(error.message) }
+    else { setEditEx(null); setEditExErrors({}); await load() }
+    setSavingEx(false)
   }
 
   async function saveParadeTime(parade_type: string) {
     const supabase = getSupabaseClient(company)
     setSavingParade(parade_type)
-    const { error } = await supabase.from('Configuration').upsert({ parade_type, time: paradeTimes[parade_type] })
+    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert({ parade_type, time: paradeTimes[parade_type] })
     if (error) setError(error.message)
     setSavingParade(null)
   }
 
   function generate() {
-    const d = new Date(date)
-    const dateStr = d
-      .toLocaleDateString('en-SG', { weekday: 'long', day: '2-digit', month: 'short', year: '2-digit' })
-      .toUpperCase()
-
-    const absentNames = new Set(activeExceptions.map((e) => e.name))
-    const total = soldiers.length
-    const absent = absentNames.size
-    const present = total - absent
-
-    const lines: string[] = [
-      `${companyLabel.toUpperCase()} COY PARADE STATE`,
-      `DATE: ${dateStr}`,
-      '',
-    ]
-
-    if (configs.length > 0) {
-      configs.forEach((c) => {
-        const t = c.time.substring(0, 5).replace(':', '')
-        lines.push(`${c.parade_type.toUpperCase()} PARADE — ${t}H`)
-      })
-      lines.push('')
-    }
-
-    lines.push(`TOTAL STRENGTH : ${total}`)
-    lines.push(`PRESENT        : ${present}`)
-    lines.push(`ABSENT         : ${absent}`)
-
-    if (activeExceptions.length > 0) {
-      lines.push('')
-      lines.push('EXCEPTIONS:')
-
-      EXCEPTION_SCOPES.forEach((scope) => {
-        const group = activeExceptions.filter((e) => e.scope === scope)
-        if (group.length === 0) return
-        lines.push(`  ${scope.toUpperCase()}:`)
-        group.forEach((e) => {
-          let line = `    - ${e.name}`
-          if (e.start && e.end) line += ` (${toSGDate(e.start)} - ${toSGDate(e.end)})`
-          if (e.reason) line += ` — ${e.reason}`
-          lines.push(line)
-        })
-      })
-
-      const other = activeExceptions.filter(
-        (e) => !e.scope || !(EXCEPTION_SCOPES as readonly string[]).includes(e.scope),
-      )
-      if (other.length > 0) {
-        lines.push('  OTHERS:')
-        other.forEach((e) => {
-          let line = `    - ${e.name}`
-          if (e.reason) line += ` — ${e.reason}`
-          lines.push(line)
-        })
+    const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
+    for (const [platoon, rtMap] of Object.entries(strOverrides)) {
+      strOverridesAsNumbers[platoon] = {}
+      for (const [rt, val] of Object.entries(rtMap)) {
+        if (val !== '') strOverridesAsNumbers[platoon][rt] = Number(val)
       }
     }
-
-    if (duties.length > 0) {
-      lines.push('')
-      lines.push('DUTIES:')
-      duties.forEach((du) => {
-        lines.push(`  ${du.duty_type}: ${du.name ?? 'TBC'}`)
-      })
-    }
-
-    lines.push('')
-    lines.push(
-      `Generated: ${new Date().toLocaleString('en-SG', {
-        timeZone: 'Asia/Singapore',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })}`,
-    )
-
-    setOutput(lines.join('\n'))
-    trackEvent('parade_state_generated', { company, soldierCount: total, date })
+    const report = generateParadeReport({
+      date,
+      companyLabel,
+      soldiers,
+      activeExceptions,
+      configs,
+      duties,
+      strengthOverrides: strOverridesAsNumbers,
+    }, PARADE_CONFIG[company])
+    setOutput(report)
+    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
@@ -342,6 +407,15 @@ export default function ParadeState({
   ]
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
+
+  function exEditInputClass(field: string) {
+    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+    return editExErrors[field]
+      ? `${base} border-red-500 ring-2 ring-red-500`
+      : `${base} border-gray-300 ${theme.focusRing}`
+  }
+
+const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -370,7 +444,7 @@ export default function ParadeState({
         </div>
       )}
 
-      {/* Section tabs — order: Config, Duties, Exceptions */}
+      {/* Section tabs */}
       <div className="flex border-b border-gray-200">
         {sectionTabs.map((t) => (
           <button
@@ -394,10 +468,13 @@ export default function ParadeState({
             <div key={pt} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
               <span className="text-sm font-medium text-gray-700 flex-1">{pt}</span>
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-2][0-9]:[0-5][0-9]"
+                placeholder="HH:MM"
                 value={paradeTimes[pt] ?? ''}
                 onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
+                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing} w-24`}
               />
               <button
                 onClick={() => saveParadeTime(pt)}
@@ -408,6 +485,62 @@ export default function ParadeState({
               </button>
             </div>
           ))}
+
+          {/* Strength Override accordion */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowStrOverride((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                Overwrite Strength
+                {anyMismatch() && (
+                  <span className="text-yellow-500 text-base leading-none" title="Some overrides differ from nominal roll">⚠</span>
+                )}
+              </span>
+              <span className="text-gray-400 text-xs">{showStrOverride ? '▲' : '▼'}</span>
+            </button>
+
+            {showStrOverride && (
+              <div className="border-t border-gray-100 p-4 space-y-3">
+                <div className="grid grid-cols-4 gap-2 text-xs font-medium text-gray-400 pb-1">
+                  <span />
+                  {RANK_TYPES.map((rt) => <span key={rt} className="text-center">{rt}</span>)}
+                </div>
+                {STR_PLATOONS.map((platoon) => (
+                  <div key={platoon} className="grid grid-cols-4 gap-2 items-center">
+                    <span className="text-xs font-medium text-gray-600">
+                      {platoon === 'Total' ? 'Total Coy' : platoon === 'HQ' ? 'HQ' : `PLT ${platoon}`}
+                    </span>
+                    {RANK_TYPES.map((rt) => {
+                      const warn = strWarn(platoon, rt)
+                      const computed = computedStrength[platoon]?.[rt] ?? 0
+                      return (
+                        <input
+                          key={rt}
+                          type="number"
+                          min="0"
+                          placeholder={String(computed)}
+                          value={strOverrides[platoon]?.[rt] ?? ''}
+                          title={warn ?? undefined}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setStrOverrides((prev) => ({
+                              ...prev,
+                              [platoon]: { ...prev[platoon], [rt]: val },
+                            }))
+                          }}
+                          onBlur={(e) => saveStrengthCell(platoon, rt, e.target.value)}
+                          className={`w-full border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 ${theme.focusRing} ${warn ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-300'}`}
+                        />
+                      )
+                    })}
+                  </div>
+                ))}
+                <p className="text-xs text-gray-400 pt-1">Placeholders show nominal roll counts. Edits auto-save on blur.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -473,25 +606,78 @@ export default function ParadeState({
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
-                      <th className="w-10" />
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {duties.map((d, i) => (
-                      <tr key={d.duty_type} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                        <td className="px-4 py-3 font-medium">{d.duty_type}</td>
-                        <td className="px-4 py-3 text-gray-600">{d.name ?? 'TBC'}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteDuty(d.duty_type)}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {duties.map((d, i) => {
+                      const isEditing = editDuty?.duty_type === d.duty_type
+                      return (
+                        <tr
+                          key={d.duty_type}
+                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                        >
+                          <td className="px-4 py-3 font-medium">{d.duty_type}</td>
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2">
+                                <SoldierSearch
+                                  soldiers={soldiers}
+                                  value={editDuty.name}
+                                  onChange={(name) => setEditDuty({ ...editDuty, name })}
+                                  inputClass={dutyEditInputClass}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={updateDuty}
+                                    disabled={savingDuty}
+                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                  >
+                                    {savingDuty ? '…' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditDuty(null)}
+                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 text-gray-600">{d.name ?? 'TBC'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1 justify-end items-center">
+                                  <button
+                                    onClick={() => confirmDeleteDuty === d.duty_type
+                                      ? (setConfirmDeleteDuty(null), deleteDuty(d.duty_type))
+                                      : setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
+                                    className={confirmDeleteDuty === d.duty_type
+                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                    title={confirmDeleteDuty === d.duty_type ? 'Confirm delete' : 'Edit'}
+                                  >
+                                    {confirmDeleteDuty === d.duty_type ? 'Yes' : '✎'}
+                                  </button>
+                                  <button
+                                    onClick={() => confirmDeleteDuty === d.duty_type ? setConfirmDeleteDuty(null) : setConfirmDeleteDuty(d.duty_type)}
+                                    className={confirmDeleteDuty === d.duty_type
+                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                    title={confirmDeleteDuty === d.duty_type ? 'Cancel' : 'Remove'}
+                                  >
+                                    {confirmDeleteDuty === d.duty_type ? 'No' : '✕'}
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -505,7 +691,13 @@ export default function ParadeState({
         <div className="space-y-4">
           <div className="flex justify-end">
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                if (showForm) {
+                  setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+                  setStatusRows([{ start: date, end: date, reason: '' }])
+                }
+                setShowForm(!showForm)
+              }}
               className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
             >
               {showForm ? 'Cancel' : '+ Exception'}
@@ -546,7 +738,73 @@ export default function ParadeState({
                   </div>
                 </div>
 
-                {singleDate ? (
+                {exForm.scope === 'Status' ? (
+                  <>
+                    {statusRows.map((row, i) => {
+                      const allReasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+                      const isDupe = row.reason.trim() !== '' && allReasons.filter((r) => r === row.reason.trim().toLowerCase()).length > 1
+                      return (
+                      <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+                        {statusRows.length > 1 && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
+                              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              × Remove
+                            </button>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={row.start}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">To</label>
+                            <input
+                              type="date"
+                              value={row.end}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1">
+                            {isDupe
+                              ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
+                              : <span className="text-gray-500">Reason</span>
+                            }
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={REASON_HINTS['Status']}
+                            value={row.reason}
+                            onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
+                            className={isDupe
+                              ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
+                              : inputClass}
+                          />
+                        </div>
+                      </div>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
+                      className="w-full py-2 text-sm text-gray-500 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-colors"
+                    >
+                      + Add Status
+                    </button>
+                  </>
+                ) : singleDate ? (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Date</label>
                     <input
@@ -579,16 +837,18 @@ export default function ParadeState({
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Reason</label>
-                  <input
-                    type="text"
-                    placeholder={REASON_HINTS[exForm.scope]}
-                    value={exForm.reason}
-                    onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
+                {exForm.scope !== 'Status' && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                    <input
+                      type="text"
+                      placeholder={REASON_HINTS[exForm.scope]}
+                      value={exForm.reason}
+                      onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
 
                 <button
                   onClick={addException}
@@ -615,33 +875,143 @@ export default function ParadeState({
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Period</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="w-10" />
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {activeExceptions.map((e, i) => (
-                      <tr key={e.id} className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
-                        <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
-                            {e.scope ?? '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                          {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteException(e.id)}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {activeExceptions.map((e, i) => {
+                      const isEditing = editEx?.id === e.id
+                      const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
+                      return (
+                        <React.Fragment key={e.id}>
+                          <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
+                            {isEditing ? (
+                              <>
+                                <td className="px-2 py-2">
+                                  <SoldierSearch
+                                    soldiers={soldiers}
+                                    value={editEx!.name}
+                                    onChange={(name) => setEditEx({ ...editEx!, name })}
+                                    inputClass={exEditInputClass('name')}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {EXCEPTION_SCOPES.map((s) => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() => setEditEx({ ...editEx!, scope: s })}
+                                        className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${
+                                          editEx!.scope === s
+                                            ? `${theme.buttonBg} text-white border-transparent`
+                                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                                        }`}
+                                      >
+                                        {s}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-2 py-2">
+                                  {editSingleDate ? (
+                                    <input
+                                      type="date"
+                                      value={editEx!.end}
+                                      onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
+                                      className={exEditInputClass('end')}
+                                    />
+                                  ) : (
+                                    <div className="flex gap-1 items-center">
+                                      <input
+                                        type="date"
+                                        value={editEx!.start}
+                                        onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
+                                        className={exEditInputClass('start')}
+                                      />
+                                      <span className="text-gray-400 text-xs shrink-0">–</span>
+                                      <input
+                                        type="date"
+                                        value={editEx!.end}
+                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
+                                        className={exEditInputClass('end')}
+                                      />
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-2 py-2">
+                                  <input
+                                    type="text"
+                                    value={editEx!.reason}
+                                    onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
+                                    onKeyDown={(e2) => {
+                                      if (e2.key === 'Enter') updateException()
+                                      if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
+                                    }}
+                                    placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
+                                    className={exEditInputClass('reason')}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <div className="flex gap-1 justify-end">
+                                    <button
+                                      onClick={updateException}
+                                      disabled={savingEx}
+                                      className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                    >
+                                      {savingEx ? '…' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={() => { setEditEx(null); setEditExErrors({}) }}
+                                      className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
+                                    {e.scope ?? '—'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex gap-1 justify-end items-center">
+                                    <button
+                                      onClick={() => confirmDeleteEx === e.id
+                                        ? (setConfirmDeleteEx(null), deleteException(e.id))
+                                        : (setEditEx({ ...e }), setEditExErrors({}))}
+                                      className={confirmDeleteEx === e.id
+                                        ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                      title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
+                                    >
+                                      {confirmDeleteEx === e.id ? 'Yes' : '✎'}
+                                    </button>
+                                    <button
+                                      onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
+                                      className={confirmDeleteEx === e.id
+                                        ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
+                                        : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                      title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
+                                    >
+                                      {confirmDeleteEx === e.id ? 'No' : '✕'}
+                                    </button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        </React.Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

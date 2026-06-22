@@ -1,11 +1,8 @@
 /**
- * Applies supabase/schema.sql to all active company Supabase projects.
- * Usage:
- *   bun run scripts/sync-schema.ts              # sync all companies
- *   bun run scripts/sync-schema.ts stallion     # sync specific companies
+ * Applies supabase/schema.sql to the unified hercules Supabase project.
+ * Usage: bun run scripts/sync-schema.ts
  *
- * Requires SUPABASE_ACCESS_TOKEN in .env.local (Supabase personal access token).
- * The token must have access to all target projects.
+ * Requires SUPABASE_ACCESS_TOKEN and NEXT_PUBLIC_SUPABASE_URL in .env.local.
  */
 
 import { readFileSync } from 'fs'
@@ -14,60 +11,36 @@ import { fileURLToPath } from 'url'
 
 const ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 if (!ACCESS_TOKEN) {
-  console.error('Error: SUPABASE_ACCESS_TOKEN is not set in environment.')
+  console.error('Error: SUPABASE_ACCESS_TOKEN is not set.')
   process.exit(1)
 }
 
-// Derive project refs from NEXT_PUBLIC_<COMPANY>_SUPABASE_URL env vars.
-// A company is included only if its URL env var is set and non-empty.
-const PROJECT_REFS: Record<string, string> = {}
-for (const [key, value] of Object.entries(process.env)) {
-  const match = key.match(/^NEXT_PUBLIC_([A-Z]+)_SUPABASE_URL$/)
-  if (match && value) {
-    const company = match[1].toLowerCase()
-    const ref = new URL(value).hostname.split('.')[0]
-    PROJECT_REFS[company] = ref
-  }
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+if (!supabaseUrl) {
+  console.error('Error: NEXT_PUBLIC_SUPABASE_URL is not set.')
+  process.exit(1)
 }
 
-const targets = process.argv.slice(2)
-const companies = targets.length > 0 ? targets : Object.keys(PROJECT_REFS)
-
+const ref = new URL(supabaseUrl).hostname.split('.')[0]
 const schemaPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'schema.sql')
 const sql = readFileSync(schemaPath, 'utf-8')
 
-async function syncProject(company: string, ref: string) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: sql }),
-  })
+process.stdout.write(`Syncing schema to project ${ref}... `)
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`HTTP ${res.status}: ${body}`)
-  }
+const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${ACCESS_TOKEN}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ query: sql }),
+})
 
-  return res.json()
+if (!res.ok) {
+  const body = await res.text()
+  console.log('FAILED.')
+  console.error(`HTTP ${res.status}: ${body}`)
+  process.exit(1)
 }
 
-for (const company of companies) {
-  const ref = PROJECT_REFS[company]
-  if (!ref) {
-    console.warn(`  [${company}] No project ref configured — skipping.`)
-    continue
-  }
-
-  process.stdout.write(`  [${company}] Syncing schema... `)
-  try {
-    await syncProject(company, ref)
-    console.log('done.')
-  } catch (err) {
-    console.log('FAILED.')
-    console.error(`    ${err instanceof Error ? err.message : err}`)
-    process.exitCode = 1
-  }
-}
+console.log('done.')

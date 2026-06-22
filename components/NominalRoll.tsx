@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES } from '@/lib/companies'
+import BulkImportModal from '@/components/BulkImportModal'
 
 function RankSearch({
   value,
@@ -77,9 +78,9 @@ function RankSearch({
 }
 
 const RANKS_BY_TYPE = {
-  Officer: ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME1', 'ME2', 'ME3', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
-  WOSPEC: ['3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
-  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC', '3SG', '2SG', '1SG', 'SSG', 'MSG'],
+  Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
+  WOSPEC: ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
+  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC'],
 }
 
 function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
@@ -89,6 +90,7 @@ function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
 }
 
 const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
+const RANK_ORDER = Object.fromEntries(Object.values(RANKS_BY_TYPE).flat().map((r, i) => [r, i]))
 
 const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =>
   ranks.map((rank) => ({ rank, type })),
@@ -104,8 +106,21 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [submitting, setSubmitting] = useState(false)
   const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
+  const [showImport, setShowImport] = useState(false)
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null)
+
+  const [editRow, setEditRow] = useState<{
+    originalName: string
+    rank: string
+    name: string
+    platoon: string
+    four_d: string
+  } | null>(null)
+  const [editErrors, setEditErrors] = useState<Record<string, boolean>>({})
+  const [savingEdit, setSavingEdit] = useState(false)
 
   useEffect(() => {
     load()
@@ -116,7 +131,7 @@ export default function NominalRoll({ company }: { company: Company }) {
     setLoading(true)
     setError(null)
     const { data, error } = await supabase
-      .from('NominalRoll')
+      .from(tbl(company, 'NominalRoll'))
       .select('*')
       .order('platoon')
     if (error) setError(error.message)
@@ -128,7 +143,7 @@ export default function NominalRoll({ company }: { company: Company }) {
     if (!form.name.trim() || !form.platoon) return
     const supabase = getSupabaseClient(company)
     setSubmitting(true)
-    const { error } = await supabase.from('NominalRoll').insert({
+    const { error } = await supabase.from(tbl(company, 'NominalRoll')).insert({
       rank: form.rank,
       name: form.name.trim().toUpperCase(),
       platoon: form.platoon,
@@ -146,20 +161,74 @@ export default function NominalRoll({ company }: { company: Company }) {
   async function deleteSoldier(name: string) {
     const supabase = getSupabaseClient(company)
     setDeletingName(name)
-    await supabase.from('NominalRoll').delete().eq('name', name)
+    await supabase.from(tbl(company, 'NominalRoll')).delete().eq('name', name)
     await load()
     setDeletingName(null)
   }
 
+  function validateEdit() {
+    if (!editRow) return false
+    const errors: Record<string, boolean> = {}
+    if (!editRow.name.trim()) errors.name = true
+    if (!editRow.platoon) errors.platoon = true
+    if (!ALL_RANKS.some((r) => r.rank === editRow.rank)) errors.rank = true
+    setEditErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  async function updateSoldier() {
+    if (!editRow || !validateEdit()) return
+    const supabase = getSupabaseClient(company)
+    setSavingEdit(true)
+    const { error } = await supabase
+      .from(tbl(company, 'NominalRoll'))
+      .update({
+        rank: editRow.rank,
+        name: editRow.name.trim().toUpperCase(),
+        platoon: editRow.platoon,
+        four_d: editRow.four_d.trim() || null,
+      })
+      .eq('name', editRow.originalName)
+    if (error) {
+      setError(error.message)
+    } else {
+      setEditRow(null)
+      setEditErrors({})
+      await load()
+    }
+    setSavingEdit(false)
+  }
+
+  const query = search.toLowerCase()
+  const filtered = query
+    ? soldiers.filter((s) =>
+        [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
+      )
+    : soldiers
+
+  const sorted = [...filtered].sort((a, b) =>
+    (a.four_d ?? '').localeCompare(b.four_d ?? '') ||
+    (a.platoon ?? '').localeCompare(b.platoon ?? '') ||
+    ((RANK_ORDER[b.rank] ?? 99) - (RANK_ORDER[a.rank] ?? 99)) ||
+    a.name.localeCompare(b.name)
+  )
+
   const grouped = SECTION_ORDER.reduce(
     (acc, type) => {
-      acc[type] = soldiers.filter((s) => getRankType(s.rank) === type)
+      acc[type] = sorted.filter((s) => getRankType(s.rank) === type)
       return acc
     },
     {} as Record<string, Soldier[]>,
   )
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
+
+  function editInputClass(field: string) {
+    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+    return editErrors[field]
+      ? `${base} border-red-500 ring-2 ring-red-500`
+      : `${base} border-gray-300 ${theme.focusRing}`
+  }
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -170,12 +239,30 @@ export default function NominalRoll({ company }: { company: Company }) {
           <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
           <p className="text-xs text-gray-500">{soldiers.length} personnel</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
-        >
-          {showForm ? 'Cancel' : '+ Add'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="px-4 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
+          >
+            Bulk Import
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+          >
+            {showForm ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <input
+          type="search"
+          placeholder="Search by rank, name, platoon…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+        />
       </div>
 
       {error && (
@@ -246,30 +333,121 @@ export default function NominalRoll({ company }: { company: Company }) {
                       <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Rank</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Platoon</th>
-                      <th className="w-10" />
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">4D</th>
+                      <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {group.map((s, i) => (
-                      <tr
-                        key={s.name}
-                        className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}
-                      >
-                        <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
-                        <td className="px-4 py-3 font-medium">{s.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => deleteSoldier(s.name)}
-                            disabled={deletingName === s.name}
-                            className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50 p-1"
-                            title="Remove"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {group.map((s, i) => {
+                      const isEditing = editRow?.originalName === s.name
+                      return (
+                        <tr
+                          key={s.name}
+                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                        >
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2">
+                                <RankSearch
+                                  value={editRow.rank}
+                                  onChange={(rank) => setEditRow({ ...editRow, rank })}
+                                  inputClass={editInputClass('rank')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editRow.name}
+                                  onChange={(e) => setEditRow({ ...editRow, name: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') updateSoldier()
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  className={editInputClass('name')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={editRow.platoon}
+                                  onChange={(e) => setEditRow({ ...editRow, platoon: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  className={editInputClass('platoon')}
+                                >
+                                  <option value="">—</option>
+                                  {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={editRow.four_d}
+                                  onChange={(e) => setEditRow({ ...editRow, four_d: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') updateSoldier()
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  placeholder="e.g. 1234A"
+                                  className={editInputClass('four_d')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={updateSoldier}
+                                    disabled={savingEdit}
+                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                  >
+                                    {savingEdit ? '…' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditRow(null); setEditErrors({}) }}
+                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
+                              <td className="px-4 py-3 font-medium">{s.name}</td>
+                              <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '—'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1 justify-end items-center">
+                                  <button
+                                    onClick={() => confirmDeleteName === s.name
+                                      ? (setConfirmDeleteName(null), deleteSoldier(s.name))
+                                      : (setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setEditErrors({}))}
+                                    disabled={deletingName === s.name}
+                                    className={confirmDeleteName === s.name
+                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
+                                    title={confirmDeleteName === s.name ? 'Confirm delete' : 'Edit'}
+                                  >
+                                    {confirmDeleteName === s.name ? 'Yes' : '✎'}
+                                  </button>
+                                  <button
+                                    onClick={() => confirmDeleteName === s.name ? setConfirmDeleteName(null) : setConfirmDeleteName(s.name)}
+                                    disabled={deletingName === s.name}
+                                    className={confirmDeleteName === s.name
+                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
+                                    title={confirmDeleteName === s.name ? 'Cancel' : 'Remove'}
+                                  >
+                                    {confirmDeleteName === s.name ? 'No' : '✕'}
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -288,6 +466,15 @@ export default function NominalRoll({ company }: { company: Company }) {
             Add the first soldier
           </button>
         </div>
+      )}
+
+      {showImport && (
+        <BulkImportModal
+          company={company}
+          soldiers={soldiers}
+          onClose={() => setShowImport(false)}
+          onImported={async () => { await load(); setShowImport(false) }}
+        />
       )}
     </div>
   )
