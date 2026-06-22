@@ -79,8 +79,8 @@ function RankSearch({
 
 const RANKS_BY_TYPE = {
   Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
-  WOSPEC: ['3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO', 'ME1', 'ME2', 'ME3'],
-  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC', '3SG', '2SG', '1SG', 'SSG', 'MSG'],
+  WOSPEC: ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
+  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC'],
 }
 
 function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
@@ -90,6 +90,7 @@ function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
 }
 
 const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
+const RANK_ORDER = Object.fromEntries(Object.values(RANKS_BY_TYPE).flat().map((r, i) => [r, i]))
 
 const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =>
   ranks.map((rank) => ({ rank, type })),
@@ -109,6 +110,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
+  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null)
 
   const [editRow, setEditRow] = useState<{
     originalName: string
@@ -204,9 +206,16 @@ export default function NominalRoll({ company }: { company: Company }) {
       )
     : soldiers
 
+  const sorted = [...filtered].sort((a, b) =>
+    (a.four_d ?? '').localeCompare(b.four_d ?? '') ||
+    (a.platoon ?? '').localeCompare(b.platoon ?? '') ||
+    ((RANK_ORDER[b.rank] ?? 99) - (RANK_ORDER[a.rank] ?? 99)) ||
+    a.name.localeCompare(b.name)
+  )
+
   const grouped = SECTION_ORDER.reduce(
     (acc, type) => {
-      acc[type] = filtered.filter((s) => getRankType(s.rank) === type)
+      acc[type] = sorted.filter((s) => getRankType(s.rank) === type)
       return acc
     },
     {} as Record<string, Soldier[]>,
@@ -411,22 +420,26 @@ export default function NominalRoll({ company }: { company: Company }) {
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
-                                    onClick={() => {
-                                      setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' })
-                                      setEditErrors({})
-                                    }}
-                                    className="text-gray-300 hover:text-gray-600 transition-colors text-sm p-1 opacity-0 group-hover:opacity-100"
-                                    title="Edit"
+                                    onClick={() => confirmDeleteName === s.name
+                                      ? (setConfirmDeleteName(null), deleteSoldier(s.name))
+                                      : (setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setEditErrors({}))}
+                                    disabled={deletingName === s.name}
+                                    className={confirmDeleteName === s.name
+                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
+                                    title={confirmDeleteName === s.name ? 'Confirm delete' : 'Edit'}
                                   >
-                                    ✎
+                                    {confirmDeleteName === s.name ? 'Yes' : '✎'}
                                   </button>
                                   <button
-                                    onClick={() => deleteSoldier(s.name)}
+                                    onClick={() => confirmDeleteName === s.name ? setConfirmDeleteName(null) : setConfirmDeleteName(s.name)}
                                     disabled={deletingName === s.name}
-                                    className="text-gray-300 hover:text-red-500 transition-colors text-xs disabled:opacity-50 p-1 opacity-0 group-hover:opacity-100"
-                                    title="Remove"
+                                    className={confirmDeleteName === s.name
+                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
+                                    title={confirmDeleteName === s.name ? 'Cancel' : 'Remove'}
                                   >
-                                    ✕
+                                    {confirmDeleteName === s.name ? 'No' : '✕'}
                                   </button>
                                 </div>
                               </td>
