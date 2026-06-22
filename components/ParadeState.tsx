@@ -182,6 +182,8 @@ export default function ParadeState({
 
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
+  const [exSearch, setExSearch] = useState('')
+  const [dutySearch, setDutySearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
   const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
@@ -625,6 +627,14 @@ export default function ParadeState({
             </div>
           )}
 
+          <input
+            type="search"
+            placeholder="Search by name…"
+            value={dutySearch}
+            onChange={e => setDutySearch(e.target.value)}
+            className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+          />
+
           {duties.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">No duties for this date.</div>
           ) : (
@@ -639,7 +649,7 @@ export default function ParadeState({
                     </tr>
                   </thead>
                   <tbody>
-                    {duties.map((d, i) => {
+                    {(dutySearch ? duties.filter(d => d.name?.toLowerCase().includes(dutySearch.toLowerCase())) : duties).map((d, i) => {
                       const isEditing = editDuty?.duty_type === d.duty_type
                       return (
                         <tr
@@ -913,6 +923,14 @@ export default function ParadeState({
             )
           })()}
 
+          <input
+            type="search"
+            placeholder="Search by name…"
+            value={exSearch}
+            onChange={e => setExSearch(e.target.value)}
+            className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+          />
+
           {exceptions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
               No exceptions.
@@ -932,7 +950,7 @@ export default function ParadeState({
                     </tr>
                   </thead>
                   <tbody>
-                    {exceptions.map((e, i) => {
+                    {(exSearch ? exceptions.filter(e => e.name.toLowerCase().includes(exSearch.toLowerCase())) : exceptions).map((e, i) => {
                       const isEditing = editEx?.id === e.id
                       const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
                       const today = todayISO()
