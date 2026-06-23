@@ -5,11 +5,28 @@ import Link from 'next/link'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, DUTY_ELIGIBILITY } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
 import { useAuth } from '@/lib/useAuth'
 import CommanderLoginForm from './CommanderLoginForm'
 
 const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+
+// ponytail: must match RANK_ORDER in ParadeState.tsx — same ordering used by rank rule from/to
+const RANK_ORDER = [
+  'REC','PTE','LCP','CPL','CFC',
+  '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
+  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
+]
+
+const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
+  CDO:  { from: '2LT', to: 'LTA' },
+  CDS:  { from: '2SG', to: '1SG' },
+  COS:  { from: 'PTE', to: '3SG' },
+  PDS1: { from: '3SG', to: '1SG' },
+  PDS2: { from: '3SG', to: '1SG' },
+  PDS3: { from: '3SG', to: '1SG' },
+  PDS4: { from: '3SG', to: '1SG' },
+}
 
 export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
   const theme = COMPANY_THEMES[company]
@@ -24,6 +41,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const [duties, setDuties] = useState<DutyEntry[]>([])
   const [weights, setWeights] = useState<Record<string, number>>({})
   const [eligibilityOverrides, setEligibilityOverrides] = useState<Record<string, string[]>>({})
+  const [rankRuleOverrides, setRankRuleOverrides] = useState<Record<string, { from: string; to: string }>>({})
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'total' | 'cos'>('total')
@@ -36,11 +54,12 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   async function load() {
     setLoading(true)
     const sb = getSupabaseClient(company)
-    const [{ data: sol }, { data: dut }, { data: cfg }, { data: elig }] = await Promise.all([
+    const [{ data: sol }, { data: dut }, { data: cfg }, { data: elig }, { data: rules }] = await Promise.all([
       sb.from(tbl(company, 'NominalRoll')).select('*'),
       sb.from(tbl(company, 'Duty')).select('*'),
       sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'weight_%'),
       sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'eligible_%'),
+      sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'rank_rule_%'),
     ])
     setSoldiers((sol ?? []) as unknown as Soldier[])
     setDuties((dut ?? []) as unknown as DutyEntry[])
@@ -54,6 +73,11 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
       try { ov[row.parade_type.replace('eligible_', '')] = JSON.parse(row.time) } catch {}
     }
     setEligibilityOverrides(ov)
+    const rr: Record<string, { from: string; to: string }> = {}
+    for (const row of (rules ?? []) as unknown as Configuration[]) {
+      try { rr[row.parade_type.replace('rank_rule_', '')] = JSON.parse(row.time) } catch {}
+    }
+    setRankRuleOverrides(rr)
     setLoading(false)
   }
 
@@ -82,13 +106,24 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   function isEligible(dt: string, s: Soldier) {
     const ov = eligibilityOverrides[dt]
     if (ov && ov.length > 0) return ov.includes(s.name)
-    return DUTY_ELIGIBILITY[dt]?.(s.rank) ?? false
+    const rule = rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt]
+    if (!rule) return false
+    const fi = RANK_ORDER.indexOf(rule.from)
+    const ti = RANK_ORDER.indexOf(rule.to)
+    const ri = RANK_ORDER.indexOf(s.rank)
+    return fi !== -1 && ti !== -1 && ri !== -1 && ri >= fi && ri <= ti
   }
 
-  const visible = useMemo(
-    () => filter === 'all' ? soldiers : soldiers.filter(s => isEligible(filter, s)),
+  const eligibleForDuty = useMemo(
+    () => soldiers.filter(s => dutyTypes.some(dt => isEligible(dt, s))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [soldiers, filter, eligibilityOverrides],
+    [soldiers, eligibilityOverrides, rankRuleOverrides],
+  )
+
+  const visible = useMemo(
+    () => filter === 'all' ? eligibleForDuty : eligibleForDuty.filter(s => isEligible(filter, s)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides],
   )
 
   const cosPoints = useMemo(() => {

@@ -119,13 +119,13 @@ const RANK_ORDER = [
 ]
 
 const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
-  CDO:  { from: '2LT', to: 'COL' },
-  CDS:  { from: '2SG', to: 'CWO' },
-  COS:  { from: 'PTE', to: 'COL' },
-  PDS1: { from: '3SG', to: 'CWO' },
-  PDS2: { from: '3SG', to: 'CWO' },
-  PDS3: { from: '3SG', to: 'CWO' },
-  PDS4: { from: '3SG', to: 'CWO' },
+  CDO:  { from: '2LT', to: 'LTA' },
+  CDS:  { from: '2SG', to: '1SG' },
+  COS:  { from: 'PTE', to: '3SG' },
+  PDS1: { from: '3SG', to: '1SG' },
+  PDS2: { from: '3SG', to: '1SG' },
+  PDS3: { from: '3SG', to: '1SG' },
+  PDS4: { from: '3SG', to: '1SG' },
 }
 
 type Section = 'config' | 'duties' | 'exceptions'
@@ -484,9 +484,7 @@ export default function ParadeState({
   async function saveRankRules() {
     setSavingRankRules(true)
     const supabase = getSupabaseClient(company)
-    const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
-      ? PARADE_CONFIG[company].visibleDutyTypes
-      : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+    const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
     const rows = dutyTypes.map(dt => ({
       parade_type: `rank_rule_${dt}`,
       time: JSON.stringify(editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
@@ -685,9 +683,7 @@ export default function ParadeState({
             <button
               onClick={() => {
                 if (!showRankRules) {
-                  const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
-                    ? PARADE_CONFIG[company].visibleDutyTypes
-                    : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+                  const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
                   setEditRankRules(Object.fromEntries(dutyTypes.map(dt => [dt, rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }])))
                 }
                 setShowRankRules(v => !v)
@@ -704,9 +700,7 @@ export default function ParadeState({
 
           {/* Rank rule editor — triggered by gear icon above */}
           {showRankRules && (() => {
-            const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
-              ? PARADE_CONFIG[company].visibleDutyTypes
-              : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+            const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
             return (
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <p className="text-xs text-gray-500">Set the eligible rank range for each duty type.</p>
