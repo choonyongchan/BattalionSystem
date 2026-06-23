@@ -153,6 +153,12 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
+  const [exceptionsSortDateAsc, setExceptionsSortAsc] = useState(true)
+  const [exceptionsSortNameAsc, setexceptionsSortNameAsc] = useState(true)
+  const [exceptionsLastSortAction, setexceptionsLastSortAction] = useState<'date' | 'name'>('date')
+  const [search, setSearch] = useState('')
+  const [exceptionShowAll, setExceptionShowAll] = useState(false)
+
 
   // Strength overrides
   const [strOverrides, setStrOverrides] = useState<Record<string, Record<string, string>>>({})
@@ -217,14 +223,51 @@ export default function ParadeState({
     setLoading(false)
   }
 
-  const activeExceptions = exceptions.filter((e) => {
-    const d = new Date(date)
-    const start = e.start ? new Date(e.start) : null
-    const end = e.end ? new Date(e.end) : null
-    if (start && d < start) return false
-    if (end && d > end) return false
-    return true
-  })
+  const query = search.trim().toLowerCase()
+  const queriedExceptions = exceptions.filter((e) => {
+    if (query) return (
+        (e.name ?? '').toLowerCase().includes(query) ||
+        (e.reason ?? '').toLowerCase().includes(query) ||
+        (String(e.scope ?? '')).toLowerCase().includes(query)
+      )
+    }
+  )
+
+  const defaultExceptions = exceptions
+    .filter((e) => {
+      const d = new Date(date)
+      const start = e.start ? new Date(e.start) : null
+      const end = e.end ? new Date(e.end) : null
+      if (start && d < start) return false
+      if (end && d > end) return false
+
+      return true
+
+    })
+    .sort((a, b) => {
+      const compareByDate = () => {
+        const dateA = new Date(a.start).getTime()
+        const dateB = new Date(b.start).getTime()
+        return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+      }
+
+      const compareByName = () => {
+        const nameA = a.name.toLowerCase()
+        const nameB = b.name.toLowerCase()
+        return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+      }
+
+      return exceptionsLastSortAction === 'date'
+        ? compareByDate() || compareByName()
+        : compareByName() || compareByDate()
+    })
+
+  // If there's a query, use the queried exceptions; otherwise, filter by date and sort
+  var activeExceptions = query ? queriedExceptions : defaultExceptions
+  if (exceptionShowAll) {
+    // if show all is true then show all exceptions
+    activeExceptions = exceptions
+  }
 
   const computedStrength = useMemo(() => {
     const result: Record<string, Record<string, number>> = {}
@@ -732,14 +775,7 @@ export default function ParadeState({
       {/* Exceptions section */}
       {activeSection === 'exceptions' && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <input
-              type="search"
-              placeholder="Search by name…"
-              value={exSearch}
-              onChange={e => setExSearch(e.target.value)}
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-            />
+          <div className="flex justify-end">
             <button
               onClick={() => {
                 if (showForm) {
@@ -749,25 +785,24 @@ export default function ParadeState({
                 }
                 setShowForm(!showForm)
               }}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
+              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
             >
               {showForm ? 'Cancel' : '+ Exception'}
             </button>
           </div>
 
-          {showForm && (() => {
-            const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-            return (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Soldier</label>
-                  <SoldierSearch
-                    soldiers={soldiers}
-                    value={exForm.name}
-                    onChange={(name) => setExForm({ ...exForm, name })}
-                    inputClass={inputClass}
-                  />
-                </div>
+            {showForm && (() => {
+              const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+              return (
+                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Soldier</label>
+                    <SoldierSearch
+                      soldiers={soldiers}
+                      value={exForm.name}
+                      onChange={(name) => setExForm({ ...exForm, name })}
+                      inputClass={inputClass} />
+                  </div>
 
                 <div>
                   <label className="block text-xs text-gray-500 mb-2">Scope</label>
@@ -776,11 +811,12 @@ export default function ParadeState({
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setExForm({ ...exForm, scope: s, counts_as_absence: ABSENCE_SCOPES.includes(s) })}
-                        className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${exForm.scope === s
+                        onClick={() => setExForm({ ...exForm, scope: s })}
+                        className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${
+                          exForm.scope === s
                             ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                          }`}
+                        }`}
                       >
                         {s}
                       </button>
@@ -788,72 +824,62 @@ export default function ParadeState({
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={exForm.counts_as_absence}
-                    onChange={(e) => setExForm({ ...exForm, counts_as_absence: e.target.checked })}
-                    className="w-4 h-4 rounded"
-                  />
-                  Counts as absence
-                </label>
-
                 {exForm.scope === 'Status' ? (
                   <>
                     {statusRows.map((row, i) => {
                       const allReasons = statusRows.map((r) => r.reason.trim().toLowerCase())
                       const isDupe = row.reason.trim() !== '' && allReasons.filter((r) => r === row.reason.trim().toLowerCase()).length > 1
                       return (
-                        <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
-                          {statusRows.length > 1 && (
-                            <div className="flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
-                                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                              >
-                                × Remove
-                              </button>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">From</label>
-                              <input
-                                type="date"
-                                value={row.start}
-                                onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
-                                className={inputClass}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">To</label>
-                              <input
-                                type="date"
-                                value={row.end}
-                                onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
-                                className={inputClass}
-                              />
-                            </div>
+                      <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+                        {statusRows.length > 1 && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
+                              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              × Remove
+                            </button>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">From</label>
+                            <input
+                              type="date"
+                              value={row.start}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
+                              className={inputClass}
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs mb-1">
-                              {isDupe
-                                ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
-                                : <span className="text-gray-500">Reason</span>
-                              }
-                            </label>
+                            <label className="block text-xs text-gray-500 mb-1">To</label>
                             <input
-                              type="text"
-                              placeholder={REASON_HINTS['Status']}
-                              value={row.reason}
-                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
-                              className={isDupe
-                                ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
-                                : inputClass}
+                              type="date"
+                              value={row.end}
+                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
+                              className={inputClass}
                             />
                           </div>
                         </div>
+                        <div>
+                          <label className="block text-xs mb-1">
+                            {isDupe
+                              ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
+                              : <span className="text-gray-500">Reason</span>
+                            }
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={REASON_HINTS['Status']}
+                            value={row.reason}
+                            onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
+                            className={isDupe
+                              ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
+                              : inputClass}
+                          />
+                        </div>
+                      </div>
                       )
                     })}
                     <button
@@ -897,60 +923,32 @@ export default function ParadeState({
                   </div>
                 )}
 
-                {exForm.scope === 'MA' && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Time (optional)</label>
-                    <input
-                      type="text"
-                      value={exForm.time}
-                      onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
-                      placeholder="HH:MM"
-                      maxLength={5}
-                      className={exForm.time && !isValidTime(exForm.time) ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200` : inputClass}
-                    />
-                  </div>
-                )}
+                  {exForm.scope !== 'Status' && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                      <input
+                        type="text"
+                        placeholder={REASON_HINTS[exForm.scope]}
+                        value={exForm.reason}
+                        onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
+                        className={inputClass} />
+                    </div>
+                  )}
 
-                {exForm.scope === 'MA' && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Medical Center</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Kranji Camp Medical Centre"
-                      value={medCenter}
-                      onChange={(e) => setMedCenter(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
+                  <button
+                    onClick={addException}
+                    disabled={!isExceptionValid()}
+                    className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                  >
+                    Add Exception
+                  </button>
+                </div>
+              )
+            })()}
 
-                {exForm.scope !== 'Status' && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Reason</label>
-                    <input
-                      type="text"
-                      placeholder={REASON_HINTS[exForm.scope]}
-                      value={exForm.reason}
-                      onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
-
-                <button
-                  onClick={addException}
-                  disabled={!isExceptionValid()}
-                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
-                >
-                  Add Exception
-                </button>
-              </div>
-            )
-          })()}
-
-          {exceptions.length === 0 ? (
+          {activeExceptions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
-              No exceptions.
+              No exceptions for this date.
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -960,24 +958,18 @@ export default function ParadeState({
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Soldier</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
-                      <th className="px-4 py-3 font-medium text-gray-500 text-center">Absent</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Period</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
                       <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {(exSearch ? exceptions.filter(e => e.name.toLowerCase().includes(exSearch.toLowerCase())) : exceptions).map((e, i) => {
+                    {activeExceptions.map((e, i) => {
                       const isEditing = editEx?.id === e.id
                       const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
-                      const today = todayISO()
-                      const startAfter = !!e.start && e.start > today
-                      const endBefore = !!e.end && e.end < today
-                      const isWarned = !isEditing && (startAfter || endBefore)
                       return (
                         <React.Fragment key={e.id}>
-                          <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''} ${isWarned ? 'opacity-70 bg-yellow-50/40' : ''}`}>
+                          <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
                             {isEditing ? (
                               <>
                                 <td className="px-2 py-2">
@@ -995,23 +987,16 @@ export default function ParadeState({
                                         key={s}
                                         type="button"
                                         onClick={() => setEditEx({ ...editEx!, scope: s })}
-                                        className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${editEx!.scope === s
+                                        className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${
+                                          editEx!.scope === s
                                             ? `${theme.buttonBg} text-white border-transparent`
                                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                                          }`}
+                                        }`}
                                       >
                                         {s}
                                       </button>
                                     ))}
                                   </div>
-                                </td>
-                                <td className="px-2 py-2 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={editEx!.counts_as_absence}
-                                    onChange={(e2) => setEditEx({ ...editEx!, counts_as_absence: e2.target.checked })}
-                                    className="w-4 h-4 rounded"
-                                  />
                                 </td>
                                 <td className="px-2 py-2">
                                   {editSingleDate ? (
@@ -1040,15 +1025,6 @@ export default function ParadeState({
                                   )}
                                 </td>
                                 <td className="px-2 py-2">
-                                  {editEx!.scope === 'MA' && (
-                                    <input
-                                      type="text"
-                                      value={editMedCenter}
-                                      onChange={(e2) => setEditMedCenter(e2.target.value)}
-                                      placeholder="Medical Center"
-                                      className={`${exEditInputClass('reason')} mb-1`}
-                                    />
-                                  )}
                                   <input
                                     type="text"
                                     value={editEx!.reason}
@@ -1060,18 +1036,6 @@ export default function ParadeState({
                                     placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
                                     className={exEditInputClass('reason')}
                                   />
-                                </td>
-                                <td className="px-2 py-2">
-                                  {editEx!.scope === 'MA' && (
-                                    <input
-                                      type="text"
-                                      value={editEx!.time ?? ''}
-                                      onChange={(e2) => setEditEx({ ...editEx!, time: e2.target.value })}
-                                      placeholder="HH:MM"
-                                      maxLength={5}
-                                      className={(() => { const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'; return editEx!.time && !isValidTime(editEx!.time ?? '') ? `${base} border-yellow-300 ring-2 ring-yellow-200` : `${base} border-gray-300 ${theme.focusRing}` })()}
-                                    />
-                                  )}
                                 </td>
                                 <td className="px-2 py-2">
                                   <div className="flex gap-1 justify-end">
@@ -1093,52 +1057,22 @@ export default function ParadeState({
                               </>
                             ) : (
                               <>
-                                <td className={`px-4 py-3 font-medium whitespace-nowrap${isWarned ? ' border-l-2 border-yellow-300' : ''}`}>{displayName(e.name, soldiers)}</td>
+                                <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
                                     {e.scope ?? '—'}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={e.counts_as_absence}
-                                    onChange={(ev) => toggleAbsence(e.id, ev.target.checked)}
-                                    className="w-4 h-4 rounded cursor-pointer"
-                                  />
-                                </td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {e.start && e.end ? (
-                                    <>
-                                      <span className={startAfter ? 'bg-yellow-100 rounded px-0.5' : ''}>{toSGDate(e.start)}</span>
-                                      {' – '}
-                                      <span className={endBefore ? 'bg-yellow-100 rounded px-0.5' : ''}>{toSGDate(e.end)}</span>
-                                    </>
-                                  ) : '—'}
+                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
-                                <td className="px-4 py-3 text-gray-500 text-xs">{e.time ?? ''}</td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
                                       onClick={() => confirmDeleteEx === e.id
                                         ? (setConfirmDeleteEx(null), deleteException(e.id))
-                                        : (() => {
-                                          if (e.scope === 'MA') {
-                                            const idx = e.reason.indexOf(': ')
-                                            if (idx !== -1) {
-                                              setEditMedCenter(e.reason.slice(0, idx))
-                                              setEditEx({ ...e, reason: e.reason.slice(idx + 2) })
-                                            } else {
-                                              setEditMedCenter('')
-                                              setEditEx({ ...e })
-                                            }
-                                          } else {
-                                            setEditMedCenter('')
-                                            setEditEx({ ...e })
-                                          }
-                                          setEditExErrors({})
-                                        })()}
+                                        : (setEditEx({ ...e }), setEditExErrors({}))}
                                       className={confirmDeleteEx === e.id
                                         ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
                                         : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
