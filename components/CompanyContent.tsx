@@ -38,16 +38,19 @@ export default function CompanyContent({
         </Link>
         <span className="text-yellow-500 relative z-10">|</span>
         <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">{label} Coy</h1>
-        {!authLoading && isCommander && (
-          <div className="ml-auto relative z-10">
+        <div className="ml-auto flex items-center gap-3 relative z-10">
+          <Link href={`/${company}/dashboard`} className="text-yellow-700 hover:text-yellow-900 text-xs font-medium transition-colors">
+            Dashboard →
+          </Link>
+          {!authLoading && isCommander && (
             <button
               onClick={signOut}
               className="text-xs text-yellow-700 hover:text-yellow-900 font-medium transition-colors"
             >
               Sign Out
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </nav>
 
       <div className="bg-white border-b border-gray-200">
