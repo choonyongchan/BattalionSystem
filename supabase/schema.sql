@@ -45,8 +45,8 @@ BEGIN
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Configuration" (
-        parade_type text NOT NULL CHECK (parade_type = ANY (ARRAY[''First Parade'',''Last Parade''])),
-        time        time NOT NULL,
+        parade_type text NOT NULL,
+        time        text NOT NULL,
         PRIMARY KEY (parade_type)
       )', c);
 

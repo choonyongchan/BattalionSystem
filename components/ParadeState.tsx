@@ -5,7 +5,7 @@ import { getSupabaseClient, tbl } from '@/lib/supabase'
 import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, DUTY_ELIGIBILITY } from '@/lib/companies'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
 
@@ -112,6 +112,22 @@ const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
 
+const RANK_ORDER = [
+  'REC','PTE','LCP','CPL','CFC',
+  '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
+  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
+]
+
+const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
+  CDO:  { from: '2LT', to: 'COL' },
+  CDS:  { from: '2SG', to: 'CWO' },
+  COS:  { from: 'PTE', to: 'COL' },
+  PDS1: { from: '3SG', to: 'CWO' },
+  PDS2: { from: '3SG', to: 'CWO' },
+  PDS3: { from: '3SG', to: 'CWO' },
+  PDS4: { from: '3SG', to: 'CWO' },
+}
+
 type Section = 'config' | 'duties' | 'exceptions'
 
 function toSGDate(iso: string) {
@@ -169,7 +185,6 @@ export default function ParadeState({
   const [medCenter, setMedCenter] = useState('')
   const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
-  const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
   const [savingParade, setSavingParade] = useState<string | null>(null)
 
@@ -178,10 +193,14 @@ export default function ParadeState({
   const [savingDuty, setSavingDuty] = useState(false)
   const [confirmDeleteDuty, setConfirmDeleteDuty] = useState<string | null>(null)
 
+  // Duty rank rule editor
+  const [showRankRules, setShowRankRules] = useState(false)
+  const [editRankRules, setEditRankRules] = useState<Record<string, { from: string; to: string }>>({})
+  const [savingRankRules, setSavingRankRules] = useState(false)
+
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
   const [exSearch, setExSearch] = useState('')
-  const [dutySearch, setDutySearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
   const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
@@ -267,6 +286,39 @@ export default function ParadeState({
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
     activeExceptions = exceptions
+  }
+
+  const eligibilityOverrides = useMemo(() => {
+    const ov: Record<string, string[]> = {}
+    for (const c of configs) {
+      if (!c.parade_type.startsWith('eligible_')) continue
+      try { ov[c.parade_type.replace('eligible_', '')] = JSON.parse(c.time) } catch {}
+    }
+    return ov
+  }, [configs])
+
+  const rankRuleOverrides = useMemo(() => {
+    const ov: Record<string, { from: string; to: string }> = {}
+    for (const c of configs) {
+      if (!c.parade_type.startsWith('rank_rule_')) continue
+      try { ov[c.parade_type.replace('rank_rule_', '')] = JSON.parse(c.time) } catch {}
+    }
+    return ov
+  }, [configs])
+
+  function eligibleSoldiers(dt: string): Soldier[] {
+    const nameOv = eligibilityOverrides[dt]
+    if (nameOv && nameOv.length > 0) return soldiers.filter(s => nameOv.includes(s.name))
+    const rule = rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt]
+    if (rule) {
+      const fromIdx = RANK_ORDER.indexOf(rule.from)
+      const toIdx = RANK_ORDER.indexOf(rule.to)
+      return soldiers.filter(s => {
+        const idx = RANK_ORDER.indexOf(s.rank)
+        return idx !== -1 && idx >= fromIdx && idx <= toIdx
+      })
+    }
+    return soldiers.filter(s => DUTY_ELIGIBILITY[dt]?.(s.rank) ?? true)
   }
 
   const computedStrength = useMemo(() => {
@@ -359,20 +411,6 @@ export default function ParadeState({
     await load()
   }
 
-  async function addDuty() {
-    if (!dutyForm.duty_type) return
-    const supabase = getSupabaseClient(company)
-    const { error } = await supabase.from(tbl(company, 'Duty')).upsert({
-      duty_type: dutyForm.duty_type,
-      date,
-      name: dutyForm.name.toUpperCase(),
-    })
-    if (error) { setError(error.message); return }
-    setShowForm(false)
-    setDutyForm({ duty_type: '', name: '' })
-    await load()
-  }
-
   async function deleteDuty(duty_type: string) {
     const supabase = getSupabaseClient(company)
     await supabase.from(tbl(company, 'Duty')).delete().eq('duty_type', duty_type).eq('date', date)
@@ -441,6 +479,22 @@ export default function ParadeState({
     const { error } = await supabase.from(tbl(company, 'Configuration')).upsert({ parade_type, time: paradeTimes[parade_type] })
     if (error) setError(error.message)
     setSavingParade(null)
+  }
+
+  async function saveRankRules() {
+    setSavingRankRules(true)
+    const supabase = getSupabaseClient(company)
+    const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
+      ? PARADE_CONFIG[company].visibleDutyTypes
+      : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+    const rows = dutyTypes.map(dt => ({
+      parade_type: `rank_rule_${dt}`,
+      time: JSON.stringify(editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
+    }))
+    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert(rows, { onConflict: 'parade_type' } as any)
+    if (error) setError(error.message)
+    else { await load(); setShowRankRules(false) }
+    setSavingRankRules(false)
   }
 
   function generate(paradeType: 'First Parade' | 'Last Parade') {
@@ -627,148 +681,151 @@ export default function ParadeState({
             />
             <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
           </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="search"
-              placeholder="Search by name…"
-              value={dutySearch}
-              onChange={e => setDutySearch(e.target.value)}
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-            />
+          <div className="flex items-center gap-3 justify-end">
             <button
-              onClick={() => setShowForm(!showForm)}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
+              onClick={() => {
+                if (!showRankRules) {
+                  const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
+                    ? PARADE_CONFIG[company].visibleDutyTypes
+                    : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+                  setEditRankRules(Object.fromEntries(dutyTypes.map(dt => [dt, rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }])))
+                }
+                setShowRankRules(v => !v)
+              }}
+              title="Edit Duty Rank Rules"
+              className={`shrink-0 p-2.5 rounded-xl transition-colors ${showRankRules ? `${theme.buttonBg} text-white` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
             >
-              {showForm ? 'Cancel' : '+ Duty'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
 
-          {showForm && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-2">Duty Type</label>
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {DUTY_TYPES.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDutyForm({ ...dutyForm, duty_type: d })}
-                      className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${dutyForm.duty_type === d
-                          ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
+          {/* Rank rule editor — triggered by gear icon above */}
+          {showRankRules && (() => {
+            const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
+              ? PARADE_CONFIG[company].visibleDutyTypes
+              : ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+            return (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <p className="text-xs text-gray-500">Set the eligible rank range for each duty type.</p>
+                {dutyTypes.map(dt => {
+                  const rule = editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }
+                  return (
+                    <div key={dt} className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-600 uppercase w-10 shrink-0">{dt}</span>
+                      <select
+                        value={rule.from}
+                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, from: e.target.value } }))}
+                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
+                      >
+                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <span className="text-xs text-gray-400 shrink-0">–</span>
+                      <select
+                        value={rule.to}
+                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, to: e.target.value } }))}
+                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
+                      >
+                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  )
+                })}
+                <button
+                  onClick={saveRankRules}
+                  disabled={savingRankRules}
+                  className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                >
+                  {savingRankRules ? 'Saving…' : 'Save Rules'}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Assigned To</label>
-                <SoldierSearch
-                  soldiers={soldiers}
-                  value={dutyForm.name}
-                  onChange={(name) => setDutyForm({ ...dutyForm, name })}
-                  inputClass={inputClass}
-                />
-              </div>
-              <button
-                onClick={addDuty}
-                disabled={!dutyForm.duty_type}
-                className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
-              >
-                Add Duty
-              </button>
-            </div>
-          )}
+            )
+          })()}
 
-          {duties.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">No duties for this date.</div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
-                      <th className="w-24" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(dutySearch ? duties.filter(d => d.name?.toLowerCase().includes(dutySearch.toLowerCase())) : duties).map((d, i) => {
-                      const isEditing = editDuty?.duty_type === d.duty_type
-                      return (
-                        <tr
-                          key={d.duty_type}
-                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
-                        >
-                          <td className="px-4 py-3 font-medium">{d.duty_type}</td>
-                          {isEditing ? (
-                            <>
-                              <td className="px-2 py-2">
-                                <SoldierSearch
-                                  soldiers={soldiers}
-                                  value={editDuty.name}
-                                  onChange={(name) => setEditDuty({ ...editDuty, name })}
-                                  inputClass={dutyEditInputClass}
-                                />
-                              </td>
-                              <td className="px-2 py-2">
-                                <div className="flex gap-1 justify-end">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
+                    <th className="w-24" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {DUTY_TYPES.map((dt, i) => {
+                    const d = duties.find(x => x.duty_type === dt)
+                    const isEditing = editDuty?.duty_type === dt
+                    return (
+                      <tr
+                        key={dt}
+                        className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                      >
+                        <td className="px-4 py-3 font-medium">{dt}</td>
+                        {isEditing ? (
+                          <>
+                            <td className="px-2 py-2">
+                              <SoldierSearch
+                                soldiers={eligibleSoldiers(editDuty.duty_type)}
+                                value={editDuty.name}
+                                onChange={(name) => setEditDuty({ ...editDuty, name })}
+                                inputClass={dutyEditInputClass}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <div className="flex gap-1 justify-end">
+                                <button
+                                  onClick={updateDuty}
+                                  disabled={savingDuty}
+                                  className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                >
+                                  {savingDuty ? '…' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={() => setEditDuty(null)}
+                                  className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-gray-600">{d?.name ? displayName(d.name, soldiers) : '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1 justify-end items-center">
+                                <button
+                                  onClick={() => setEditDuty({ duty_type: dt, name: d?.name ?? '' })}
+                                  className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
+                                  title="Edit"
+                                >
+                                  ✎
+                                </button>
+                                {d && (
                                   <button
-                                    onClick={updateDuty}
-                                    disabled={savingDuty}
-                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
-                                  >
-                                    {savingDuty ? '…' : 'Save'}
-                                  </button>
-                                  <button
-                                    onClick={() => setEditDuty(null)}
-                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="px-4 py-3 text-gray-600">{d.name ? displayName(d.name, soldiers) : 'TBC'}</td>
-                              <td className="px-4 py-3">
-                                <div className="flex gap-1 justify-end items-center">
-                                  <button
-                                    onClick={() => confirmDeleteDuty === d.duty_type
-                                      ? (setConfirmDeleteDuty(null), deleteDuty(d.duty_type))
-                                      : setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
-                                    className={confirmDeleteDuty === d.duty_type
+                                    onClick={() => confirmDeleteDuty === dt ? (setConfirmDeleteDuty(null), deleteDuty(dt)) : setConfirmDeleteDuty(dt)}
+                                    className={confirmDeleteDuty === dt
                                       ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
-                                    title={confirmDeleteDuty === d.duty_type ? 'Confirm delete' : 'Edit'}
-                                  >
-                                    {confirmDeleteDuty === d.duty_type ? 'Yes' : '✎'}
-                                  </button>
-                                  <button
-                                    onClick={() => confirmDeleteDuty === d.duty_type ? setConfirmDeleteDuty(null) : setConfirmDeleteDuty(d.duty_type)}
-                                    className={confirmDeleteDuty === d.duty_type
-                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                    title={confirmDeleteDuty === d.duty_type ? 'Cancel' : 'Remove'}
+                                    title={confirmDeleteDuty === dt ? 'Confirm clear' : 'Clear'}
                                   >
-                                    {confirmDeleteDuty === d.duty_type ? 'No' : '✕'}
+                                    {confirmDeleteDuty === dt ? 'Yes' : '✕'}
                                   </button>
-                                </div>
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
         </div>
       )}
 

@@ -26,6 +26,27 @@ export function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
   return 'Enlistee'
 }
 
+// ponytail: eligibility hardcoded per spec; rules change with policy, not data
+export const DUTY_ELIGIBILITY: Record<string, (rank: string) => boolean> = {
+  CDO:  r => getRankType(r) === 'Officer',
+  CDS:  r => ['2SG','1SG','SSG','MSG','ME1','ME2','ME3','3WO','2WO','1WO','MWO','SWO','CWO'].includes(r),
+  COS:  r => r !== 'REC',
+  PDS1: r => getRankType(r) === 'WOSPEC',
+  PDS2: r => getRankType(r) === 'WOSPEC',
+  PDS3: r => getRankType(r) === 'WOSPEC',
+  PDS4: r => getRankType(r) === 'WOSPEC',
+}
+
+export const DUTY_ELIGIBILITY_DESC: Record<string, string> = {
+  CDO:  '2LT & above',
+  CDS:  '2SG & above',
+  COS:  'PTE & above',
+  PDS1: '3SG & above',
+  PDS2: '3SG & above',
+  PDS3: '3SG & above',
+  PDS4: '3SG & above',
+}
+
 export interface ScopeConfig {
   key: string
   label: string
