@@ -155,7 +155,8 @@ export default function ParadeState({
   const [exceptionsSortDateAsc, setExceptionsSortAsc] = useState(true)
   const [exceptionsSortNameAsc, setexceptionsSortNameAsc] = useState(true)
   const [exceptionsLastSortAction, setexceptionsLastSortAction] = useState<'date' | 'name'>('date')
-  const [exceptionsShowAll, setexceptionsShowAll] = useState(false)
+  const [search, setSearch] = useState('')
+  const [exceptionShowAll, setExceptionShowAll] = useState(false)
 
 
   // Strength overrides
@@ -217,30 +218,51 @@ export default function ParadeState({
     setLoading(false)
   }
 
-  const activeExceptions = exceptions.filter((e) => {
-    const d = new Date(date)
-    const start = e.start ? new Date(e.start) : null
-    const end = e.end ? new Date(e.end) : null
-    if (start && d < start) return false
-    if (end && d > end) return false
-    return true
-  }).sort((a, b) => {
-    const compareByDate = () => {
-      const dateA = new Date(a.start).getTime()
-      const dateB = new Date(b.start).getTime()
-      return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+  const query = search.trim().toLowerCase()
+  const queriedExceptions = exceptions.filter((e) => {
+    if (query) return (
+        (e.name ?? '').toLowerCase().includes(query) ||
+        (e.reason ?? '').toLowerCase().includes(query) ||
+        (String(e.scope ?? '')).toLowerCase().includes(query)
+      )
     }
-    
-    const compareByName = () => {
-      const nameA = a.name.toLowerCase()
-      const nameB = b.name.toLowerCase()
-      return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
-    }
-    
-    return exceptionsLastSortAction === 'date'
-      ? compareByDate() || compareByName()
-      : compareByName() || compareByDate()
-  })
+  )
+
+  const defaultExceptions = exceptions
+    .filter((e) => {
+      const d = new Date(date)
+      const start = e.start ? new Date(e.start) : null
+      const end = e.end ? new Date(e.end) : null
+      if (start && d < start) return false
+      if (end && d > end) return false
+
+      return true
+
+    })
+    .sort((a, b) => {
+      const compareByDate = () => {
+        const dateA = new Date(a.start).getTime()
+        const dateB = new Date(b.start).getTime()
+        return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+      }
+
+      const compareByName = () => {
+        const nameA = a.name.toLowerCase()
+        const nameB = b.name.toLowerCase()
+        return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+      }
+
+      return exceptionsLastSortAction === 'date'
+        ? compareByDate() || compareByName()
+        : compareByName() || compareByDate()
+    })
+
+  // If there's a query, use the queried exceptions; otherwise, filter by date and sort
+  var activeExceptions = query ? queriedExceptions : defaultExceptions
+  if (exceptionShowAll) {
+    // if show all is true then show all exceptions
+    activeExceptions = exceptions
+  }
 
   const computedStrength = useMemo(() => {
     const result: Record<string, Record<string, number>> = {}
@@ -712,360 +734,376 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
 
       {/* Exceptions section */}
       {activeSection === 'exceptions' && (
+        
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                if (showForm) {
-                  setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
-                  setStatusRows([{ start: date, end: date, reason: '' }])
-                }
-                setShowForm(!showForm)
-              }}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
-            >
-              {showForm ? 'Cancel' : '+ Exception'}
-            </button>
+          <div className="flex items-center justify-between gap-4">
+              <input
+                type="search"
+                placeholder="Search by name, scope, reason..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+              />
+            <div className="flex-shrink-0">
+              <button
+                onClick={() => {
+                  if (showForm) {
+                    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+                    setStatusRows([{ start: date, end: date, reason: '' }])
+                  }
+                  setShowForm(!showForm)
+                }}
+                className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+              >
+                {showForm ? 'Cancel' : '+ Exception'}
+              </button>
+            </div>
           </div>
 
-          {showForm && (() => {
-            const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-            return (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Soldier</label>
-                  <SoldierSearch
-                    soldiers={soldiers}
-                    value={exForm.name}
-                    onChange={(name) => setExForm({ ...exForm, name })}
-                    inputClass={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-500 mb-2">Scope</label>
-                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                    {EXCEPTION_SCOPES.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setExForm({ ...exForm, scope: s })}
-                        className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${
-                          exForm.scope === s
-                            ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {exForm.scope === 'Status' ? (
-                  <>
-                    {statusRows.map((row, i) => {
-                      const allReasons = statusRows.map((r) => r.reason.trim().toLowerCase())
-                      const isDupe = row.reason.trim() !== '' && allReasons.filter((r) => r === row.reason.trim().toLowerCase()).length > 1
-                      return (
-                      <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
-                        {statusRows.length > 1 && (
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
-                              className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              × Remove
-                            </button>
-                          </div>
-                        )}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">From</label>
-                            <input
-                              type="date"
-                              value={row.start}
-                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
-                              className={inputClass}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">To</label>
-                            <input
-                              type="date"
-                              value={row.end}
-                              onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
-                              className={inputClass}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-xs mb-1">
-                            {isDupe
-                              ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
-                              : <span className="text-gray-500">Reason</span>
-                            }
-                          </label>
-                          <input
-                            type="text"
-                            placeholder={REASON_HINTS['Status']}
-                            value={row.reason}
-                            onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
-                            className={isDupe
-                              ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
-                              : inputClass}
-                          />
-                        </div>
-                      </div>
-                      )
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
-                      className="w-full py-2 text-sm text-gray-500 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-colors"
-                    >
-                      + Add Status
-                    </button>
-                  </>
-                ) : singleDate ? (
+            {showForm && (() => {
+              const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+              return (
+                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={exForm.end}
-                      onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
-                      className={inputClass}
-                    />
+                    <label className="block text-xs text-gray-500 mb-1">Soldier</label>
+                    <SoldierSearch
+                      soldiers={soldiers}
+                      value={exForm.name}
+                      onChange={(name) => setExForm({ ...exForm, name })}
+                      inputClass={inputClass} />
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">From</label>
-                      <input
-                        type="date"
-                        value={exForm.start}
-                        onChange={(e) => setExForm({ ...exForm, start: e.target.value })}
-                        className={inputClass}
-                      />
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">Scope</label>
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                      {EXCEPTION_SCOPES.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setExForm({ ...exForm, scope: s })}
+                          className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${exForm.scope === s
+                              ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
+                              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                        >
+                          {s}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+
+                  {exForm.scope === 'Status' ? (
+                    <>
+                      {statusRows.map((row, i) => {
+                        const allReasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+                        const isDupe = row.reason.trim() !== '' && allReasons.filter((r) => r === row.reason.trim().toLowerCase()).length > 1
+                        return (
+                          <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+                            {statusRows.length > 1 && (
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
+                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                >
+                                  × Remove
+                                </button>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">From</label>
+                                <input
+                                  type="date"
+                                  value={row.start}
+                                  onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, start: e.target.value } : x))}
+                                  className={inputClass} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">To</label>
+                                <input
+                                  type="date"
+                                  value={row.end}
+                                  onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, end: e.target.value } : x))}
+                                  className={inputClass} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs mb-1">
+                                {isDupe
+                                  ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
+                                  : <span className="text-gray-500">Reason</span>}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={REASON_HINTS['Status']}
+                                value={row.reason}
+                                onChange={(e) => setStatusRows((r) => r.map((x, j) => j === i ? { ...x, reason: e.target.value } : x))}
+                                className={isDupe
+                                  ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200`
+                                  : inputClass} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
+                        className="w-full py-2 text-sm text-gray-500 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-colors"
+                      >
+                        + Add Status
+                      </button>
+                    </>
+                  ) : singleDate ? (
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">To</label>
+                      <label className="block text-xs text-gray-500 mb-1">Date</label>
                       <input
                         type="date"
                         value={exForm.end}
                         onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
-                        className={inputClass}
-                      />
+                        className={inputClass} />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">From</label>
+                        <input
+                          type="date"
+                          value={exForm.start}
+                          onChange={(e) => setExForm({ ...exForm, start: e.target.value })}
+                          className={inputClass} />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">To</label>
+                        <input
+                          type="date"
+                          value={exForm.end}
+                          onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
+                          className={inputClass} />
+                      </div>
+                    </div>
+                  )}
 
-                {exForm.scope !== 'Status' && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Reason</label>
-                    <input
-                      type="text"
-                      placeholder={REASON_HINTS[exForm.scope]}
-                      value={exForm.reason}
-                      onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
+                  {exForm.scope !== 'Status' && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                      <input
+                        type="text"
+                        placeholder={REASON_HINTS[exForm.scope]}
+                        value={exForm.reason}
+                        onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
+                        className={inputClass} />
+                    </div>
+                  )}
 
+                  <button
+                    onClick={addException}
+                    disabled={!isExceptionValid()}
+                    className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                  >
+                    Add Exception
+                  </button>
+                </div>
+              )
+            })()}
+
+            {activeExceptions.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">
+                <div>
+                  {query
+                    ? 'No exceptions match that query.'
+                    : 'No exceptions for this date.'}
+                </div>
                 <button
-                  onClick={addException}
-                  disabled={!isExceptionValid()}
-                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                  type="button"
+                  onClick={() => setExceptionShowAll(true)}
+                  className="mt-3 inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Add Exception
+                  Show all
                 </button>
               </div>
-            )
-          })()}
-
-          {activeExceptions.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">
-              No exceptions for this date.
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button
-                          onClick={() => {
-                            setexceptionsSortNameAsc(!exceptionsSortNameAsc)
-                            setexceptionsLastSortAction('name')
-                          }}
-                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                          title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
-                        >
-                          Soldier
-                          <span className="text-xs">{exceptionsSortNameAsc ? '↑' : '↓'}</span>
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button
-                          onClick={() => {
-                            setExceptionsSortAsc(!exceptionsSortDateAsc)
-                            setexceptionsLastSortAction('date')
-                          }}
-                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                          title={`Sort by date ${exceptionsSortDateAsc ? 'descending' : 'ascending'}`}
-                        >
-                          Period
-                          <span className="text-xs">{exceptionsSortDateAsc ? '↑' : '↓'}</span>
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="w-24" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeExceptions.map((e, i) => {
-                      const isEditing = editEx?.id === e.id
-                      const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
-                      return (
-                        <React.Fragment key={e.id}>
-                          <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
-                            {isEditing ? (
-                              <>
-                                <td className="px-2 py-2">
-                                  <SoldierSearch
-                                    soldiers={soldiers}
-                                    value={editEx!.name}
-                                    onChange={(name) => setEditEx({ ...editEx!, name })}
-                                    inputClass={exEditInputClass('name')}
-                                  />
-                                </td>
-                                <td className="px-2 py-2">
-                                  <div className="flex flex-wrap gap-1">
-                                    {EXCEPTION_SCOPES.map((s) => (
-                                      <button
-                                        key={s}
-                                        type="button"
-                                        onClick={() => setEditEx({ ...editEx!, scope: s })}
-                                        className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${
-                                          editEx!.scope === s
-                                            ? `${theme.buttonBg} text-white border-transparent`
-                                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                                        }`}
-                                      >
-                                        {s}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-2 py-2">
-                                  {editSingleDate ? (
-                                    <input
-                                      type="date"
-                                      value={editEx!.end}
-                                      onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
-                                      className={exEditInputClass('end')}
-                                    />
-                                  ) : (
-                                    <div className="flex gap-1 items-center">
-                                      <input
-                                        type="date"
-                                        value={editEx!.start}
-                                        onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
-                                        className={exEditInputClass('start')}
-                                      />
-                                      <span className="text-gray-400 text-xs shrink-0">–</span>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left px-4 py-3 font-medium text-gray-500">
+                          <button
+                            onClick={() => {
+                              setexceptionsSortNameAsc(!exceptionsSortNameAsc)
+                              setexceptionsLastSortAction('name')
+                            } }
+                            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                            title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
+                          >
+                            Soldier
+                            <span className="text-xs">{exceptionsSortNameAsc ? '↑' : '↓'}</span>
+                          </button>
+                        </th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-500">
+                          <button
+                            onClick={() => {
+                              setExceptionsSortAsc(!exceptionsSortDateAsc)
+                              setexceptionsLastSortAction('date')
+                            } }
+                            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                            title={`Sort by date ${exceptionsSortDateAsc ? 'descending' : 'ascending'}`}
+                          >
+                            Period
+                            <span className="text-xs">{exceptionsSortDateAsc ? '↑' : '↓'}</span>
+                          </button>
+                        </th>
+                        <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                        <th className="w-24" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeExceptions.map((e, i) => {
+                        const isEditing = editEx?.id === e.id
+                        const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
+                        return (
+                          <React.Fragment key={e.id}>
+                            <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
+                              {isEditing ? (
+                                <>
+                                  <td className="px-2 py-2">
+                                    <SoldierSearch
+                                      soldiers={soldiers}
+                                      value={editEx!.name}
+                                      onChange={(name) => setEditEx({ ...editEx!, name })}
+                                      inputClass={exEditInputClass('name')} />
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <div className="flex flex-wrap gap-1">
+                                      {EXCEPTION_SCOPES.map((s) => (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onClick={() => setEditEx({ ...editEx!, scope: s })}
+                                          className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${editEx!.scope === s
+                                              ? `${theme.buttonBg} text-white border-transparent`
+                                              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                                        >
+                                          {s}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    {editSingleDate ? (
                                       <input
                                         type="date"
                                         value={editEx!.end}
-                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
-                                        className={exEditInputClass('end')}
-                                      />
+                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
+                                        className={exEditInputClass('end')} />
+                                    ) : (
+                                      <div className="flex gap-1 items-center">
+                                        <input
+                                          type="date"
+                                          value={editEx!.start}
+                                          onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
+                                          className={exEditInputClass('start')} />
+                                        <span className="text-gray-400 text-xs shrink-0">–</span>
+                                        <input
+                                          type="date"
+                                          value={editEx!.end}
+                                          onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
+                                          className={exEditInputClass('end')} />
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="text"
+                                      value={editEx!.reason}
+                                      onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
+                                      onKeyDown={(e2) => {
+                                        if (e2.key === 'Enter') updateException()
+                                        if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({})} 
+                                      } }
+                                      placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
+                                      className={exEditInputClass('reason')} />
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <div className="flex gap-1 justify-end">
+                                      <button
+                                        onClick={updateException}
+                                        disabled={savingEx}
+                                        className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                      >
+                                        {savingEx ? '…' : 'Save'}
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditEx(null); setEditExErrors({}) } }
+                                        className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                      >
+                                        Cancel
+                                      </button>
                                     </div>
-                                  )}
-                                </td>
-                                <td className="px-2 py-2">
-                                  <input
-                                    type="text"
-                                    value={editEx!.reason}
-                                    onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
-                                    onKeyDown={(e2) => {
-                                      if (e2.key === 'Enter') updateException()
-                                      if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
-                                    }}
-                                    placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
-                                    className={exEditInputClass('reason')}
-                                  />
-                                </td>
-                                <td className="px-2 py-2">
-                                  <div className="flex gap-1 justify-end">
-                                    <button
-                                      onClick={updateException}
-                                      disabled={savingEx}
-                                      className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
-                                    >
-                                      {savingEx ? '…' : 'Save'}
-                                    </button>
-                                    <button
-                                      onClick={() => { setEditEx(null); setEditExErrors({}) }}
-                                      className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
-                                    {e.scope ?? '—'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
-                                </td>
-                                <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
-                                <td className="px-4 py-3">
-                                  <div className="flex gap-1 justify-end items-center">
-                                    <button
-                                      onClick={() => confirmDeleteEx === e.id
-                                        ? (setConfirmDeleteEx(null), deleteException(e.id))
-                                        : (setEditEx({ ...e }), setEditExErrors({}))}
-                                      className={confirmDeleteEx === e.id
-                                        ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                        : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
-                                      title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
-                                    >
-                                      {confirmDeleteEx === e.id ? 'Yes' : '✎'}
-                                    </button>
-                                    <button
-                                      onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
-                                      className={confirmDeleteEx === e.id
-                                        ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
-                                        : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                      title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
-                                    >
-                                      {confirmDeleteEx === e.id ? 'No' : '✕'}
-                                    </button>
-                                  </div>
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        </React.Fragment>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
+                                      {e.scope ?? '—'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                    {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex gap-1 justify-end items-center">
+                                      <button
+                                        onClick={() => confirmDeleteEx === e.id
+                                          ? (setConfirmDeleteEx(null), deleteException(e.id))
+                                          : (setEditEx({ ...e }), setEditExErrors({}))}
+                                        className={confirmDeleteEx === e.id
+                                          ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                          : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                        title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
+                                      >
+                                        {confirmDeleteEx === e.id ? 'Yes' : '✎'}
+                                      </button>
+                                      <button
+                                        onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
+                                        className={confirmDeleteEx === e.id
+                                          ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
+                                          : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                        title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
+                                      >
+                                        {confirmDeleteEx === e.id ? 'No' : '✕'}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={5} className="bg-gray-50 px-4 py-3 text-left">
+                          <button
+                            type="button"
+                            onClick={() => setExceptionShowAll((prev) => !prev)}
+                            className="inline-flex items-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          >
+                            {exceptionShowAll ? 'Hide all' : 'Show all'}
+                          </button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
       )}
 
       {/* Generate buttons */}

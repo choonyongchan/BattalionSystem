@@ -44,6 +44,20 @@ describe('ParadeState', () => {
     })
   })
 
+  it('filters exceptions by soldier name using the search bar', async () => {
+    await renderParadeStateOnFixtureDate()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    const searchInput = await screen.findByPlaceholderText('Search by soldier name')
+
+    await userEvent.type(searchInput, 'test_soldier_one')
+
+    await waitFor(() => {
+      expect(screen.getByText('TEST_SOLDIER_ONE')).toBeInTheDocument()
+      expect(screen.queryByText('No exceptions for this date.')).not.toBeInTheDocument()
+    })
+  })
+
   it('shows fixture duty in the Duties tab', async () => {
     await renderParadeStateOnFixtureDate()
 
