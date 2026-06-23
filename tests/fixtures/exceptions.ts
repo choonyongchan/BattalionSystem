@@ -10,5 +10,6 @@ export const FIXTURE_EXCEPTIONS: Omit<Exception, 'id'>[] = [
     reason: 'Annual Leave',
     start: '2026-01-15',
     end: '2026-01-15',
+    counts_as_absence: true,
   },
 ]

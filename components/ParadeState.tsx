@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
+import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
-import { trackEvent } from '@/lib/analytics'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType } from '@/lib/companies'
+import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
 
 function SoldierSearch({
@@ -28,8 +29,8 @@ function SoldierSearch({
 
   const filtered = query.trim()
     ? soldiers.filter((s) =>
-        `${s.rank} ${s.name}`.toLowerCase().includes(query.toLowerCase()),
-      )
+      `${s.rank} ${s.name}`.toLowerCase().includes(query.toLowerCase()),
+    )
     : soldiers
 
   useEffect(() => {
@@ -89,18 +90,20 @@ const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report 
 type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
 const REASON_HINTS: Record<ExceptionScope, string> = {
-  'Att C':       'e.g. Flu, Fever',
-  'Status':      'e.g. Excuse RMJ, Excuse Uniform',
-  'Off/Leave':   'e.g. Annual Leave, Off',
-  'Guard Duty':  'e.g. Regimental Guard, Guard Commander',
+  'Att C': 'e.g. Flu, Fever',
+  'Status': 'e.g. Excuse RMJ, Excuse Uniform',
+  'Off/Leave': 'e.g. Annual Leave, Off',
+  'Guard Duty': 'e.g. Regimental Guard, Guard Commander',
   'Report Sick': 'e.g. Flu, Fever',
-  'MA':          'e.g. Skin Appt, IMH Appt',
-  'Others':      'e.g. ...',
+  'MA': 'e.g. Skin Appt, IMH Appt',
+  'Others': 'e.g. ...',
 }
 
 const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
-type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string }
+const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA', 'Others']
+
+type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
 
 const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
 
@@ -108,14 +111,6 @@ const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
 const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
-// ponytail: duplicated from NominalRoll.tsx; share only if a third consumer appears
-const _OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8']
-const _WOSPEC_RANKS     = ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
-function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
-  if (_OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
-  if (_WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
-  return 'Enlistee'
-}
 
 type Section = 'config' | 'duties' | 'exceptions'
 
@@ -129,6 +124,12 @@ function toSGDate(iso: string) {
 
 function todayISO() {
   return new Date().toISOString().split('T')[0]
+}
+
+function offsetDate(iso: string, days: number) {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
 }
 
 export default function ParadeState({
@@ -164,7 +165,9 @@ export default function ParadeState({
   const [showStrOverride, setShowStrOverride] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
-  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+  const [medCenter, setMedCenter] = useState('')
+  const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
   const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
@@ -177,6 +180,8 @@ export default function ParadeState({
 
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
+  const [exSearch, setExSearch] = useState('')
+  const [dutySearch, setDutySearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
   const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
@@ -210,10 +215,10 @@ export default function ParadeState({
       })
     }
     const loadedStr: Record<string, Record<string, string>> = {}
-    ;(strRes.data as unknown as { platoon: string; rank_type: string; value: number }[] ?? []).forEach((row) => {
-      if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
-      loadedStr[row.platoon][row.rank_type] = String(row.value)
-    })
+      ; (strRes.data as unknown as { platoon: string; rank_type: string; value: number }[] ?? []).forEach((row) => {
+        if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
+        loadedStr[row.platoon][row.rank_type] = String(row.value)
+      })
     setStrOverrides(loadedStr)
     setLoading(false)
   }
@@ -303,6 +308,12 @@ export default function ParadeState({
     }
   }
 
+  function isValidTime(t: string) {
+    if (!t) return true
+    const m = t.match(/^(\d{2}):(\d{2})$/)
+    return !!m && +m[1] <= 23 && +m[2] <= 59
+  }
+
   function isExceptionValid() {
     if (!exForm.name) return false
     if (exForm.scope === 'Status') {
@@ -311,7 +322,7 @@ export default function ParadeState({
       return new Set(reasons).size === reasons.length
     }
     const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start))
+    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start) && (exForm.scope !== 'MA' || medCenter.trim()) && isValidTime(exForm.time))
   }
 
   async function addException() {
@@ -319,22 +330,26 @@ export default function ParadeState({
     const supabase = getSupabaseClient(company)
     let error: { message: string } | null = null
     if (exForm.scope === 'Status') {
-      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end }))
-      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
+      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end, counts_as_absence: exForm.counts_as_absence }))
+        ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
     } else {
       const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
-        name: exForm.name,
-        scope: exForm.scope,
-        reason: exForm.reason.trim(),
-        start: singleDate ? exForm.end : exForm.start,
-        end: exForm.end,
-      }))
+      const savedReason = exForm.scope === 'MA' ? `${medCenter.trim()}: ${exForm.reason.trim()}` : exForm.reason.trim()
+        ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
+          name: exForm.name,
+          scope: exForm.scope,
+          reason: savedReason,
+          start: singleDate ? exForm.end : exForm.start,
+          end: exForm.end,
+          counts_as_absence: exForm.counts_as_absence,
+          ...(exForm.scope === 'MA' && exForm.time ? { time: exForm.time } : {}),
+        }))
     }
     if (error) { setError(error.message); return }
     setShowForm(false)
-    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
     setStatusRows([{ start: date, end: date, reason: '' }])
+    setMedCenter('')
     await load()
   }
 
@@ -384,6 +399,7 @@ export default function ParadeState({
     if (!editEx.reason.trim()) errors.reason = true
     if (!editEx.end) errors.end = true
     if (!singleDate && !editEx.start) errors.start = true
+    if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
     setEditExErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -393,19 +409,30 @@ export default function ParadeState({
     const supabase = getSupabaseClient(company)
     setSavingEx(true)
     const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
+    const savedReason = editEx.scope === 'MA' && editMedCenter.trim()
+      ? `${editMedCenter.trim()}: ${editEx.reason.trim()}`
+      : editEx.reason.trim()
     const { error } = await supabase
       .from(tbl(company, 'Exceptions'))
       .update({
         name: editEx.name,
         scope: editEx.scope,
-        reason: editEx.reason.trim(),
+        reason: savedReason,
         start: singleDate ? editEx.end : editEx.start,
         end: editEx.end,
+        counts_as_absence: editEx.counts_as_absence,
+        time: editEx.scope === 'MA' ? (editEx.time ?? null) : null,
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
     else { setEditEx(null); setEditExErrors({}); await load() }
     setSavingEx(false)
+  }
+
+  async function toggleAbsence(id: number, value: boolean) {
+    const supabase = getSupabaseClient(company)
+    await supabase.from(tbl(company, 'Exceptions')).update({ counts_as_absence: value }).eq('id', id)
+    setExceptions((prev) => prev.map((e) => e.id === id ? { ...e, counts_as_absence: value } : e))
   }
 
   async function saveParadeTime(parade_type: string) {
@@ -433,10 +460,12 @@ export default function ParadeState({
       configs: filteredConfigs,
       duties,
       strengthOverrides: strOverridesAsNumbers,
-    }, PARADE_CONFIG[company])
+      allExceptions: exceptions,
+      paradeType,
+    }, PARADE_CONFIG[company], company)
     setOutput(report)
     setLastParadeType(paradeType)
-    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
+    track('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
@@ -461,27 +490,19 @@ export default function ParadeState({
       : `${base} border-gray-300 ${theme.focusRing}`
   }
 
-const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
     <div className="space-y-5">
-      {/* Header + date picker */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
-          <p className="text-xs text-gray-500">
-            {soldiers.length - new Set(activeExceptions.map((e) => e.name)).size} / {soldiers.length} present
-            {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className={`border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
-        />
+      {/* Header */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
+        <p className="text-xs text-gray-500">
+          {soldiers.length - new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
+          {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       {error && (
@@ -496,11 +517,10 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
           <button
             key={t.id}
             onClick={() => { setActiveSection(t.id); setShowForm(false) }}
-            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeSection === t.id
+            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeSection === t.id
                 ? `${theme.activeBorder} ${theme.activeText}`
                 : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+              }`}
           >
             {t.label}
           </button>
@@ -516,11 +536,15 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
               <input
                 type="text"
                 inputMode="numeric"
-                pattern="[0-2][0-9]:[0-5][0-9]"
                 placeholder="HH:MM"
+                maxLength={5}
                 value={paradeTimes[pt] ?? ''}
                 onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing} w-24`}
+                className={`border rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 w-24 ${
+                  paradeTimes[pt] && !isValidTime(paradeTimes[pt])
+                    ? 'border-yellow-300 ring-2 ring-yellow-200'
+                    : `border-gray-300 ${theme.focusRing}`
+                }`}
               />
               <button
                 onClick={() => saveParadeTime(pt)}
@@ -593,10 +617,27 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
       {/* Duties section */}
       {activeSection === 'duties' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-center gap-2">
+            <button onClick={() => setDate(offsetDate(date, -1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
+            />
+            <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={dutySearch}
+              onChange={e => setDutySearch(e.target.value)}
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+            />
             <button
               onClick={() => setShowForm(!showForm)}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
             >
               {showForm ? 'Cancel' : '+ Duty'}
             </button>
@@ -612,11 +653,10 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
                       key={d}
                       type="button"
                       onClick={() => setDutyForm({ ...dutyForm, duty_type: d })}
-                      className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                        dutyForm.duty_type === d
+                      className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${dutyForm.duty_type === d
                           ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
                           : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                      }`}
+                        }`}
                     >
                       {d}
                     </button>
@@ -656,7 +696,7 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
                     </tr>
                   </thead>
                   <tbody>
-                    {duties.map((d, i) => {
+                    {(dutySearch ? duties.filter(d => d.name?.toLowerCase().includes(dutySearch.toLowerCase())) : duties).map((d, i) => {
                       const isEditing = editDuty?.duty_type === d.duty_type
                       return (
                         <tr
@@ -694,7 +734,7 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-3 text-gray-600">{d.name ?? 'TBC'}</td>
+                              <td className="px-4 py-3 text-gray-600">{d.name ? displayName(d.name, soldiers) : 'TBC'}</td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
@@ -748,8 +788,9 @@ const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 t
               <button
                 onClick={() => {
                   if (showForm) {
-                    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date })
+                    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
                     setStatusRows([{ start: date, end: date, reason: '' }])
+                    setMedCenter('')
                   }
                   setShowForm(!showForm)
                 }}

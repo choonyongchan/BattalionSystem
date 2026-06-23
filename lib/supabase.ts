@@ -9,9 +9,9 @@ type NominalRollTable = {
   Relationships: []
 }
 type ExceptionsTable = {
-  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string }
-  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string }
-  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string }
+  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence: boolean; time?: string | null }
+  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence?: boolean; time?: string | null }
+  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string; counts_as_absence?: boolean; time?: string | null }
   Relationships: []
 }
 type DutyTable = {
@@ -69,6 +69,8 @@ export interface Exception {
   reason: string
   start: string
   end: string
+  counts_as_absence: boolean
+  time?: string | null
 }
 
 export interface DutyEntry {
@@ -82,8 +84,7 @@ export interface Configuration {
   time: string
 }
 
-export interface StrengthOverride {
-  platoon: string
-  rank_type: string
-  value: number
+export function displayName(name: string, soldiers: Soldier[]): string {
+  const rank = soldiers.find(s => s.name === name)?.rank
+  return rank ? `${rank} ${name}` : name
 }

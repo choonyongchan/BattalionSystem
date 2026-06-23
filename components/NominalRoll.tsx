@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES } from '@/lib/companies'
+import { COMPANY_THEMES, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
 import BulkImportModal from '@/components/BulkImportModal'
 
 function RankSearch({
@@ -77,24 +77,10 @@ function RankSearch({
   )
 }
 
-const RANKS_BY_TYPE = {
-  Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
-  WOSPEC: ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
-  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC'],
-}
-
-function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
-  if (RANKS_BY_TYPE.Officer.some((p) => rank.startsWith(p))) return 'Officer'
-  if (RANKS_BY_TYPE.WOSPEC.includes(rank)) return 'WOSPEC'
-  return 'Enlistee'
-}
+const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
 const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
 const RANK_ORDER = Object.fromEntries(Object.values(RANKS_BY_TYPE).flat().map((r, i) => [r, i]))
-
-const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =>
-  ranks.map((rank) => ({ rank, type })),
-)
 
 export default function NominalRoll({ company }: { company: Company }) {
   const theme = COMPANY_THEMES[company]
@@ -104,7 +90,6 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
   const [showImport, setShowImport] = useState(false)
   const [search, setSearch] = useState('')
@@ -202,8 +187,8 @@ export default function NominalRoll({ company }: { company: Company }) {
   const query = search.toLowerCase()
   const filtered = query
     ? soldiers.filter((s) =>
-        [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
-      )
+      [s.rank, s.name, s.platoon, s.four_d].some((v) => v?.toLowerCase().includes(query))
+    )
     : soldiers
 
   const sorted = [...filtered].sort((a, b) =>
@@ -389,7 +374,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     if (e.key === 'Enter') updateSoldier()
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
-                                  placeholder="e.g. 1234A"
+                                  placeholder="e.g. 1234"
                                   className={editInputClass('four_d')}
                                 />
                               </td>
