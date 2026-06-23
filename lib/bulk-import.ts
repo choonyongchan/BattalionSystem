@@ -1,10 +1,5 @@
 import type { Soldier } from './supabase'
-
-const VALID_RANKS = new Set([
-  '2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8',
-  '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO', 'ME1', 'ME2', 'ME3',
-  'REC', 'PTE', 'LCP', 'CPL', 'CFC', '3SG', '2SG', '1SG', 'SSG', 'MSG',
-])
+import { VALID_RANKS } from './companies'
 
 const VALID_PLATOONS = new Set(['HQ', '1', '2', '3', '4'])
 

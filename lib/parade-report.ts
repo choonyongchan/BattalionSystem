@@ -1,10 +1,9 @@
-﻿import type { Soldier, Exception, DutyEntry, Configuration } from './supabase'
-import { displayName } from './display'
-import type { ParadeStateConfig } from './companies'
+import type { Soldier, Exception, DutyEntry, Configuration } from './supabase'
+import { displayName } from './supabase'
+import type { ParadeStateConfig, Company } from './companies'
+import { getRankType } from './companies'
 
 const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
-const OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8']
-const WOSPEC_RANKS    = ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
 
 const PLATOON_ORDER: Record<string, number> = { HQ: 0, '1': 1, '2': 2, '3': 3, '4': 4 }
 const RANK_TYPE_ORDER: Record<string, number> = { Officer: 0, WOSPEC: 1, Enlistee: 2 }
@@ -21,12 +20,6 @@ function sortExceptions(exceptions: Exception[], soldiers: Soldier[]): Exception
     if (rankDiff !== 0) return rankDiff
     return a.name.localeCompare(b.name)
   })
-}
-
-function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
-  if (OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
-  if (WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
-  return 'Enlistee'
 }
 
 function toSGDate(iso: string) {
@@ -57,8 +50,6 @@ function toDDMMYY(iso: string) {
     d.getFullYear().toString().slice(2)
   )
 }
-
-function pad2(n: number) { return n.toString().padStart(2, '0') }
 
 function soldierFourD(soldiers: Soldier[], name: string) {
   return soldiers.find((s) => s.name === name)?.four_d ?? ''
@@ -311,11 +302,11 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
 
     for (const { key, label } of scopes) {
       const group = (exByPlt[plt] ?? []).filter((e) => e.scope === key)
-      lines.push(`${label}: ${pad2(group.length)}`)
+      lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
       group.forEach((e, idx) => {
         const dn    = displayName(e.name, soldiers)
         const fourD = soldierFourD(soldiers, e.name)
-        lines.push(`S/N: ${pad2(idx + 1)}`)
+        lines.push(`S/N: ${(idx + 1).toString().padStart(2, '0')}`)
         lines.push(`R&N: ${dn}`)
         if (fourD) lines.push(`4D: ${fourD}`)
         if (key === 'Att C' || key === 'Status') {
@@ -371,14 +362,14 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
   lines.push(`TOTAL STRENGTH: ${total}`)
   lines.push(`CURRENT STRENGTH: ${present}`)
   lines.push('')
-  lines.push(`[OFFICER]: ${pad2(compPresent['Officer'])}/${pad2(compTotal['Officer'])}`)
-  lines.push(`[WOSPEC]: ${pad2(compPresent['WOSPEC'])}/${pad2(compTotal['WOSPEC'])}`)
-  lines.push(`[ENLISTEE]: ${pad2(compPresent['Enlistee'])}/${pad2(compTotal['Enlistee'])}`)
+  lines.push(`[OFFICER]: ${compPresent['Officer'].toString().padStart(2, '0')}/${compTotal['Officer'].toString().padStart(2, '0')}`)
+  lines.push(`[WOSPEC]: ${compPresent['WOSPEC'].toString().padStart(2, '0')}/${compTotal['WOSPEC'].toString().padStart(2, '0')}`)
+  lines.push(`[ENLISTEE]: ${compPresent['Enlistee'].toString().padStart(2, '0')}/${compTotal['Enlistee'].toString().padStart(2, '0')}`)
 
   for (const { key, label } of scopes) {
     lines.push(sep(80))
     const group = activeExceptions.filter((e) => e.scope === key)
-    lines.push(`${label}: ${pad2(group.length)}`)
+    lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
     if (group.length > 0) {
       lines.push('')
       renderEntries(group).forEach((l) => lines.push(l))
@@ -419,7 +410,7 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
     for (const { key, label } of scopes) {
       lines.push(sep(30))
       const group = (exByPlt[plt] ?? []).filter((e) => e.scope === key)
-      lines.push(`${label}: ${pad2(group.length)}`)
+      lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
       if (group.length > 0) {
         lines.push('')
         renderEntries(group).forEach((l) => lines.push(l))
@@ -471,13 +462,13 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
     lines.push(sep(64))
     lines.push('')
     const group = activeExceptions.filter((e) => e.scope === key)
-    lines.push(`${label}: ${pad2(group.length)}`)
+    lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
 
     group.forEach((e, idx) => {
       const dn    = displayName(e.name, soldiers)
       const fourD = soldierFourD(soldiers, e.name)
       lines.push('')
-      lines.push(`S/N: ${pad2(idx + 1)}`)
+      lines.push(`S/N: ${(idx + 1).toString().padStart(2, '0')}`)
       lines.push(`R/N: ${dn}${fourD ? ' ' + fourD : ''}`)
       if (e.reason) lines.push(`Reason: ${e.reason}`)
       if (key === 'Att C' || key === 'Status') {
@@ -595,7 +586,7 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
-export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig): string {
+export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig, company?: Company): string {
   const sorted: ParadeReportInput = {
     ...input,
     activeExceptions: sortExceptions(input.activeExceptions, input.soldiers),
@@ -604,7 +595,7 @@ export function generateParadeReport(input: ParadeReportInput, config: ParadeSta
   const resolvedConfig: ParadeStateConfig = input.paradeType === 'Last Parade'
     ? { ...config, header: config.header.map((h) => h.replace('FIRST', 'LAST')) }
     : config
-  switch (resolvedConfig.format) {
+  switch (company) {
     case 'hercules': return generateHerculesReport(sorted, resolvedConfig)
     case 'stallion': return generateStallionReport(sorted, resolvedConfig)
     case 'archer':   return generateArcherReport(sorted, resolvedConfig)

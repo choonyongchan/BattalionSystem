@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
-import { displayName } from '@/lib/display'
+import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
-import { trackEvent } from '@/lib/analytics'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType } from '@/lib/companies'
+import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
 
 function SoldierSearch({
@@ -111,14 +111,6 @@ const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
 const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
-// ponytail: duplicated from NominalRoll.tsx; share only if a third consumer appears
-const _OFFICER_PREFIXES = ['2LT', 'LTA', 'CPT', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8']
-const _WOSPEC_RANKS = ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO']
-function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
-  if (_OFFICER_PREFIXES.some((p) => rank.startsWith(p))) return 'Officer'
-  if (_WOSPEC_RANKS.includes(rank)) return 'WOSPEC'
-  return 'Enlistee'
-}
 
 type Section = 'config' | 'duties' | 'exceptions'
 
@@ -427,10 +419,10 @@ export default function ParadeState({
       strengthOverrides: strOverridesAsNumbers,
       allExceptions: exceptions,
       paradeType,
-    }, PARADE_CONFIG[company])
+    }, PARADE_CONFIG[company], company)
     setOutput(report)
     setLastParadeType(paradeType)
-    trackEvent('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
+    track('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 

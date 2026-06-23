@@ -8,6 +8,24 @@ export function companyLabel(company: Company) {
   return company[0].toUpperCase() + company.slice(1)
 }
 
+export const RANKS_BY_TYPE = {
+  Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
+  WOSPEC: ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
+  Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC'],
+}
+
+export const VALID_RANKS = new Set(Object.values(RANKS_BY_TYPE).flat())
+
+export const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =>
+  ranks.map((rank) => ({ rank, type })),
+)
+
+export function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
+  if (RANKS_BY_TYPE.Officer.some((p) => rank.startsWith(p))) return 'Officer'
+  if (RANKS_BY_TYPE.WOSPEC.includes(rank)) return 'WOSPEC'
+  return 'Enlistee'
+}
+
 export interface ScopeConfig {
   key: string
   label: string
@@ -17,7 +35,6 @@ export interface ParadeStateConfig {
   header: string[]
   visibleDutyTypes: string[]
   scopeConfigs: ScopeConfig[]
-  format?: 'hercules' | 'stallion' | 'archer' | 'braves' | 'cougar'
 }
 
 const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
@@ -44,7 +61,6 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
       { key: 'Guard Duty',  label: 'DUTY' },
       { key: 'Others',      label: 'OTHERS' },
     ],
-    format: 'archer',
   },
   braves: {
     header: ['40 SAR BRAVES COMPANY PARADE STATE'],
@@ -57,7 +73,6 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
       { key: 'Status',      label: 'STATUS' },
       { key: 'Others',      label: 'OTHERS' },
     ],
-    format: 'braves',
   },
   cougar: {
     header: ['COUGAR COMPANY', 'FIRST PARADE STATE'],
@@ -69,7 +84,6 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
       { key: 'MA',          label: 'MEDICAL APPT' },
       { key: 'Others',      label: 'OTHERS' },
     ],
-    format: 'cougar',
   },
   stallion: {
     header: ['STALLION COY FIRST PARADE'],
@@ -81,7 +95,6 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
       { key: 'Guard Duty', label: 'GUARD DUTY' },
       { key: 'Others',     label: 'OTHERS' },
     ],
-    format: 'stallion',
   },
   hercules: {
     header: ['FIRST PARADE STATE', 'HQ Company'],
@@ -95,7 +108,6 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
       { key: 'Others',      label: 'Others' },
       { key: 'Guard Duty',  label: 'Guard Duty' },
     ],
-    format: 'hercules',
   },
   test: {
     header: ['TEST COY PARADE STATE'],

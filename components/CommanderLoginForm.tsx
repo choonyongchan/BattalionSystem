@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { trackEvent } from '@/lib/analytics'
+import { track } from '@vercel/analytics'
 
 const MAX_ATTEMPTS = 3
 const LOCKOUT_SECONDS = 30
@@ -88,7 +88,7 @@ export default function CommanderLoginForm({
       setLoading(false)
     } else {
       clearCooldown(companyLabel)
-      trackEvent('login', { company: companyLabel.toLowerCase() })
+      track('login', { company: companyLabel.toLowerCase() })
       setLoading(false)
     }
   }

@@ -84,8 +84,7 @@ export interface Configuration {
   time: string
 }
 
-export interface StrengthOverride {
-  platoon: string
-  rank_type: string
-  value: number
+export function displayName(name: string, soldiers: Soldier[]): string {
+  const rank = soldiers.find(s => s.name === name)?.rank
+  return rank ? `${rank} ${name}` : name
 }
