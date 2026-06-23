@@ -5,86 +5,13 @@ import { getSupabaseClient, tbl } from '@/lib/supabase'
 import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType, DUTY_ELIGIBILITY } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_ORDER, DEFAULT_RANK_RULES, ALL_DUTY_TYPES } from '@/lib/companies'
+import { dutyRules } from '@/lib/duty-rules'
+import { useConfirmDelete } from '@/lib/hooks'
+import { editInputClass as fieldInputClass } from '@/lib/ui'
+import SearchDropdown from '@/components/SearchDropdown'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
-
-function SoldierSearch({
-  soldiers,
-  value,
-  onChange,
-  inputClass,
-}: {
-  soldiers: Soldier[]
-  value: string
-  onChange: (name: string) => void
-  inputClass: string
-}) {
-  const [query, setQuery] = useState(() => {
-    const found = soldiers.find((s) => s.name === value)
-    return found ? `${found.rank} ${found.name}` : value
-  })
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const filtered = query.trim()
-    ? soldiers.filter((s) =>
-      `${s.rank} ${s.name}`.toLowerCase().includes(query.toLowerCase()),
-    )
-    : soldiers
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function select(s: Soldier) {
-    onChange(s.name)
-    setQuery(`${s.rank} ${s.name}`)
-    setOpen(false)
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    onChange('')
-    setOpen(true)
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        type="text"
-        value={query}
-        onChange={handleInput}
-        onFocus={() => setOpen(true)}
-        placeholder="Search soldier..."
-        className={inputClass}
-        autoComplete="off"
-      />
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
-          {filtered.map((s) => (
-            <li key={s.name}>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); select(s) }}
-                className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-2"
-              >
-                <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
-                <span className="font-medium text-gray-800">{s.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
 
 const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
 type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
@@ -105,28 +32,10 @@ const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA', 'Others']
 
 type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
 
-const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
-
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
 const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
-
-const RANK_ORDER = [
-  'REC','PTE','LCP','CPL','CFC',
-  '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
-  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
-]
-
-const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
-  CDO:  { from: '2LT', to: 'LTA' },
-  CDS:  { from: '2SG', to: '1SG' },
-  COS:  { from: 'PTE', to: '3SG' },
-  PDS1: { from: '3SG', to: '1SG' },
-  PDS2: { from: '3SG', to: '1SG' },
-  PDS3: { from: '3SG', to: '1SG' },
-  PDS4: { from: '3SG', to: '1SG' },
-}
 
 type Section = 'config' | 'duties' | 'exceptions'
 
@@ -191,7 +100,7 @@ export default function ParadeState({
   // Duties inline edit
   const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
   const [savingDuty, setSavingDuty] = useState(false)
-  const [confirmDeleteDuty, setConfirmDeleteDuty] = useState<string | null>(null)
+  const dutyConfirm = useConfirmDelete<string>()
 
   // Duty rank rule editor
   const [showRankRules, setShowRankRules] = useState(false)
@@ -203,7 +112,7 @@ export default function ParadeState({
   const [exSearch, setExSearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
-  const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
+  const exConfirm = useConfirmDelete<number>()
 
   useEffect(() => {
     load()
@@ -282,7 +191,7 @@ export default function ParadeState({
     })
 
   // If there's a query, use the queried exceptions; otherwise, filter by date and sort
-  var activeExceptions = query ? queriedExceptions : defaultExceptions
+  let activeExceptions = query ? queriedExceptions : defaultExceptions
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
     activeExceptions = exceptions
@@ -305,21 +214,6 @@ export default function ParadeState({
     }
     return ov
   }, [configs])
-
-  function eligibleSoldiers(dt: string): Soldier[] {
-    const nameOv = eligibilityOverrides[dt]
-    if (nameOv && nameOv.length > 0) return soldiers.filter(s => nameOv.includes(s.name))
-    const rule = rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt]
-    if (rule) {
-      const fromIdx = RANK_ORDER.indexOf(rule.from)
-      const toIdx = RANK_ORDER.indexOf(rule.to)
-      return soldiers.filter(s => {
-        const idx = RANK_ORDER.indexOf(s.rank)
-        return idx !== -1 && idx >= fromIdx && idx <= toIdx
-      })
-    }
-    return soldiers.filter(s => DUTY_ELIGIBILITY[dt]?.(s.rank) ?? true)
-  }
 
   const computedStrength = useMemo(() => {
     const result: Record<string, Record<string, number>> = {}
@@ -535,11 +429,19 @@ export default function ParadeState({
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
 
-  function exEditInputClass(field: string) {
-    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
-    return editExErrors[field]
-      ? `${base} border-red-500 ring-2 ring-red-500`
-      : `${base} border-gray-300 ${theme.focusRing}`
+  const exClass = (field: string) => fieldInputClass(!!editExErrors[field], theme.focusRing)
+
+  const soldierDropdownProps = {
+    getKey:       (s: Soldier) => s.name,
+    getLabel:     (s: Soldier) => `${s.rank} ${s.name}`,
+    matches:      (s: Soldier, q: string) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase()),
+    renderOption: (s: Soldier) => (
+      <div className="flex gap-2">
+        <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
+        <span className="font-medium text-gray-800">{s.name}</span>
+      </div>
+    ),
+    placeholder: 'Search soldier...',
   }
 
   const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
@@ -749,7 +651,7 @@ export default function ParadeState({
                   </tr>
                 </thead>
                 <tbody>
-                  {DUTY_TYPES.map((dt, i) => {
+                  {ALL_DUTY_TYPES.map((dt, i) => {
                     const d = duties.find(x => x.duty_type === dt)
                     const isEditing = editDuty?.duty_type === dt
                     return (
@@ -761,10 +663,11 @@ export default function ParadeState({
                         {isEditing ? (
                           <>
                             <td className="px-2 py-2">
-                              <SoldierSearch
-                                soldiers={eligibleSoldiers(editDuty.duty_type)}
+                              <SearchDropdown
+                                {...soldierDropdownProps}
+                                items={dutyRules.eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
                                 value={editDuty.name}
-                                onChange={(name) => setEditDuty({ ...editDuty, name })}
+                                onChange={name => setEditDuty({ ...editDuty, name })}
                                 inputClass={dutyEditInputClass}
                               />
                             </td>
@@ -800,13 +703,13 @@ export default function ParadeState({
                                 </button>
                                 {d && (
                                   <button
-                                    onClick={() => confirmDeleteDuty === dt ? (setConfirmDeleteDuty(null), deleteDuty(dt)) : setConfirmDeleteDuty(dt)}
-                                    className={confirmDeleteDuty === dt
+                                    onClick={() => dutyConfirm.isConfirming(dt) ? dutyConfirm.resolve(dt, () => deleteDuty(dt)) : dutyConfirm.request(dt)}
+                                    className={dutyConfirm.isConfirming(dt)
                                       ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                    title={confirmDeleteDuty === dt ? 'Confirm clear' : 'Clear'}
+                                    title={dutyConfirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}
                                   >
-                                    {confirmDeleteDuty === dt ? 'Yes' : '✕'}
+                                    {dutyConfirm.isConfirming(dt) ? 'Yes' : '✕'}
                                   </button>
                                 )}
                               </div>
@@ -858,11 +761,13 @@ export default function ParadeState({
                 <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Soldier</label>
-                    <SoldierSearch
-                      soldiers={soldiers}
+                    <SearchDropdown
+                      {...soldierDropdownProps}
+                      items={soldiers}
                       value={exForm.name}
-                      onChange={(name) => setExForm({ ...exForm, name })}
-                      inputClass={inputClass} />
+                      onChange={name => setExForm({ ...exForm, name })}
+                      inputClass={inputClass}
+                    />
                   </div>
 
                   <div>
@@ -1060,11 +965,13 @@ export default function ParadeState({
                               {isEditing ? (
                                 <>
                                   <td className="px-2 py-2">
-                                    <SoldierSearch
-                                      soldiers={soldiers}
+                                    <SearchDropdown
+                                      {...soldierDropdownProps}
+                                      items={soldiers}
                                       value={editEx!.name}
-                                      onChange={(name) => setEditEx({ ...editEx!, name })}
-                                      inputClass={exEditInputClass('name')} />
+                                      onChange={name => setEditEx({ ...editEx!, name })}
+                                      inputClass={exClass('name')}
+                                    />
                                   </td>
                                   <td className="px-2 py-2">
                                     <div className="flex flex-wrap gap-1">
@@ -1088,20 +995,20 @@ export default function ParadeState({
                                         type="date"
                                         value={editEx!.end}
                                         onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
-                                        className={exEditInputClass('end')} />
+                                        className={exClass('end')} />
                                     ) : (
                                       <div className="flex gap-1 items-center">
                                         <input
                                           type="date"
                                           value={editEx!.start}
                                           onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
-                                          className={exEditInputClass('start')} />
+                                          className={exClass('start')} />
                                         <span className="text-gray-400 text-xs shrink-0">–</span>
                                         <input
                                           type="date"
                                           value={editEx!.end}
                                           onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
-                                          className={exEditInputClass('end')} />
+                                          className={exClass('end')} />
                                       </div>
                                     )}
                                   </td>
@@ -1115,7 +1022,7 @@ export default function ParadeState({
                                         if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({})} 
                                       } }
                                       placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
-                                      className={exEditInputClass('reason')} />
+                                      className={exClass('reason')} />
                                   </td>
                                   <td className="px-2 py-2">
                                     <div className="flex gap-1 justify-end">
@@ -1150,24 +1057,24 @@ export default function ParadeState({
                                   <td className="px-4 py-3">
                                     <div className="flex gap-1 justify-end items-center">
                                       <button
-                                        onClick={() => confirmDeleteEx === e.id
-                                          ? (setConfirmDeleteEx(null), deleteException(e.id))
+                                        onClick={() => exConfirm.isConfirming(e.id)
+                                          ? exConfirm.resolve(e.id, () => deleteException(e.id))
                                           : (setEditEx({ ...e }), setEditExErrors({}))}
-                                        className={confirmDeleteEx === e.id
+                                        className={exConfirm.isConfirming(e.id)
                                           ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
                                           : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
-                                        title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
+                                        title={exConfirm.isConfirming(e.id) ? 'Confirm delete' : 'Edit'}
                                       >
-                                        {confirmDeleteEx === e.id ? 'Yes' : '✎'}
+                                        {exConfirm.isConfirming(e.id) ? 'Yes' : '✎'}
                                       </button>
                                       <button
-                                        onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
-                                        className={confirmDeleteEx === e.id
+                                        onClick={() => exConfirm.isConfirming(e.id) ? exConfirm.cancel() : exConfirm.request(e.id)}
+                                        className={exConfirm.isConfirming(e.id)
                                           ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
                                           : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                        title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
+                                        title={exConfirm.isConfirming(e.id) ? 'Cancel' : 'Remove'}
                                       >
-                                        {confirmDeleteEx === e.id ? 'No' : '✕'}
+                                        {exConfirm.isConfirming(e.id) ? 'No' : '✕'}
                                       </button>
                                     </div>
                                   </td>

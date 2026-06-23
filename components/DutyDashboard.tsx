@@ -5,28 +5,10 @@ import Link from 'next/link'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
+import { dutyRules } from '@/lib/duty-rules'
 import { useAuth } from '@/lib/useAuth'
 import CommanderLoginForm from './CommanderLoginForm'
-
-const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
-
-// ponytail: must match RANK_ORDER in ParadeState.tsx — same ordering used by rank rule from/to
-const RANK_ORDER = [
-  'REC','PTE','LCP','CPL','CFC',
-  '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
-  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
-]
-
-const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
-  CDO:  { from: '2LT', to: 'LTA' },
-  CDS:  { from: '2SG', to: '1SG' },
-  COS:  { from: 'PTE', to: '3SG' },
-  PDS1: { from: '3SG', to: '1SG' },
-  PDS2: { from: '3SG', to: '1SG' },
-  PDS3: { from: '3SG', to: '1SG' },
-  PDS4: { from: '3SG', to: '1SG' },
-}
 
 export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
   const theme = COMPANY_THEMES[company]
@@ -104,14 +86,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   )
 
   function isEligible(dt: string, s: Soldier) {
-    const ov = eligibilityOverrides[dt]
-    if (ov && ov.length > 0) return ov.includes(s.name)
-    const rule = rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt]
-    if (!rule) return false
-    const fi = RANK_ORDER.indexOf(rule.from)
-    const ti = RANK_ORDER.indexOf(rule.to)
-    const ri = RANK_ORDER.indexOf(s.rank)
-    return fi !== -1 && ti !== -1 && ri !== -1 && ri >= fi && ri <= ti
+    return dutyRules.isEligible(dt, s, eligibilityOverrides, rankRuleOverrides)
   }
 
   const eligibleForDuty = useMemo(

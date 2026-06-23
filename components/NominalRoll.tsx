@@ -1,81 +1,14 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { getSupabaseClient, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
+import { useConfirmDelete } from '@/lib/hooks'
+import { editInputClass as fieldInputClass } from '@/lib/ui'
+import SearchDropdown from '@/components/SearchDropdown'
 import BulkImportModal from '@/components/BulkImportModal'
-
-function RankSearch({
-  value,
-  onChange,
-  inputClass,
-}: {
-  value: string
-  onChange: (rank: string) => void
-  inputClass: string
-}) {
-  const [query, setQuery] = useState(value)
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const filtered = query.trim()
-    ? ALL_RANKS.filter((r) => r.rank.toLowerCase().startsWith(query.toLowerCase()))
-    : ALL_RANKS
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function select(rank: string) {
-    onChange(rank)
-    setQuery(rank)
-    setOpen(false)
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    onChange('')
-    setOpen(true)
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        type="text"
-        value={query}
-        onChange={handleInput}
-        onFocus={() => setOpen(true)}
-        placeholder="e.g. CPL, 3SG, LTA"
-        className={inputClass}
-        autoComplete="off"
-      />
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
-          {filtered.map((r) => (
-            <li key={r.rank}>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); select(r.rank) }}
-                className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-3 items-center"
-              >
-                <span className="font-mono font-medium text-gray-800 w-14 shrink-0">{r.rank}</span>
-                <span className="text-xs text-gray-400">{r.type}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
 
 const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
@@ -95,7 +28,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
-  const [confirmDeleteName, setConfirmDeleteName] = useState<string | null>(null)
+  const nameConfirm = useConfirmDelete<string>()
 
   const [editRow, setEditRow] = useState<{
     originalName: string
@@ -208,12 +141,7 @@ export default function NominalRoll({ company }: { company: Company }) {
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
 
-  function editInputClass(field: string) {
-    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
-    return editErrors[field]
-      ? `${base} border-red-500 ring-2 ring-red-500`
-      : `${base} border-gray-300 ${theme.focusRing}`
-  }
+  const editClass = (field: string) => fieldInputClass(!!editErrors[field], theme.focusRing)
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -261,10 +189,21 @@ export default function NominalRoll({ company }: { company: Company }) {
           <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Rank</label>
-              <RankSearch
+              <SearchDropdown
+                items={ALL_RANKS}
                 value={form.rank}
-                onChange={(rank) => setForm({ ...form, rank })}
+                getKey={r => r.rank}
+                getLabel={r => r.rank}
+                matches={(r, q) => r.rank.toLowerCase().startsWith(q.toLowerCase())}
+                renderOption={r => (
+                  <div className="flex gap-3 items-center">
+                    <span className="font-mono font-medium text-gray-800 w-14 shrink-0">{r.rank}</span>
+                    <span className="text-xs text-gray-400">{r.type}</span>
+                  </div>
+                )}
+                onChange={rank => setForm({ ...form, rank })}
                 inputClass={inputClass}
+                placeholder="e.g. CPL, 3SG, LTA"
               />
             </div>
             <div>
@@ -333,10 +272,21 @@ export default function NominalRoll({ company }: { company: Company }) {
                           {isEditing ? (
                             <>
                               <td className="px-2 py-2">
-                                <RankSearch
+                                <SearchDropdown
+                                  items={ALL_RANKS}
                                   value={editRow.rank}
-                                  onChange={(rank) => setEditRow({ ...editRow, rank })}
-                                  inputClass={editInputClass('rank')}
+                                  getKey={r => r.rank}
+                                  getLabel={r => r.rank}
+                                  matches={(r, q) => r.rank.toLowerCase().startsWith(q.toLowerCase())}
+                                  renderOption={r => (
+                                    <div className="flex gap-3 items-center">
+                                      <span className="font-mono font-medium text-gray-800 w-14 shrink-0">{r.rank}</span>
+                                      <span className="text-xs text-gray-400">{r.type}</span>
+                                    </div>
+                                  )}
+                                  onChange={rank => setEditRow({ ...editRow, rank })}
+                                  inputClass={editClass('rank')}
+                                  placeholder="e.g. CPL, 3SG, LTA"
                                 />
                               </td>
                               <td className="px-2 py-2">
@@ -349,7 +299,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     if (e.key === 'Enter') updateSoldier()
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
-                                  className={editInputClass('name')}
+                                  className={editClass('name')}
                                 />
                               </td>
                               <td className="px-2 py-2">
@@ -359,7 +309,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   onKeyDown={(e) => {
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
-                                  className={editInputClass('platoon')}
+                                  className={editClass('platoon')}
                                 >
                                   <option value="">—</option>
                                   {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -375,7 +325,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
                                   placeholder="e.g. 1234"
-                                  className={editInputClass('four_d')}
+                                  className={editClass('four_d')}
                                 />
                               </td>
                               <td className="px-2 py-2">
@@ -405,26 +355,26 @@ export default function NominalRoll({ company }: { company: Company }) {
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
-                                    onClick={() => confirmDeleteName === s.name
-                                      ? (setConfirmDeleteName(null), deleteSoldier(s.name))
+                                    onClick={() => nameConfirm.isConfirming(s.name)
+                                      ? nameConfirm.resolve(s.name, () => deleteSoldier(s.name))
                                       : (setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setEditErrors({}))}
                                     disabled={deletingName === s.name}
-                                    className={confirmDeleteName === s.name
+                                    className={nameConfirm.isConfirming(s.name)
                                       ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm'
                                       : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
-                                    title={confirmDeleteName === s.name ? 'Confirm delete' : 'Edit'}
+                                    title={nameConfirm.isConfirming(s.name) ? 'Confirm delete' : 'Edit'}
                                   >
-                                    {confirmDeleteName === s.name ? 'Yes' : '✎'}
+                                    {nameConfirm.isConfirming(s.name) ? 'Yes' : '✎'}
                                   </button>
                                   <button
-                                    onClick={() => confirmDeleteName === s.name ? setConfirmDeleteName(null) : setConfirmDeleteName(s.name)}
+                                    onClick={() => nameConfirm.isConfirming(s.name) ? nameConfirm.cancel() : nameConfirm.request(s.name)}
                                     disabled={deletingName === s.name}
-                                    className={confirmDeleteName === s.name
+                                    className={nameConfirm.isConfirming(s.name)
                                       ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50'
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
-                                    title={confirmDeleteName === s.name ? 'Cancel' : 'Remove'}
+                                    title={nameConfirm.isConfirming(s.name) ? 'Cancel' : 'Remove'}
                                   >
-                                    {confirmDeleteName === s.name ? 'No' : '✕'}
+                                    {nameConfirm.isConfirming(s.name) ? 'No' : '✕'}
                                   </button>
                                 </div>
                               </td>

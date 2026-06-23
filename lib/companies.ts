@@ -20,6 +20,22 @@ export const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =
   ranks.map((rank) => ({ rank, type })),
 )
 
+export const RANK_ORDER = [
+  'REC','PTE','LCP','CPL','CFC',
+  '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
+  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
+]
+
+export const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {
+  CDO:  { from: '2LT', to: 'LTA' },
+  CDS:  { from: '2SG', to: '1SG' },
+  COS:  { from: 'PTE', to: '3SG' },
+  PDS1: { from: '3SG', to: '1SG' },
+  PDS2: { from: '3SG', to: '1SG' },
+  PDS3: { from: '3SG', to: '1SG' },
+  PDS4: { from: '3SG', to: '1SG' },
+}
+
 export function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
   if (RANKS_BY_TYPE.Officer.some((p) => rank.startsWith(p))) return 'Officer'
   if (RANKS_BY_TYPE.WOSPEC.includes(rank)) return 'WOSPEC'
@@ -58,7 +74,7 @@ export interface ParadeStateConfig {
   scopeConfigs: ScopeConfig[]
 }
 
-const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
+export const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
 
 const STD_SCOPES: ScopeConfig[] = [
   { key: 'Att C',       label: 'ATT C' },
