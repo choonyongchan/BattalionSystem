@@ -223,8 +223,27 @@ export default function ParadeState({
     setLoading(false)
   }
 
+  const sortedExceptions = exceptions.sort((a, b) => {
+      const compareByDate = () => {
+        const dateA = new Date(a.start).getTime()
+        const dateB = new Date(b.start).getTime()
+        return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+      }
+
+      const compareByName = () => {
+        const nameA = a.name.toLowerCase()
+        const nameB = b.name.toLowerCase()
+        console.log(exceptionsSortNameAsc)
+        return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+      }
+
+      return exceptionsLastSortAction == 'date'
+        ? compareByDate() || compareByName()
+        : compareByName() || compareByDate()
+    })
+
   const query = search.trim().toLowerCase()
-  const queriedExceptions = exceptions.filter((e) => {
+  const queriedExceptions = sortedExceptions.filter((e) => {
     if (query) return (
         (e.name ?? '').toLowerCase().includes(query) ||
         (e.reason ?? '').toLowerCase().includes(query) ||
@@ -233,7 +252,7 @@ export default function ParadeState({
     }
   )
 
-  const defaultExceptions = exceptions
+  const defaultExceptions = sortedExceptions
     .filter((e) => {
       const d = new Date(date)
       const start = e.start ? new Date(e.start) : null
@@ -244,29 +263,13 @@ export default function ParadeState({
       return true
 
     })
-    .sort((a, b) => {
-      const compareByDate = () => {
-        const dateA = new Date(a.start).getTime()
-        const dateB = new Date(b.start).getTime()
-        return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
-      }
-
-      const compareByName = () => {
-        const nameA = a.name.toLowerCase()
-        const nameB = b.name.toLowerCase()
-        return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
-      }
-
-      return exceptionsLastSortAction === 'date'
-        ? compareByDate() || compareByName()
-        : compareByName() || compareByDate()
-    })
 
   // If there's a query, use the queried exceptions; otherwise, filter by date and sort
   var activeExceptions = query ? queriedExceptions : defaultExceptions
+  console.log("query")
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
-    activeExceptions = exceptions
+    activeExceptions = query ? queriedExceptions : sortedExceptions
   }
 
   const computedStrength = useMemo(() => {
@@ -973,6 +976,7 @@ export default function ParadeState({
                             onClick={() => {
                               setexceptionsSortNameAsc(!exceptionsSortNameAsc)
                               setexceptionsLastSortAction('name')
+                              console.log(exceptionsSortNameAsc)
                             } }
                             className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                             title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
