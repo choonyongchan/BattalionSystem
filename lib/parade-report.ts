@@ -237,7 +237,13 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
     .filter((e) => e.scope === 'MA' && new Date(e.end) >= new Date(date))
     .forEach((e) => {
       const dn = displayName(e.name, soldiers)
-      lines.push(e.reason ? `${dn} (${e.reason})` : dn)
+      const dateStr = toDDMMYY(e.end)
+      if (e.time) {
+        const timeStr = e.time.replace(':', '')
+        lines.push(`${dn} (${dateStr} ${timeStr}HRS)`)
+      } else {
+        lines.push(`${dn} (${dateStr})`)
+      }
     })
   lines.push(sep(50))
 

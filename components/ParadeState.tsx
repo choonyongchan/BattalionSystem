@@ -103,7 +103,7 @@ const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
 const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA', 'Others']
 
-type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean }
+type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
 
 const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
 
@@ -167,7 +167,7 @@ export default function ParadeState({
   const [showStrOverride, setShowStrOverride] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
-  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true })
+  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
   const [medCenter, setMedCenter] = useState('')
   const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
@@ -273,6 +273,12 @@ export default function ParadeState({
     }
   }
 
+  function isValidTime(t: string) {
+    if (!t) return true
+    const m = t.match(/^(\d{2}):(\d{2})$/)
+    return !!m && +m[1] <= 23 && +m[2] <= 59
+  }
+
   function isExceptionValid() {
     if (!exForm.name) return false
     if (exForm.scope === 'Status') {
@@ -281,7 +287,7 @@ export default function ParadeState({
       return new Set(reasons).size === reasons.length
     }
     const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start) && (exForm.scope !== 'MA' || medCenter.trim()))
+    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start) && (exForm.scope !== 'MA' || medCenter.trim()) && isValidTime(exForm.time))
   }
 
   async function addException() {
@@ -301,11 +307,12 @@ export default function ParadeState({
           start: singleDate ? exForm.end : exForm.start,
           end: exForm.end,
           counts_as_absence: exForm.counts_as_absence,
+          ...(exForm.scope === 'MA' && exForm.time ? { time: exForm.time } : {}),
         }))
     }
     if (error) { setError(error.message); return }
     setShowForm(false)
-    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true })
+    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
     setStatusRows([{ start: date, end: date, reason: '' }])
     setMedCenter('')
     await load()
@@ -357,6 +364,7 @@ export default function ParadeState({
     if (!editEx.reason.trim()) errors.reason = true
     if (!editEx.end) errors.end = true
     if (!singleDate && !editEx.start) errors.start = true
+    if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
     setEditExErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -378,6 +386,7 @@ export default function ParadeState({
         start: singleDate ? editEx.end : editEx.start,
         end: editEx.end,
         counts_as_absence: editEx.counts_as_absence,
+        time: editEx.scope === 'MA' ? (editEx.time ?? null) : null,
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
@@ -492,11 +501,15 @@ export default function ParadeState({
               <input
                 type="text"
                 inputMode="numeric"
-                pattern="[0-2][0-9]:[0-5][0-9]"
                 placeholder="HH:MM"
+                maxLength={5}
                 value={paradeTimes[pt] ?? ''}
                 onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing} w-24`}
+                className={`border rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 w-24 ${
+                  paradeTimes[pt] && !isValidTime(paradeTimes[pt])
+                    ? 'border-yellow-300 ring-2 ring-yellow-200'
+                    : `border-gray-300 ${theme.focusRing}`
+                }`}
               />
               <button
                 onClick={() => saveParadeTime(pt)}
@@ -579,10 +592,17 @@ export default function ParadeState({
             />
             <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
           </div>
-          <div className="flex justify-end">
+          <div className="flex items-center gap-3">
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={dutySearch}
+              onChange={e => setDutySearch(e.target.value)}
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+            />
             <button
               onClick={() => setShowForm(!showForm)}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
             >
               {showForm ? 'Cancel' : '+ Duty'}
             </button>
@@ -626,14 +646,6 @@ export default function ParadeState({
               </button>
             </div>
           )}
-
-          <input
-            type="search"
-            placeholder="Search by name…"
-            value={dutySearch}
-            onChange={e => setDutySearch(e.target.value)}
-            className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-          />
 
           {duties.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">No duties for this date.</div>
@@ -728,17 +740,24 @@ export default function ParadeState({
       {/* Exceptions section */}
       {activeSection === 'exceptions' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center gap-3">
+            <input
+              type="search"
+              placeholder="Search by name…"
+              value={exSearch}
+              onChange={e => setExSearch(e.target.value)}
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+            />
             <button
               onClick={() => {
                 if (showForm) {
-                  setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true })
+                  setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
                   setStatusRows([{ start: date, end: date, reason: '' }])
                   setMedCenter('')
                 }
                 setShowForm(!showForm)
               }}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
             >
               {showForm ? 'Cancel' : '+ Exception'}
             </button>
@@ -888,6 +907,20 @@ export default function ParadeState({
 
                 {exForm.scope === 'MA' && (
                   <div>
+                    <label className="block text-xs text-gray-500 mb-1">Time (optional)</label>
+                    <input
+                      type="text"
+                      value={exForm.time}
+                      onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      className={exForm.time && !isValidTime(exForm.time) ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200` : inputClass}
+                    />
+                  </div>
+                )}
+
+                {exForm.scope === 'MA' && (
+                  <div>
                     <label className="block text-xs text-gray-500 mb-1">Medical Center</label>
                     <input
                       type="text"
@@ -923,14 +956,6 @@ export default function ParadeState({
             )
           })()}
 
-          <input
-            type="search"
-            placeholder="Search by name…"
-            value={exSearch}
-            onChange={e => setExSearch(e.target.value)}
-            className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-          />
-
           {exceptions.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
               No exceptions.
@@ -946,6 +971,7 @@ export default function ParadeState({
                       <th className="px-4 py-3 font-medium text-gray-500 text-center">Absent</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Period</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
                       <th className="w-24" />
                     </tr>
                   </thead>
@@ -1044,6 +1070,18 @@ export default function ParadeState({
                                   />
                                 </td>
                                 <td className="px-2 py-2">
+                                  {editEx!.scope === 'MA' && (
+                                    <input
+                                      type="text"
+                                      value={editEx!.time ?? ''}
+                                      onChange={(e2) => setEditEx({ ...editEx!, time: e2.target.value })}
+                                      placeholder="HH:MM"
+                                      maxLength={5}
+                                      className={(() => { const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'; return editEx!.time && !isValidTime(editEx!.time ?? '') ? `${base} border-yellow-300 ring-2 ring-yellow-200` : `${base} border-gray-300 ${theme.focusRing}` })()}
+                                    />
+                                  )}
+                                </td>
+                                <td className="px-2 py-2">
                                   <div className="flex gap-1 justify-end">
                                     <button
                                       onClick={updateException}
@@ -1087,6 +1125,7 @@ export default function ParadeState({
                                   ) : '—'}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500">{e.reason ?? '—'}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs">{e.time ?? ''}</td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
