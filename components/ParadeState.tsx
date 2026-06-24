@@ -233,7 +233,6 @@ export default function ParadeState({
       const compareByName = () => {
         const nameA = a.name.toLowerCase()
         const nameB = b.name.toLowerCase()
-        console.log(exceptionsSortNameAsc)
         return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
       }
 
@@ -266,7 +265,6 @@ export default function ParadeState({
 
   // If there's a query, use the queried exceptions; otherwise, filter by date and sort
   var activeExceptions = query ? queriedExceptions : defaultExceptions
-  console.log("query")
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
     activeExceptions = query ? queriedExceptions : sortedExceptions
@@ -976,7 +974,6 @@ export default function ParadeState({
                             onClick={() => {
                               setexceptionsSortNameAsc(!exceptionsSortNameAsc)
                               setexceptionsLastSortAction('name')
-                              console.log(exceptionsSortNameAsc)
                             } }
                             className="flex items-center gap-1 hover:text-gray-700 transition-colors"
                             title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
