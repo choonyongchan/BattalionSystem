@@ -5,86 +5,13 @@ import { getSupabaseClient, tbl } from '@/lib/supabase'
 import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_ORDER, DEFAULT_RANK_RULES, ALL_DUTY_TYPES } from '@/lib/companies'
+import { dutyRules } from '@/lib/duty-rules'
+import { useConfirmDelete } from '@/lib/hooks'
+import { editInputClass as fieldInputClass } from '@/lib/ui'
+import SearchDropdown from '@/components/SearchDropdown'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
-
-function SoldierSearch({
-  soldiers,
-  value,
-  onChange,
-  inputClass,
-}: {
-  soldiers: Soldier[]
-  value: string
-  onChange: (name: string) => void
-  inputClass: string
-}) {
-  const [query, setQuery] = useState(() => {
-    const found = soldiers.find((s) => s.name === value)
-    return found ? `${found.rank} ${found.name}` : value
-  })
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const filtered = query.trim()
-    ? soldiers.filter((s) =>
-      `${s.rank} ${s.name}`.toLowerCase().includes(query.toLowerCase()),
-    )
-    : soldiers
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  function select(s: Soldier) {
-    onChange(s.name)
-    setQuery(`${s.rank} ${s.name}`)
-    setOpen(false)
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    onChange('')
-    setOpen(true)
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        type="text"
-        value={query}
-        onChange={handleInput}
-        onFocus={() => setOpen(true)}
-        placeholder="Search soldier..."
-        className={inputClass}
-        autoComplete="off"
-      />
-      {open && filtered.length > 0 && (
-        <ul className="absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
-          {filtered.map((s) => (
-            <li key={s.name}>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); select(s) }}
-                className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex gap-2"
-              >
-                <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
-                <span className="font-medium text-gray-800">{s.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
 
 const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
 type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
@@ -104,8 +31,6 @@ const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA', 'Others']
 
 type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
-
-const DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'] as const
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
@@ -169,22 +94,25 @@ export default function ParadeState({
   const [medCenter, setMedCenter] = useState('')
   const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
-  const [dutyForm, setDutyForm] = useState({ duty_type: '', name: '' })
   const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
   const [savingParade, setSavingParade] = useState<string | null>(null)
 
   // Duties inline edit
   const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
   const [savingDuty, setSavingDuty] = useState(false)
-  const [confirmDeleteDuty, setConfirmDeleteDuty] = useState<string | null>(null)
+  const dutyConfirm = useConfirmDelete<string>()
+
+  // Duty rank rule editor
+  const [showRankRules, setShowRankRules] = useState(false)
+  const [editRankRules, setEditRankRules] = useState<Record<string, { from: string; to: string }>>({})
+  const [savingRankRules, setSavingRankRules] = useState(false)
 
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
   const [exSearch, setExSearch] = useState('')
-  const [dutySearch, setDutySearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
-  const [confirmDeleteEx, setConfirmDeleteEx] = useState<number | null>(null)
+  const exConfirm = useConfirmDelete<number>()
 
   useEffect(() => {
     load()
@@ -264,11 +192,29 @@ export default function ParadeState({
     })
 
   // If there's a query, use the queried exceptions; otherwise, filter by date and sort
-  var activeExceptions = query ? queriedExceptions : defaultExceptions
+  let activeExceptions = query ? queriedExceptions : defaultExceptions
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
     activeExceptions = query ? queriedExceptions : sortedExceptions
   }
+
+  const eligibilityOverrides = useMemo(() => {
+    const ov: Record<string, string[]> = {}
+    for (const c of configs) {
+      if (!c.parade_type.startsWith('eligible_')) continue
+      try { ov[c.parade_type.replace('eligible_', '')] = JSON.parse(c.time) } catch {}
+    }
+    return ov
+  }, [configs])
+
+  const rankRuleOverrides = useMemo(() => {
+    const ov: Record<string, { from: string; to: string }> = {}
+    for (const c of configs) {
+      if (!c.parade_type.startsWith('rank_rule_')) continue
+      try { ov[c.parade_type.replace('rank_rule_', '')] = JSON.parse(c.time) } catch {}
+    }
+    return ov
+  }, [configs])
 
   const computedStrength = useMemo(() => {
     const result: Record<string, Record<string, number>> = {}
@@ -360,20 +306,6 @@ export default function ParadeState({
     await load()
   }
 
-  async function addDuty() {
-    if (!dutyForm.duty_type) return
-    const supabase = getSupabaseClient(company)
-    const { error } = await supabase.from(tbl(company, 'Duty')).upsert({
-      duty_type: dutyForm.duty_type,
-      date,
-      name: dutyForm.name.toUpperCase(),
-    })
-    if (error) { setError(error.message); return }
-    setShowForm(false)
-    setDutyForm({ duty_type: '', name: '' })
-    await load()
-  }
-
   async function deleteDuty(duty_type: string) {
     const supabase = getSupabaseClient(company)
     await supabase.from(tbl(company, 'Duty')).delete().eq('duty_type', duty_type).eq('date', date)
@@ -444,6 +376,20 @@ export default function ParadeState({
     setSavingParade(null)
   }
 
+  async function saveRankRules() {
+    setSavingRankRules(true)
+    const supabase = getSupabaseClient(company)
+    const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
+    const rows = dutyTypes.map(dt => ({
+      parade_type: `rank_rule_${dt}`,
+      time: JSON.stringify(editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
+    }))
+    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert(rows, { onConflict: 'parade_type' } as any)
+    if (error) setError(error.message)
+    else { await load(); setShowRankRules(false) }
+    setSavingRankRules(false)
+  }
+
   function generate(paradeType: 'First Parade' | 'Last Parade') {
     const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
     for (const [platoon, rtMap] of Object.entries(strOverrides)) {
@@ -484,11 +430,19 @@ export default function ParadeState({
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
 
-  function exEditInputClass(field: string) {
-    const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
-    return editExErrors[field]
-      ? `${base} border-red-500 ring-2 ring-red-500`
-      : `${base} border-gray-300 ${theme.focusRing}`
+  const exClass = (field: string) => fieldInputClass(!!editExErrors[field], theme.focusRing)
+
+  const soldierDropdownProps = {
+    getKey:       (s: Soldier) => s.name,
+    getLabel:     (s: Soldier) => `${s.rank} ${s.name}`,
+    matches:      (s: Soldier, q: string) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase()),
+    renderOption: (s: Soldier) => (
+      <div className="flex gap-2">
+        <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
+        <span className="font-medium text-gray-800">{s.name}</span>
+      </div>
+    ),
+    placeholder: 'Search soldier...',
   }
 
   const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
@@ -628,148 +582,148 @@ export default function ParadeState({
             />
             <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
           </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="search"
-              placeholder="Search by name…"
-              value={dutySearch}
-              onChange={e => setDutySearch(e.target.value)}
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-            />
+          <div className="flex items-center gap-3 justify-end">
             <button
-              onClick={() => setShowForm(!showForm)}
-              className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors shrink-0`}
+              onClick={() => {
+                if (!showRankRules) {
+                  const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
+                  setEditRankRules(Object.fromEntries(dutyTypes.map(dt => [dt, rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }])))
+                }
+                setShowRankRules(v => !v)
+              }}
+              title="Edit Duty Rank Rules"
+              className={`shrink-0 p-2.5 rounded-xl transition-colors ${showRankRules ? `${theme.buttonBg} text-white` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
             >
-              {showForm ? 'Cancel' : '+ Duty'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
 
-          {showForm && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-2">Duty Type</label>
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                  {DUTY_TYPES.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDutyForm({ ...dutyForm, duty_type: d })}
-                      className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${dutyForm.duty_type === d
-                          ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
-                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
+          {/* Rank rule editor — triggered by gear icon above */}
+          {showRankRules && (() => {
+            const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
+            return (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <p className="text-xs text-gray-500">Set the eligible rank range for each duty type.</p>
+                {dutyTypes.map(dt => {
+                  const rule = editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }
+                  return (
+                    <div key={dt} className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-600 uppercase w-10 shrink-0">{dt}</span>
+                      <select
+                        value={rule.from}
+                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, from: e.target.value } }))}
+                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
+                      >
+                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <span className="text-xs text-gray-400 shrink-0">–</span>
+                      <select
+                        value={rule.to}
+                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, to: e.target.value } }))}
+                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
+                      >
+                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  )
+                })}
+                <button
+                  onClick={saveRankRules}
+                  disabled={savingRankRules}
+                  className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                >
+                  {savingRankRules ? 'Saving…' : 'Save Rules'}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Assigned To</label>
-                <SoldierSearch
-                  soldiers={soldiers}
-                  value={dutyForm.name}
-                  onChange={(name) => setDutyForm({ ...dutyForm, name })}
-                  inputClass={inputClass}
-                />
-              </div>
-              <button
-                onClick={addDuty}
-                disabled={!dutyForm.duty_type}
-                className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
-              >
-                Add Duty
-              </button>
-            </div>
-          )}
+            )
+          })()}
 
-          {duties.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">No duties for this date.</div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
-                      <th className="w-24" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(dutySearch ? duties.filter(d => d.name?.toLowerCase().includes(dutySearch.toLowerCase())) : duties).map((d, i) => {
-                      const isEditing = editDuty?.duty_type === d.duty_type
-                      return (
-                        <tr
-                          key={d.duty_type}
-                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
-                        >
-                          <td className="px-4 py-3 font-medium">{d.duty_type}</td>
-                          {isEditing ? (
-                            <>
-                              <td className="px-2 py-2">
-                                <SoldierSearch
-                                  soldiers={soldiers}
-                                  value={editDuty.name}
-                                  onChange={(name) => setEditDuty({ ...editDuty, name })}
-                                  inputClass={dutyEditInputClass}
-                                />
-                              </td>
-                              <td className="px-2 py-2">
-                                <div className="flex gap-1 justify-end">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
+                    <th className="w-24" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {ALL_DUTY_TYPES.map((dt, i) => {
+                    const d = duties.find(x => x.duty_type === dt)
+                    const isEditing = editDuty?.duty_type === dt
+                    return (
+                      <tr
+                        key={dt}
+                        className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                      >
+                        <td className="px-4 py-3 font-medium">{dt}</td>
+                        {isEditing ? (
+                          <>
+                            <td className="px-2 py-2">
+                              <SearchDropdown
+                                {...soldierDropdownProps}
+                                items={dutyRules.eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
+                                value={editDuty.name}
+                                onChange={name => setEditDuty({ ...editDuty, name })}
+                                inputClass={dutyEditInputClass}
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <div className="flex gap-1 justify-end">
+                                <button
+                                  onClick={updateDuty}
+                                  disabled={savingDuty}
+                                  className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                >
+                                  {savingDuty ? '…' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={() => setEditDuty(null)}
+                                  className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-gray-600">{d?.name ? displayName(d.name, soldiers) : '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1 justify-end items-center">
+                                <button
+                                  onClick={() => setEditDuty({ duty_type: dt, name: d?.name ?? '' })}
+                                  className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
+                                  title="Edit"
+                                >
+                                  ✎
+                                </button>
+                                {d && (
                                   <button
-                                    onClick={updateDuty}
-                                    disabled={savingDuty}
-                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
-                                  >
-                                    {savingDuty ? '…' : 'Save'}
-                                  </button>
-                                  <button
-                                    onClick={() => setEditDuty(null)}
-                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="px-4 py-3 text-gray-600">{d.name ? displayName(d.name, soldiers) : 'TBC'}</td>
-                              <td className="px-4 py-3">
-                                <div className="flex gap-1 justify-end items-center">
-                                  <button
-                                    onClick={() => confirmDeleteDuty === d.duty_type
-                                      ? (setConfirmDeleteDuty(null), deleteDuty(d.duty_type))
-                                      : setEditDuty({ duty_type: d.duty_type, name: d.name ?? '' })}
-                                    className={confirmDeleteDuty === d.duty_type
+                                    onClick={() => dutyConfirm.isConfirming(dt) ? dutyConfirm.resolve(dt, () => deleteDuty(dt)) : dutyConfirm.request(dt)}
+                                    className={dutyConfirm.isConfirming(dt)
                                       ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
-                                    title={confirmDeleteDuty === d.duty_type ? 'Confirm delete' : 'Edit'}
-                                  >
-                                    {confirmDeleteDuty === d.duty_type ? 'Yes' : '✎'}
-                                  </button>
-                                  <button
-                                    onClick={() => confirmDeleteDuty === d.duty_type ? setConfirmDeleteDuty(null) : setConfirmDeleteDuty(d.duty_type)}
-                                    className={confirmDeleteDuty === d.duty_type
-                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                    title={confirmDeleteDuty === d.duty_type ? 'Cancel' : 'Remove'}
+                                    title={dutyConfirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}
                                   >
-                                    {confirmDeleteDuty === d.duty_type ? 'No' : '✕'}
+                                    {dutyConfirm.isConfirming(dt) ? 'Yes' : '✕'}
                                   </button>
-                                </div>
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -808,11 +762,13 @@ export default function ParadeState({
                 <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Soldier</label>
-                    <SoldierSearch
-                      soldiers={soldiers}
+                    <SearchDropdown
+                      {...soldierDropdownProps}
+                      items={soldiers}
                       value={exForm.name}
-                      onChange={(name) => setExForm({ ...exForm, name })}
-                      inputClass={inputClass} />
+                      onChange={name => setExForm({ ...exForm, name })}
+                      inputClass={inputClass}
+                    />
                   </div>
 
                   <div>
@@ -1010,11 +966,13 @@ export default function ParadeState({
                               {isEditing ? (
                                 <>
                                   <td className="px-2 py-2">
-                                    <SoldierSearch
-                                      soldiers={soldiers}
+                                    <SearchDropdown
+                                      {...soldierDropdownProps}
+                                      items={soldiers}
                                       value={editEx!.name}
-                                      onChange={(name) => setEditEx({ ...editEx!, name })}
-                                      inputClass={exEditInputClass('name')} />
+                                      onChange={name => setEditEx({ ...editEx!, name })}
+                                      inputClass={exClass('name')}
+                                    />
                                   </td>
                                   <td className="px-2 py-2">
                                     <div className="flex flex-wrap gap-1">
@@ -1038,20 +996,20 @@ export default function ParadeState({
                                         type="date"
                                         value={editEx!.end}
                                         onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
-                                        className={exEditInputClass('end')} />
+                                        className={exClass('end')} />
                                     ) : (
                                       <div className="flex gap-1 items-center">
                                         <input
                                           type="date"
                                           value={editEx!.start}
                                           onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
-                                          className={exEditInputClass('start')} />
+                                          className={exClass('start')} />
                                         <span className="text-gray-400 text-xs shrink-0">–</span>
                                         <input
                                           type="date"
                                           value={editEx!.end}
                                           onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
-                                          className={exEditInputClass('end')} />
+                                          className={exClass('end')} />
                                       </div>
                                     )}
                                   </td>
@@ -1065,7 +1023,7 @@ export default function ParadeState({
                                         if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({})} 
                                       } }
                                       placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
-                                      className={exEditInputClass('reason')} />
+                                      className={exClass('reason')} />
                                   </td>
                                   <td className="px-2 py-2">
                                     <div className="flex gap-1 justify-end">
@@ -1100,24 +1058,24 @@ export default function ParadeState({
                                   <td className="px-4 py-3">
                                     <div className="flex gap-1 justify-end items-center">
                                       <button
-                                        onClick={() => confirmDeleteEx === e.id
-                                          ? (setConfirmDeleteEx(null), deleteException(e.id))
+                                        onClick={() => exConfirm.isConfirming(e.id)
+                                          ? exConfirm.resolve(e.id, () => deleteException(e.id))
                                           : (setEditEx({ ...e }), setEditExErrors({}))}
-                                        className={confirmDeleteEx === e.id
+                                        className={exConfirm.isConfirming(e.id)
                                           ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
                                           : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
-                                        title={confirmDeleteEx === e.id ? 'Confirm delete' : 'Edit'}
+                                        title={exConfirm.isConfirming(e.id) ? 'Confirm delete' : 'Edit'}
                                       >
-                                        {confirmDeleteEx === e.id ? 'Yes' : '✎'}
+                                        {exConfirm.isConfirming(e.id) ? 'Yes' : '✎'}
                                       </button>
                                       <button
-                                        onClick={() => confirmDeleteEx === e.id ? setConfirmDeleteEx(null) : setConfirmDeleteEx(e.id)}
-                                        className={confirmDeleteEx === e.id
+                                        onClick={() => exConfirm.isConfirming(e.id) ? exConfirm.cancel() : exConfirm.request(e.id)}
+                                        className={exConfirm.isConfirming(e.id)
                                           ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
                                           : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
-                                        title={confirmDeleteEx === e.id ? 'Cancel' : 'Remove'}
+                                        title={exConfirm.isConfirming(e.id) ? 'Cancel' : 'Remove'}
                                       >
-                                        {confirmDeleteEx === e.id ? 'No' : '✕'}
+                                        {exConfirm.isConfirming(e.id) ? 'No' : '✕'}
                                       </button>
                                     </div>
                                   </td>

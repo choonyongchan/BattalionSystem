@@ -7,11 +7,13 @@ import { COMPANY_THEMES } from '@/lib/companies'
 import { useAuth } from '@/lib/useAuth'
 import NominalRoll from './NominalRoll'
 import ParadeState from './ParadeState'
+import DutyDashboard from './DutyDashboard'
 import CommanderLoginForm from './CommanderLoginForm'
 
-type Tab = 'nominal-roll' | 'parade-state'
+type Tab = 'dashboard' | 'nominal-roll' | 'parade-state'
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
   { id: 'nominal-roll', label: 'Nominal Roll' },
   { id: 'parade-state', label: 'Parade State' },
 ]
@@ -23,7 +25,7 @@ export default function CompanyContent({
   company: Company
   label: string
 }) {
-  const [activeTab, setActiveTab] = useState<Tab>('nominal-roll')
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const theme = COMPANY_THEMES[company]
   const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
 
@@ -39,9 +41,6 @@ export default function CompanyContent({
         <span className="text-yellow-500 relative z-10">|</span>
         <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">{label} Coy</h1>
         <div className="ml-auto flex items-center gap-3 relative z-10">
-          <Link href={`/${company}/dashboard`} className="text-yellow-700 hover:text-yellow-900 text-xs font-medium transition-colors">
-            Dashboard →
-          </Link>
           {!authLoading && isCommander && (
             <button
               onClick={signOut}
@@ -76,6 +75,8 @@ export default function CompanyContent({
           <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
         ) : !isCommander ? (
           <CommanderLoginForm companyLabel={label} onSignIn={signIn} />
+        ) : activeTab === 'dashboard' ? (
+          <DutyDashboard company={company} label={label} embedded />
         ) : activeTab === 'nominal-roll' ? (
           <NominalRoll company={company} />
         ) : (
