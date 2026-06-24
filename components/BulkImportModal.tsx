@@ -43,15 +43,9 @@ export default function BulkImportModal({
     reader.readAsText(file, 'utf-8')
   }
 
-  async function deleteAllSoldiers() {
-    const supabase = getSupabaseClient(company)
-    await supabase.from(tbl(company, 'NominalRoll')).delete().not('name', 'is', null)
-  }
-
   async function doImport() {
     if (!valid || valid.length === 0) return
     setImporting(true)
-    await deleteAllSoldiers()
     const supabase = getSupabaseClient(company)
     const overwriteCount = valid.filter((r) => r.isOverwrite).length
     const payload = valid.map(({ rank, name, platoon, fourD }) => ({ rank, name, platoon, four_d: fourD }))
