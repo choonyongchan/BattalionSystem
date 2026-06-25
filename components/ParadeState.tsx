@@ -151,28 +151,7 @@ export default function ParadeState({
     setLoading(false)
   }
 
-  const query = search.trim().toLowerCase()
-  const queriedExceptions = exceptions.filter((e) => {
-    if (query) return (
-        (e.name ?? '').toLowerCase().includes(query) ||
-        (e.reason ?? '').toLowerCase().includes(query) ||
-        (String(e.scope ?? '')).toLowerCase().includes(query)
-      )
-    }
-  )
-
-  const defaultExceptions = exceptions
-    .filter((e) => {
-      const d = new Date(date)
-      const start = e.start ? new Date(e.start) : null
-      const end = e.end ? new Date(e.end) : null
-      if (start && d < start) return false
-      if (end && d > end) return false
-
-      return true
-
-    })
-    .sort((a, b) => {
+  const sortedExceptions = exceptions.sort((a, b) => {
       const compareByDate = () => {
         const dateA = new Date(a.start).getTime()
         const dateB = new Date(b.start).getTime()
@@ -185,16 +164,38 @@ export default function ParadeState({
         return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
       }
 
-      return exceptionsLastSortAction === 'date'
+      return exceptionsLastSortAction == 'date'
         ? compareByDate() || compareByName()
         : compareByName() || compareByDate()
+    })
+
+  const query = search.trim().toLowerCase()
+  const queriedExceptions = sortedExceptions.filter((e) => {
+    if (query) return (
+        (e.name ?? '').toLowerCase().includes(query) ||
+        (e.reason ?? '').toLowerCase().includes(query) ||
+        (String(e.scope ?? '')).toLowerCase().includes(query)
+      )
+    }
+  )
+
+  const defaultExceptions = sortedExceptions
+    .filter((e) => {
+      const d = new Date(date)
+      const start = e.start ? new Date(e.start) : null
+      const end = e.end ? new Date(e.end) : null
+      if (start && d < start) return false
+      if (end && d > end) return false
+
+      return true
+
     })
 
   // If there's a query, use the queried exceptions; otherwise, filter by date and sort
   let activeExceptions = query ? queriedExceptions : defaultExceptions
   if (exceptionShowAll) {
     // if show all is true then show all exceptions
-    activeExceptions = exceptions
+    activeExceptions = query ? queriedExceptions : sortedExceptions
   }
 
   const eligibilityOverrides = useMemo(() => {
