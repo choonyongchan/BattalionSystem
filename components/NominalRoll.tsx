@@ -1,14 +1,18 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { getSupabaseClient, tbl } from '@/lib/supabase'
+import { supabase, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
 import { useConfirmDelete } from '@/lib/hooks'
-import { editInputClass as fieldInputClass } from '@/lib/ui'
 import SearchDropdown from '@/components/SearchDropdown'
 import BulkImportModal from '@/components/BulkImportModal'
+
+function fieldInputClass(hasError: boolean, focusRing: string) {
+  const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+  return hasError ? `${base} border-red-500 ring-2 ring-red-500` : `${base} border-gray-300 ${focusRing}`
+}
 
 const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
@@ -45,7 +49,6 @@ export default function NominalRoll({ company }: { company: Company }) {
   }, [company])
 
   async function load() {
-    const supabase = getSupabaseClient(company)
     setLoading(true)
     setError(null)
     const { data, error } = await supabase
@@ -59,7 +62,6 @@ export default function NominalRoll({ company }: { company: Company }) {
 
   async function addSoldier() {
     if (!form.name.trim() || !form.platoon) return
-    const supabase = getSupabaseClient(company)
     setSubmitting(true)
     const { error } = await supabase.from(tbl(company, 'NominalRoll')).insert({
       rank: form.rank,
@@ -77,7 +79,6 @@ export default function NominalRoll({ company }: { company: Company }) {
   }
 
   async function deleteSoldier(name: string) {
-    const supabase = getSupabaseClient(company)
     setDeletingName(name)
     await supabase.from(tbl(company, 'NominalRoll')).delete().eq('name', name)
     await load()
@@ -96,7 +97,6 @@ export default function NominalRoll({ company }: { company: Company }) {
 
   async function updateSoldier() {
     if (!editRow || !validateEdit()) return
-    const supabase = getSupabaseClient(company)
     setSavingEdit(true)
     const { error } = await supabase
       .from(tbl(company, 'NominalRoll'))
@@ -171,7 +171,7 @@ export default function NominalRoll({ company }: { company: Company }) {
       <div className="flex justify-center">
         <input
           type="search"
-          placeholder="Search by rank, name, platoon…"
+          placeholder="Search by rank, name, platoonâ€¦"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
@@ -247,7 +247,7 @@ export default function NominalRoll({ company }: { company: Company }) {
         return (
           <div key={type}>
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
-              {type}s — {group.length}
+              {type}s â€” {group.length}
             </h3>
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -311,7 +311,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   }}
                                   className={editClass('platoon')}
                                 >
-                                  <option value="">—</option>
+                                  <option value="">â€”</option>
                                   {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
                                 </select>
                               </td>
@@ -335,7 +335,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     disabled={savingEdit}
                                     className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                                   >
-                                    {savingEdit ? '…' : 'Save'}
+                                    {savingEdit ? 'â€¦' : 'Save'}
                                   </button>
                                   <button
                                     onClick={() => { setEditRow(null); setEditErrors({}) }}
@@ -351,7 +351,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                               <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
                               <td className="px-4 py-3 font-medium">{s.name}</td>
                               <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '—'}</td>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? 'â€”'}</td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
@@ -364,7 +364,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                       : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Confirm delete' : 'Edit'}
                                   >
-                                    {nameConfirm.isConfirming(s.name) ? 'Yes' : '✎'}
+                                    {nameConfirm.isConfirming(s.name) ? 'Yes' : 'âœŽ'}
                                   </button>
                                   <button
                                     onClick={() => nameConfirm.isConfirming(s.name) ? nameConfirm.cancel() : nameConfirm.request(s.name)}
@@ -374,7 +374,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Cancel' : 'Remove'}
                                   >
-                                    {nameConfirm.isConfirming(s.name) ? 'No' : '✕'}
+                                    {nameConfirm.isConfirming(s.name) ? 'No' : 'âœ•'}
                                   </button>
                                 </div>
                               </td>

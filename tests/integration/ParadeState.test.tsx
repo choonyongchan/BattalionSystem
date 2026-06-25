@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ParadeState from '@/components/ParadeState'
-import { getSupabaseClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
 import { FIXTURE_DATE } from '../fixtures/exceptions'
 
 beforeAll(async () => {
-  const supabase = getSupabaseClient('test')
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -18,10 +17,10 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await getSupabaseClient('test').auth.signOut()
+  await supabase.auth.signOut()
 })
 
-// ParadeState defaults the date picker to today — we need to set it to FIXTURE_DATE
+// ParadeState defaults the date picker to today â€” we need to set it to FIXTURE_DATE
 // so the fixture exceptions/duties are visible
 async function renderParadeStateOnFixtureDate() {
   render(<ParadeState company="test" companyLabel="Test" />)
@@ -75,7 +74,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Generate Parade State' }))
 
     await waitFor(() => {
-      // 3 soldiers total, 1 exception (TEST_SOLDIER_ONE) → present = 2
+      // 3 soldiers total, 1 exception (TEST_SOLDIER_ONE) â†’ present = 2
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
       expect(textarea.value).toContain('TOTAL STRENGTH : 3')
       expect(textarea.value).toContain('PRESENT        : 2')

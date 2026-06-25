@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NominalRoll from '@/components/NominalRoll'
-import { getSupabaseClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
 
 beforeAll(async () => {
   // Sign in via the same singleton client the component will use
-  const supabase = getSupabaseClient('test')
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -19,7 +18,7 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await getSupabaseClient('test').auth.signOut()
+  await supabase.auth.signOut()
 })
 
 describe('NominalRoll', () => {
@@ -61,7 +60,7 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     // Verify it's in the DB
-    const { data } = await getSupabaseClient('test')
+    const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
       .eq('name', 'TEST_NEW_SOLDIER')
@@ -82,7 +81,7 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     // Verify removed from DB
-    const { data } = await getSupabaseClient('test')
+    const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
       .eq('name', 'TEST_SOLDIER_TWO')

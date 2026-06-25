@@ -41,15 +41,10 @@ type Database = {
   }
 }
 
-// ponytail: company arg kept so call sites don't change; all companies share one project now
-const _client = createClient<Database>(
+export const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
-
-export function getSupabaseClient(_company: Company) {
-  return _client
-}
 
 // ponytail: any cast — Supabase can't narrow dynamic table names; cast results at call sites
 export const tbl = (company: Company, table: string) =>

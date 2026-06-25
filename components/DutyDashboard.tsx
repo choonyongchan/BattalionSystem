@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { getSupabaseClient, tbl } from '@/lib/supabase'
+import { supabase, tbl } from '@/lib/supabase'
 import type { Soldier, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
@@ -35,7 +35,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
 
   async function load() {
     setLoading(true)
-    const sb = getSupabaseClient(company)
+    const sb = supabase
     const [{ data: sol }, { data: dut }, { data: cfg }, { data: elig }, { data: rules }] = await Promise.all([
       sb.from(tbl(company, 'NominalRoll')).select('*'),
       sb.from(tbl(company, 'Duty')).select('*'),
@@ -121,7 +121,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
 
   async function saveWeights() {
     setSavingWeights(true)
-    const sb = getSupabaseClient(company)
+    const sb = supabase
     const rows = dutyTypes.map(dt => ({
       parade_type: `weight_${dt}`,
       time: String(parseFloat(editWeights[dt] ?? '1') || 1),

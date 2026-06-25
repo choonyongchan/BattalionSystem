@@ -36,6 +36,8 @@ export const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = 
   PDS4: { from: '3SG', to: '1SG' },
 }
 
+export const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
+
 export function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {
   if (RANKS_BY_TYPE.Officer.some((p) => rank.startsWith(p))) return 'Officer'
   if (RANKS_BY_TYPE.WOSPEC.includes(rank)) return 'WOSPEC'

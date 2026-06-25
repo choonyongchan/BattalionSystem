@@ -1,9 +1,7 @@
 import type { Soldier, Exception, DutyEntry, Configuration } from './supabase'
 import { displayName } from './supabase'
 import type { ParadeStateConfig, Company } from './companies'
-import { getRankType } from './companies'
-
-const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
+import { getRankType, RANK_TYPES } from './companies'
 
 const PLATOON_ORDER: Record<string, number> = { HQ: 0, '1': 1, '2': 2, '3': 3, '4': 4 }
 const RANK_TYPE_ORDER: Record<string, number> = { Officer: 0, WOSPEC: 1, Enlistee: 2 }

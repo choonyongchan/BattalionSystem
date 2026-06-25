@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NominalRoll from '@/components/NominalRoll'
-import { getSupabaseClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
 
 beforeAll(async () => {
-  const supabase = getSupabaseClient('test')
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -17,7 +16,7 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await getSupabaseClient('test').auth.signOut()
+  await supabase.auth.signOut()
 })
 
 async function waitForLoad() {
@@ -99,7 +98,7 @@ describe('Bulk Import', () => {
       expect(screen.getByText(/done: 2 added/i)).toBeInTheDocument()
     }, { timeout: 10000 })
 
-    const { data } = await getSupabaseClient('test')
+    const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
       .in('name', ['TEST_BULK_IMPORT_A', 'TEST_BULK_IMPORT_B'])
