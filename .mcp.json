@@ -2,7 +2,14 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=jbuqlxmfvskqiujppzkp"
+      "url": "https://mcp.supabase.com/mcp?project_ref=qwlqamrvcosyewqxbrqx"
+    },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $VERCEL_MCP_TOKEN"
+      }
     }
   }
 }
