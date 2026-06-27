@@ -115,4 +115,76 @@ describe('validateAndTransform', () => {
     expect(errors[0].message).toMatch(/duplicate name/i)
     expect(valid).toHaveLength(0)
   })
+
+  // ── 4D boundary cases ───────────────────────────────────────────────────────
+
+  it('4D exactly 4 digits is valid', () => {
+    const rows = tv('1234,CPL,TAN,1')
+    const { valid, errors } = validateAndTransform(rows, existing)
+    expect(errors).toHaveLength(0)
+    expect(valid[0].fourD).toBe('1234')
+  })
+
+  it('4D 3 digits is invalid (one below valid length)', () => {
+    const rows = tv('123,CPL,TAN,1')
+    const { errors } = validateAndTransform(rows, existing)
+    expect(errors[0].message).toMatch(/4D/)
+  })
+
+  it('4D 5 digits is invalid (one above valid length)', () => {
+    const rows = tv('12345,CPL,TAN,1')
+    const { errors } = validateAndTransform(rows, existing)
+    expect(errors[0].message).toMatch(/4D/)
+  })
+
+  it('4D with non-numeric characters is invalid', () => {
+    const rows = tv('A123,CPL,TAN,1')
+    const { errors } = validateAndTransform(rows, existing)
+    expect(errors[0].message).toMatch(/4D/)
+  })
+
+  // ── Name edge cases ─────────────────────────────────────────────────────────
+
+  it('name that is all spaces fails name-is-empty check', () => {
+    const rows = tv(',CPL,   ,1')
+    const { errors } = validateAndTransform(rows, existing)
+    expect(errors[0].message).toMatch(/name is empty/i)
+  })
+
+  // ── Empty / header-only CSVs ────────────────────────────────────────────────
+
+  it('CSV with zero data rows returns valid=[], errors=[]', () => {
+    const rows = parseCSV(`${HINTS}\n4D,Rank,Name,Platoon`)
+    const { valid, errors } = validateAndTransform(rows, existing)
+    expect(valid).toHaveLength(0)
+    expect(errors).toHaveLength(0)
+  })
+
+  // ── All-or-nothing with mixed valid/invalid ─────────────────────────────────
+
+  it('one bad platoon among otherwise valid rows blocks all', () => {
+    const rows = tv(',CPL,TAN,9\n,PTE,LEE,1\n,LTA,KIM,HQ')
+    const { valid, errors } = validateAndTransform(rows, existing)
+    expect(errors.length).toBeGreaterThan(0)
+    expect(valid).toHaveLength(0)
+  })
+
+  it('large valid CSV (50 rows) returns all 50 in valid', () => {
+    const dataRows = Array.from({ length: 50 }, (_, i) =>
+      `,CPL,SOLDIER_${String(i).padStart(2, '0')},1`,
+    ).join('\n')
+    const rows = tv(dataRows)
+    const { valid, errors } = validateAndTransform(rows, existing)
+    expect(errors).toHaveLength(0)
+    expect(valid).toHaveLength(50)
+  })
+
+  it('DB-existing name followed by CSV duplicate of that name: existing is overwrite, duplicate is error', () => {
+    // EXISTING_SOLDIER is in the DB. If it appears again in the same CSV, second occurrence is a duplicate error.
+    const rows = tv(',CPL,EXISTING_SOLDIER,1\n,PTE,EXISTING_SOLDIER,2')
+    const { valid, errors } = validateAndTransform(rows, existing)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].message).toMatch(/duplicate name/i)
+    expect(valid).toHaveLength(0) // all-or-nothing
+  })
 })

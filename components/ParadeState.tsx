@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
@@ -199,7 +199,7 @@ export default function ParadeState({
   let activeExceptions = (
     query
       ? queriedExceptions
-      : (exceptionShowAll ? defaultExceptions : sortedExceptions)
+      : (exceptionShowAll ? sortedExceptions : defaultExceptions)
   )
 
   const eligibilityOverrides = useMemo(() => {
@@ -238,7 +238,7 @@ export default function ParadeState({
     const override = Number(raw)
     if (isNaN(override)) return null
     const computed = computedStrength[platoon]?.[rt] ?? 0
-    if (override !== computed) return `Nominal roll has ${computed} â€” override is ${override}`
+    if (override !== computed) return `Nominal roll has ${computed} – override is ${override}`
     return null
   }
 
@@ -356,7 +356,7 @@ export default function ParadeState({
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
-    else { setEditEx(null); setEditExErrors({}); await load() }
+    else { setEditEx(null); setEditExErrors({}); setEditMedCenter(''); await load() }
     setSavingEx(false)
   }
 
@@ -567,14 +567,14 @@ export default function ParadeState({
       {activeSection === 'duties' && (
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-2">
-            <button onClick={() => setDate(offsetDate(date, -1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">â†</button>
+            <button onClick={() => setDate(offsetDate(date, -1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
             />
-            <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">â†’</button>
+            <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
           </div>
           <div className="flex items-center gap-3 justify-end">
             <button
@@ -595,7 +595,7 @@ export default function ParadeState({
             </button>
           </div>
 
-          {/* Rank rule editor â€” triggered by gear icon above */}
+          {/* Rank rule editor – triggered by gear icon above */}
           {showRankRules && (() => {
             const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
             return (
@@ -613,7 +613,7 @@ export default function ParadeState({
                       >
                         {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
                       </select>
-                      <span className="text-xs text-gray-400 shrink-0">â€“</span>
+                      <span className="text-xs text-gray-400 shrink-0">–</span>
                       <select
                         value={rule.to}
                         onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, to: e.target.value } }))}
@@ -629,7 +629,7 @@ export default function ParadeState({
                   disabled={savingRankRules}
                   className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
                 >
-                  {savingRankRules ? 'Savingâ€¦' : 'Save Rules'}
+                  {savingRankRules ? 'Saving…' : 'Save Rules'}
                 </button>
               </div>
             )
@@ -673,7 +673,7 @@ export default function ParadeState({
                                   disabled={savingDuty}
                                   className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                                 >
-                                  {savingDuty ? 'â€¦' : 'Save'}
+                                  {savingDuty ? '…' : 'Save'}
                                 </button>
                                 <button
                                   onClick={() => setEditDuty(null)}
@@ -686,7 +686,7 @@ export default function ParadeState({
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-gray-600">{d?.name ? displayName(d.name, soldiers) : 'â€”'}</td>
+                            <td className="px-4 py-3 text-gray-600">{d?.name ? displayName(d.name, soldiers) : '–'}</td>
                             <td className="px-4 py-3">
                               <div className="flex gap-1 justify-end items-center">
                                 <button
@@ -694,7 +694,7 @@ export default function ParadeState({
                                   className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
                                   title="Edit"
                                 >
-                                  âœŽ
+                                  ✎
                                 </button>
                                 {d && (
                                   <button
@@ -704,7 +704,7 @@ export default function ParadeState({
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
                                     title={dutyConfirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}
                                   >
-                                    {dutyConfirm.isConfirming(dt) ? 'Yes' : 'âœ•'}
+                                    {dutyConfirm.isConfirming(dt) ? 'Yes' : '✕'}
                                   </button>
                                 )}
                               </div>
@@ -797,7 +797,7 @@ export default function ParadeState({
                                 onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))}
                                 className="text-xs text-gray-400 hover:text-red-500 transition-colors"
                               >
-                                Ã— Remove
+                                × Remove
                               </button>
                             </div>
                           )}
@@ -875,6 +875,28 @@ export default function ParadeState({
                   </div>
                 )}
 
+                {exForm.scope === 'MA' && (
+                  <>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Medical Center</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. CGH, NUH, Raffles"
+                        value={medCenter}
+                        onChange={(e) => setMedCenter(e.target.value)}
+                        className={inputClass} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Appointment Time (optional)</label>
+                      <input
+                        type="time"
+                        value={exForm.time}
+                        onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
+                        className={inputClass} />
+                    </div>
+                  </>
+                )}
+
                 {exForm.scope !== 'Status' && (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Reason</label>
@@ -929,7 +951,7 @@ export default function ParadeState({
                           title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
                         >
                           Soldier
-                          <span className="text-xs">{exceptionsSortNameAsc ? 'â†‘' : 'â†“'}</span>
+                          <span className="text-xs">{exceptionsSortNameAsc ? '↑' : '↓'}</span>
                         </button>
                       </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
@@ -943,7 +965,7 @@ export default function ParadeState({
                           title={`Sort by date ${exceptionsSortDateAsc ? 'descending' : 'ascending'}`}
                         >
                           Period
-                          <span className="text-xs">{exceptionsSortDateAsc ? 'â†‘' : 'â†“'}</span>
+                          <span className="text-xs">{exceptionsSortDateAsc ? '↑' : '↓'}</span>
                         </button>
                       </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
@@ -986,11 +1008,20 @@ export default function ParadeState({
                                 </td>
                                 <td className="px-2 py-2">
                                   {editSingleDate ? (
-                                    <input
-                                      type="date"
-                                      value={editEx!.end}
-                                      onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
-                                      className={exClass('end')} />
+                                    <div className="space-y-1">
+                                      <input
+                                        type="date"
+                                        value={editEx!.end}
+                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
+                                        className={exClass('end')} />
+                                      {editEx!.scope === 'MA' && (
+                                        <input
+                                          type="time"
+                                          value={editEx!.time ?? ''}
+                                          onChange={(e2) => setEditEx({ ...editEx!, time: e2.target.value })}
+                                          className={exClass('time')} />
+                                      )}
+                                    </div>
                                   ) : (
                                     <div className="flex gap-1 items-center">
                                       <input
@@ -998,7 +1029,7 @@ export default function ParadeState({
                                         value={editEx!.start}
                                         onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
                                         className={exClass('start')} />
-                                      <span className="text-gray-400 text-xs shrink-0">â€“</span>
+                                      <span className="text-gray-400 text-xs shrink-0">–</span>
                                       <input
                                         type="date"
                                         value={editEx!.end}
@@ -1008,16 +1039,37 @@ export default function ParadeState({
                                   )}
                                 </td>
                                 <td className="px-2 py-2">
-                                  <input
-                                    type="text"
-                                    value={editEx!.reason}
-                                    onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
-                                    onKeyDown={(e2) => {
-                                      if (e2.key === 'Enter') updateException()
-                                      if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
-                                    }}
-                                    placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
-                                    className={exClass('reason')} />
+                                  {editEx!.scope === 'MA' ? (
+                                    <div className="space-y-1">
+                                      <input
+                                        type="text"
+                                        value={editMedCenter}
+                                        onChange={(e2) => setEditMedCenter(e2.target.value)}
+                                        placeholder="Medical Center"
+                                        className={exClass('reason')} />
+                                      <input
+                                        type="text"
+                                        value={editEx!.reason}
+                                        onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
+                                        onKeyDown={(e2) => {
+                                          if (e2.key === 'Enter') updateException()
+                                          if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
+                                        }}
+                                        placeholder={REASON_HINTS['MA']}
+                                        className={exClass('reason')} />
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={editEx!.reason}
+                                      onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
+                                      onKeyDown={(e2) => {
+                                        if (e2.key === 'Enter') updateException()
+                                        if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
+                                      }}
+                                      placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
+                                      className={exClass('reason')} />
+                                  )}
                                 </td>
                                 <td className="px-2 py-2">
                                   <div className="flex gap-1 justify-end">
@@ -1026,7 +1078,7 @@ export default function ParadeState({
                                       disabled={savingEx}
                                       className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                                     >
-                                      {savingEx ? 'â€¦' : 'Save'}
+                                      {savingEx ? '…' : 'Save'}
                                     </button>
                                     <button
                                       onClick={() => { setEditEx(null); setEditExErrors({}) }}
@@ -1042,25 +1094,35 @@ export default function ParadeState({
                                 <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
-                                    {e.scope ?? 'â€”'}
+                                    {e.scope ?? '–'}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {e.start && e.end ? `${toSGDate(e.start)} â€“ ${toSGDate(e.end)}` : 'â€”'}
+                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '–'}
                                 </td>
-                                <td className="px-4 py-3 text-gray-500">{e.reason ?? 'â€”'}</td>
+                                <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
                                       onClick={() => exConfirm.isConfirming(e.id)
                                         ? exConfirm.resolve(e.id, () => deleteException(e.id))
-                                        : (setEditEx({ ...e }), setEditExErrors({}))}
+                                        : (() => {
+                                          if (e.scope === 'MA') {
+                                            const colonIdx = (e.reason ?? '').indexOf(': ')
+                                            setEditMedCenter(colonIdx !== -1 ? e.reason!.slice(0, colonIdx) : '')
+                                            setEditEx({ ...e, reason: colonIdx !== -1 ? e.reason!.slice(colonIdx + 2) : (e.reason ?? '') })
+                                          } else {
+                                            setEditMedCenter('')
+                                            setEditEx({ ...e })
+                                          }
+                                          setEditExErrors({})
+                                        })()}
                                       className={exConfirm.isConfirming(e.id)
                                         ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
                                         : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
                                       title={exConfirm.isConfirming(e.id) ? 'Confirm delete' : 'Edit'}
                                     >
-                                      {exConfirm.isConfirming(e.id) ? 'Yes' : 'âœŽ'}
+                                      {exConfirm.isConfirming(e.id) ? 'Yes' : '✎'}
                                     </button>
                                     <button
                                       onClick={() => exConfirm.isConfirming(e.id) ? exConfirm.cancel() : exConfirm.request(e.id)}
@@ -1069,7 +1131,7 @@ export default function ParadeState({
                                         : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
                                       title={exConfirm.isConfirming(e.id) ? 'Cancel' : 'Remove'}
                                     >
-                                      {exConfirm.isConfirming(e.id) ? 'No' : 'âœ•'}
+                                      {exConfirm.isConfirming(e.id) ? 'No' : '✕'}
                                     </button>
                                   </div>
                                 </td>
@@ -1120,7 +1182,7 @@ export default function ParadeState({
         <div ref={scrollRef} className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-700">
-              Report{lastParadeType ? ` â€” ${lastParadeType}` : ''}
+              Report{lastParadeType ? ` – ${lastParadeType}` : ''}
             </h3>
             <button
               onClick={copyOutput}

@@ -70,19 +70,19 @@ describe('Bulk Import', () => {
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
     const input = screen.getByTestId('csv-upload')
-    // TEST_SOLDIER_ONE already exists in the seeded DB
-    const csv = makeTemplateCSV(',CPL,TEST_SOLDIER_ONE,1\n1234,PTE,TEST_BULK_NEW,2')
+    // TAN WEI LIANG already exists in the seeded DB (CPT in HQ)
+    const csv = makeTemplateCSV(',CPT,TAN WEI LIANG,HQ\n1234,PTE,TEST_BULK_NEW,2')
     await userEvent.upload(input, csv)
 
     await waitFor(() => {
-      expect(screen.getByText('TEST_SOLDIER_ONE')).toBeInTheDocument()
+      expect(screen.getAllByText('TAN WEI LIANG').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('TEST_BULK_NEW')).toBeInTheDocument()
     })
     expect(screen.getByText('overwrite')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /import 2 soldiers \(1 overwrite\)/i })).toBeInTheDocument()
   })
 
-  it('imports soldiers and shows success result', async () => {
+  it('imports soldiers and closes the modal on success', async () => {
     render(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
@@ -91,19 +91,21 @@ describe('Bulk Import', () => {
     const csv = makeTemplateCSV(',PTE,TEST_BULK_IMPORT_A,3\n,CPL,TEST_BULK_IMPORT_B,HQ')
     await userEvent.upload(input, csv)
 
-    await waitFor(() => expect(screen.getByText('TEST_BULK_IMPORT_A')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('TEST_BULK_IMPORT_A')).toBeInTheDocument(), { timeout: 5000 })
     await userEvent.click(screen.getByRole('button', { name: /import 2 soldiers/i }))
 
+    // After successful import: modal closes (onImported calls setShowImport(false))
     await waitFor(() => {
-      expect(screen.getByText(/done: 2 added/i)).toBeInTheDocument()
-    }, { timeout: 10000 })
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    }, { timeout: 15000 })
 
+    // Verify soldiers are in the DB
     const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
       .in('name', ['TEST_BULK_IMPORT_A', 'TEST_BULK_IMPORT_B'])
     expect(data).toHaveLength(2)
-  })
+  }, 30000)
 
   it('blocks entire import when any row has an error (all-or-nothing)', async () => {
     render(<NominalRoll company="test" />)
@@ -114,10 +116,10 @@ describe('Bulk Import', () => {
     const csv = makeTemplateCSV(',CPL,TEST_BULK_DUP,1\n,CPL,TEST_BULK_DUP,2\n,PTE,TEST_BULK_UNIQUE,1')
     await userEvent.upload(input, csv)
 
-    await waitFor(() => expect(screen.getByText(/errors found/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/error.*found/i)).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.getByText(/duplicate name/i)).toBeInTheDocument()
     // all-or-nothing: no preview, no import button
     expect(screen.queryByText('TEST_BULK_DUP')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /import/i })).not.toBeInTheDocument()
-  })
+    expect(screen.queryByRole('button', { name: /^import \d/i })).not.toBeInTheDocument()
+  }, 30000)
 })

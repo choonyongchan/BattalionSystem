@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
@@ -44,6 +44,10 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [editErrors, setEditErrors] = useState<Record<string, boolean>>({})
   const [savingEdit, setSavingEdit] = useState(false)
 
+  const [deleteAllState, setDeleteAllState] = useState<'idle' | 'prompt' | 'deleting'>('idle')
+  const [deleteAllPw, setDeleteAllPw] = useState('')
+  const [deleteAllErr, setDeleteAllErr] = useState<string | null>(null)
+
   useEffect(() => {
     load()
   }, [company])
@@ -83,6 +87,25 @@ export default function NominalRoll({ company }: { company: Company }) {
     await supabase.from(tbl(company, 'NominalRoll')).delete().eq('name', name)
     await load()
     setDeletingName(null)
+  }
+
+  async function deleteAll() {
+    setDeleteAllState('deleting')
+    const { error: authErr } = await supabase.auth.signInWithPassword({
+      email: `${company}@40sar.internal`,
+      password: deleteAllPw,
+    })
+    if (authErr) {
+      setDeleteAllErr('Incorrect password')
+      setDeleteAllState('prompt')
+      return
+    }
+    const { error } = await supabase.from(tbl(company, 'NominalRoll')).delete().not('name', 'is', null)
+    if (error) setError(error.message)
+    else await load()
+    setDeleteAllState('idle')
+    setDeleteAllPw('')
+    setDeleteAllErr(null)
   }
 
   function validateEdit() {
@@ -154,6 +177,12 @@ export default function NominalRoll({ company }: { company: Company }) {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => { setDeleteAllState('prompt'); setDeleteAllPw(''); setDeleteAllErr(null) }}
+            className="px-4 py-3 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition-colors"
+          >
+            Delete All
+          </button>
+          <button
             onClick={() => setShowImport(true)}
             className="px-4 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
           >
@@ -168,10 +197,41 @@ export default function NominalRoll({ company }: { company: Company }) {
         </div>
       </div>
 
+      {deleteAllState !== 'idle' && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-3">
+          <p className="text-sm text-red-700 font-medium">This will permanently delete all {soldiers.length} personnel. Enter your commander password to confirm.</p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="Commander password"
+              value={deleteAllPw}
+              onChange={(e) => setDeleteAllPw(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') deleteAll(); if (e.key === 'Escape') setDeleteAllState('idle') }}
+              autoFocus
+              className="flex-1 border border-red-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+            />
+            <button
+              onClick={deleteAll}
+              disabled={deleteAllState === 'deleting' || !deleteAllPw}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors"
+            >
+              {deleteAllState === 'deleting' ? '…' : 'Confirm'}
+            </button>
+            <button
+              onClick={() => setDeleteAllState('idle')}
+              className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          {deleteAllErr && <p className="text-xs text-red-600">{deleteAllErr}</p>}
+        </div>
+      )}
+
       <div className="flex justify-center">
         <input
           type="search"
-          placeholder="Search by rank, name, platoonâ€¦"
+          placeholder="Search by rank, name, platoon…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
@@ -247,7 +307,7 @@ export default function NominalRoll({ company }: { company: Company }) {
         return (
           <div key={type}>
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
-              {type}s â€” {group.length}
+              {type}s – {group.length}
             </h3>
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -311,7 +371,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   }}
                                   className={editClass('platoon')}
                                 >
-                                  <option value="">â€”</option>
+                                  <option value="">–</option>
                                   {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
                                 </select>
                               </td>
@@ -335,7 +395,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     disabled={savingEdit}
                                     className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                                   >
-                                    {savingEdit ? 'â€¦' : 'Save'}
+                                    {savingEdit ? '…' : 'Save'}
                                   </button>
                                   <button
                                     onClick={() => { setEditRow(null); setEditErrors({}) }}
@@ -351,7 +411,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                               <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
                               <td className="px-4 py-3 font-medium">{s.name}</td>
                               <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? 'â€”'}</td>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '–'}</td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
@@ -364,7 +424,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                       : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Confirm delete' : 'Edit'}
                                   >
-                                    {nameConfirm.isConfirming(s.name) ? 'Yes' : 'âœŽ'}
+                                    {nameConfirm.isConfirming(s.name) ? 'Yes' : '✎'}
                                   </button>
                                   <button
                                     onClick={() => nameConfirm.isConfirming(s.name) ? nameConfirm.cancel() : nameConfirm.request(s.name)}
@@ -374,7 +434,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                       : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Cancel' : 'Remove'}
                                   >
-                                    {nameConfirm.isConfirming(s.name) ? 'No' : 'âœ•'}
+                                    {nameConfirm.isConfirming(s.name) ? 'No' : '✕'}
                                   </button>
                                 </div>
                               </td>

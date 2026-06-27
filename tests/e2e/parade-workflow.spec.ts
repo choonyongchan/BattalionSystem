@@ -1,0 +1,89 @@
+import { test, expect } from '@playwright/test'
+
+// All tests require real credentials — skip gracefully if not configured
+test.describe('Parade State workflow', () => {
+  test.beforeEach(async ({ page }) => {
+    const password = process.env.TEST_SUPABASE_PASSWORD
+    const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
+    test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
+
+    await page.goto('/test/')
+    await page.getByPlaceholder('Password').fill(password!)
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Nominal Roll')).toBeVisible({ timeout: 15000 })
+  })
+
+  test('navigates to Parade State tab', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await expect(page.getByRole('button', { name: 'Exceptions' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Duties' })).toBeVisible()
+  })
+
+  test('Exceptions tab shows fixture exception (TAN WEI LIANG on Off/Leave)', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+
+    await page.getByRole('button', { name: 'Exceptions' }).click()
+
+    await expect(page.getByText('TAN WEI LIANG')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Off/Leave')).toBeVisible()
+  })
+
+  test('generated parade state has correct strength numbers (13 total, 9 present, 4 absent)', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+
+    await page.getByRole('button', { name: /generate parade state/i }).click()
+
+    const output = page.locator('textarea')
+    await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
+    await expect(output).toContainText('PRESENT        : 9')
+    await expect(output).toContainText('ABSENT         : 4')
+  })
+
+  test('generated report includes exception details', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+
+    await page.getByRole('button', { name: /generate parade state/i }).click()
+
+    const output = page.locator('textarea')
+    await expect(output).toContainText('OFF/LEAVE:', { timeout: 10000 })
+    await expect(output).toContainText('TAN WEI LIANG')
+  })
+
+  test('generated report includes duty assignments', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+
+    await page.getByRole('button', { name: /generate parade state/i }).click()
+
+    const output = page.locator('textarea')
+    await expect(output).toContainText('CDO: LTA LEE JUN WEI', { timeout: 10000 })
+  })
+
+  test('Status exception (non-absence) does not increase absent count', async ({ page }) => {
+    // GOH RONG HAO has Status / counts_as_absence: false → still 9 present, 4 absent
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+
+    await page.getByRole('button', { name: /generate parade state/i }).click()
+
+    const output = page.locator('textarea')
+    await expect(output).toContainText('PRESENT        : 9', { timeout: 10000 })
+    await expect(output).toContainText('ABSENT         : 4')
+  })
+
+  test('switching to a date with no exceptions shows correct strength (all present)', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    // 2026-01-01: no fixture exceptions active → all 13 present
+    await page.locator('input[type="date"]').fill('2026-01-01')
+
+    await page.getByRole('button', { name: /generate parade state/i }).click()
+
+    const output = page.locator('textarea')
+    await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
+    await expect(output).toContainText('PRESENT        : 13')
+    await expect(output).toContainText('ABSENT         : 0')
+  })
+})

@@ -4,20 +4,23 @@ import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import { FIXTURE_EXCEPTIONS, FIXTURE_DATE } from '../fixtures/exceptions'
 import { FIXTURE_DUTIES } from '../fixtures/duties'
 import { FIXTURE_CONFIG, FIXTURE_PARADE_CONFIG } from '../fixtures/config'
-import type { Exception } from '@/lib/supabase'
+import type { Exception, Soldier } from '@/lib/supabase'
+import { PARADE_CONFIG } from '@/lib/companies'
 
 const FIXED_DATE = new Date('2026-01-15T10:00:00+08:00')
 
 const BASE_INPUT = {
   date: FIXTURE_DATE,
-  companyLabel: 'Stallion',
+  companyLabel: 'Test',
   soldiers: FIXTURE_SOLDIERS,
   configs: FIXTURE_CONFIG,
   duties: FIXTURE_DUTIES,
   generatedAt: FIXED_DATE,
 }
 
-describe('generateParadeReport', () => {
+// ── Standard (default) formatter ──────────────────────────────────────────────
+
+describe('generateParadeReport — standard', () => {
   it('includes company name and date in header', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('STALLION COY PARADE STATE')
@@ -25,22 +28,32 @@ describe('generateParadeReport', () => {
     expect(report).toContain('THURSDAY')
   })
 
-  it('calculates correct totals with no exceptions', () => {
+  it('calculates correct totals with no exceptions (13 soldiers)', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('TOTAL STRENGTH : 3')
-    expect(report).toContain('PRESENT        : 3')
+    expect(report).toContain('TOTAL STRENGTH : 13')
+    expect(report).toContain('PRESENT        : 13')
     expect(report).toContain('ABSENT         : 0')
   })
 
-  it('calculates correct totals with one exception', () => {
-    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }]
+  it('calculates correct totals with one absence exception', () => {
+    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }] // TAN WEI LIANG Off/Leave
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('TOTAL STRENGTH : 3')
-    expect(report).toContain('PRESENT        : 2')
+    expect(report).toContain('TOTAL STRENGTH : 13')
+    expect(report).toContain('PRESENT        : 12')
     expect(report).toContain('ABSENT         : 1')
   })
 
-  it('shows present 0 when all soldiers have exceptions', () => {
+  it('calculates correct totals with all 4 fixture absences', () => {
+    const exceptions: Exception[] = FIXTURE_EXCEPTIONS
+      .filter(e => e.counts_as_absence)
+      .map((e, i) => ({ id: i + 1, ...e }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('TOTAL STRENGTH : 13')
+    expect(report).toContain('PRESENT        : 9')
+    expect(report).toContain('ABSENT         : 4')
+  })
+
+  it('shows present 0 when all soldiers have absence exceptions', () => {
     const exceptions: Exception[] = FIXTURE_SOLDIERS.map((s, i) => ({
       id: i + 1,
       name: s.name,
@@ -52,29 +65,52 @@ describe('generateParadeReport', () => {
     }))
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('PRESENT        : 0')
-    expect(report).toContain(`ABSENT         : ${FIXTURE_SOLDIERS.length}`)
-  })
-
-  it('includes exception details in EXCEPTIONS section', () => {
-    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }]
-    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('EXCEPTIONS:')
-    expect(report).toContain('OFF/LEAVE:')
-    expect(report).toContain('CPL TEST_SOLDIER_ONE')
-    expect(report).toContain('Annual Leave')
+    expect(report).toContain('ABSENT         : 13')
   })
 
   it('non-absence exceptions do not reduce present count', () => {
-    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0], counts_as_absence: false }]
+    // GOH RONG HAO has Status, counts_as_absence: false
+    const exceptions: Exception[] = [{ id: 5, ...FIXTURE_EXCEPTIONS[4] }]
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('PRESENT        : 3')
+    expect(report).toContain('PRESENT        : 13')
     expect(report).toContain('ABSENT         : 0')
+  })
+
+  it('all exceptions non-absence → present equals total, absent 0', () => {
+    const exceptions: Exception[] = FIXTURE_EXCEPTIONS.map((e, i) => ({
+      id: i + 1, ...e, counts_as_absence: false,
+    }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('PRESENT        : 13')
+    expect(report).toContain('ABSENT         : 0')
+  })
+
+  it('includes exception details in EXCEPTIONS section', () => {
+    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }] // TAN WEI LIANG
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('EXCEPTIONS:')
+    expect(report).toContain('OFF/LEAVE:')
+    expect(report).toContain('CPT TAN WEI LIANG')
+    expect(report).toContain('Annual Leave')
+  })
+
+  it('no EXCEPTIONS section when activeExceptions is empty', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
+    expect(report).not.toContain('EXCEPTIONS:')
   })
 
   it('includes duty assignments in DUTIES section', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('DUTIES:')
-    expect(report).toContain('CDO: PTE TEST_SOLDIER_TWO')
+    expect(report).toContain('CDO: LTA LEE JUN WEI')
+  })
+
+  it('no DUTIES section when duties array is empty', () => {
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: [], duties: [] },
+      FIXTURE_PARADE_CONFIG,
+    )
+    expect(report).not.toContain('DUTIES:')
   })
 
   it('includes parade times from config', () => {
@@ -83,8 +119,188 @@ describe('generateParadeReport', () => {
     expect(report).toContain('LAST PARADE — 1730H')
   })
 
+  it('no parade time lines when configs array is empty', () => {
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: [], configs: [] },
+      FIXTURE_PARADE_CONFIG,
+    )
+    expect(report).not.toContain('0930H')
+    expect(report).not.toContain('1730H')
+  })
+
   it('includes a Generated timestamp', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('Generated:')
+  })
+
+  it('paradeType Last Parade replaces FIRST with LAST in header', () => {
+    const config = { ...FIXTURE_PARADE_CONFIG, header: ['STALLION COY FIRST PARADE STATE'] }
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: [], paradeType: 'Last Parade' },
+      config,
+    )
+    expect(report).toContain('STALLION COY LAST PARADE STATE')
+    expect(report).not.toContain('FIRST PARADE STATE')
+  })
+
+  it('zero soldiers → all strength values are 0', () => {
+    const report = generateParadeReport(
+      { ...BASE_INPUT, soldiers: [], activeExceptions: [], duties: [] },
+      FIXTURE_PARADE_CONFIG,
+    )
+    expect(report).toContain('TOTAL STRENGTH : 0')
+    expect(report).toContain('PRESENT        : 0')
+    expect(report).toContain('ABSENT         : 0')
+  })
+
+  it('strength override changes displayed total', () => {
+    const report = generateParadeReport(
+      {
+        ...BASE_INPUT,
+        activeExceptions: [],
+        strengthOverrides: { Total: { Officer: 5 } },
+      },
+      FIXTURE_PARADE_CONFIG,
+    )
+    // Officer total overridden to 5 (was 3), so grand total = 5 + 4 + 6 = 15
+    expect(report).toContain('TOTAL STRENGTH : 15')
+    expect(report).toContain('OFFICER  : 5')
+  })
+
+  it('soldier in exception but not in nominal roll — displayName falls back to bare name', () => {
+    const exceptions: Exception[] = [{
+      id: 99, name: 'GHOST SOLDIER', scope: 'Off/Leave', reason: 'Unknown',
+      start: FIXTURE_DATE, end: FIXTURE_DATE, counts_as_absence: true,
+    }]
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    // No rank prefix — just the bare name
+    expect(report).toContain('GHOST SOLDIER')
+    expect(report).not.toContain('undefined GHOST SOLDIER')
+  })
+})
+
+// ── Stallion formatter ────────────────────────────────────────────────────────
+
+describe('generateParadeReport — stallion', () => {
+  const stallionConfig = PARADE_CONFIG.stallion
+
+  it('includes PARADE STATE FOR DDMMYY header', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, stallionConfig, 'stallion')
+    expect(report).toContain('PARADE STATE FOR 150126')
+  })
+
+  it('has per-platoon breakdown sections', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, stallionConfig, 'stallion')
+    expect(report).toContain('HQ:')
+    expect(report).toContain('PL 1:')
+    expect(report).toContain('PL 2:')
+    expect(report).toContain('PL 3:')
+    expect(report).toContain('PL 4:')
+  })
+
+  it('shows correct company-level strength', () => {
+    const exceptions = FIXTURE_EXCEPTIONS.filter(e => e.counts_as_absence).map((e, i) => ({ id: i + 1, ...e }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, stallionConfig, 'stallion')
+    expect(report).toContain('TOTAL COY STR: 13')
+    expect(report).toContain('CURRENT COY STR: 9/13')
+  })
+
+  it('Pl 4 shows 1/1 when no exceptions for that platoon', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, stallionConfig, 'stallion')
+    expect(report).toContain('PL 4: 1/1')
+  })
+
+  it('platoon with all soldiers absent shows 0 present', () => {
+    // Put all Pl 3 soldiers (SSG CHONG KAH WAI, LCP TAN RONG XIAN) on leave
+    const pl3Absences: Exception[] = [
+      { id: 1, name: 'CHONG KAH WAI', scope: 'Off/Leave', reason: 'AL', start: FIXTURE_DATE, end: FIXTURE_DATE, counts_as_absence: true },
+      { id: 2, name: 'TAN RONG XIAN', scope: 'Off/Leave', reason: 'AL', start: FIXTURE_DATE, end: FIXTURE_DATE, counts_as_absence: true },
+    ]
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: pl3Absences }, stallionConfig, 'stallion')
+    expect(report).toContain('PL 3: 0/2')
+  })
+
+  it('MA with time shows HRS suffix', () => {
+    const exceptions: Exception[] = [{ id: 3, ...FIXTURE_EXCEPTIONS[2], time: '14:30' }]
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: exceptions, allExceptions: exceptions },
+      stallionConfig,
+      'stallion',
+    )
+    expect(report).toContain('UPCOMING MA:')
+    expect(report).toContain('LIM ZHEN HAO')
+    expect(report).toContain('1430HRS')
+  })
+
+  it('MA without time shows only date (no HRS suffix)', () => {
+    const maNoTime: Exception[] = [{
+      id: 10, name: 'YEO JIA HENG', scope: 'MA', reason: 'IMH Appt',
+      start: FIXTURE_DATE, end: FIXTURE_DATE, counts_as_absence: true,
+    }]
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: maNoTime, allExceptions: maNoTime },
+      stallionConfig,
+      'stallion',
+    )
+    expect(report).toContain('UPCOMING MA:')
+    expect(report).toContain('YEO JIA HENG')
+    expect(report).not.toContain('HRS')
+  })
+
+  it('Last Parade replaces FIRST→LAST in Stallion header', () => {
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: [], paradeType: 'Last Parade' },
+      stallionConfig,
+      'stallion',
+    )
+    expect(report).toContain('STALLION COY LAST PARADE')
+    expect(report).not.toContain('STALLION COY FIRST PARADE')
+  })
+})
+
+// ── Hercules formatter ────────────────────────────────────────────────────────
+
+describe('generateParadeReport — hercules', () => {
+  const herculesConfig = PARADE_CONFIG.hercules
+
+  it('uses compact Total Str / Current Str labels', () => {
+    const exceptions = FIXTURE_EXCEPTIONS.filter(e => e.counts_as_absence).map((e, i) => ({ id: i + 1, ...e }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, herculesConfig, 'hercules')
+    expect(report).toContain('Total Str: 13')
+    expect(report).toContain('Current Str: 9')
+  })
+
+  it('has [Officer] / [WOSpec] / [Men] rank breakdown', () => {
+    const exceptions = FIXTURE_EXCEPTIONS.filter(e => e.counts_as_absence).map((e, i) => ({ id: i + 1, ...e }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, herculesConfig, 'hercules')
+    expect(report).toContain('[Officer]: 2/3')
+    expect(report).toContain('[WOSpec]: 3/4')
+    expect(report).toContain('[Men]: 4/6')
+  })
+
+  it('only shows COS duty (hercules visibleDutyTypes is [COS])', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, herculesConfig, 'hercules')
+    expect(report).toContain('COS: CPL YEO JIA HENG')
+    expect(report).not.toContain('CDO:')
+    expect(report).not.toContain('CDS:')
+  })
+
+  it('shows exception as bullet with end date', () => {
+    const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }] // TAN WEI LIANG Off/Leave end:2026-01-16
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, herculesConfig, 'hercules')
+    expect(report).toContain('• CPT TAN WEI LIANG')
+    expect(report).toContain('Annual Leave')
+    expect(report).toContain('160126') // end date formatted DDMMYY
+  })
+
+  it('no bullet lines when no exceptions', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, herculesConfig, 'hercules')
+    expect(report).not.toContain('•')
+  })
+
+  it('present count correct with no exceptions (total 13)', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, herculesConfig, 'hercules')
+    expect(report).toContain('Total Str: 13')
+    expect(report).toContain('Current Str: 13')
   })
 })

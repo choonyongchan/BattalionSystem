@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NominalRoll from '@/components/NominalRoll'
@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
 
 beforeAll(async () => {
-  // Sign in via the same singleton client the component will use
   const { error } = await supabase.auth.signInWithPassword({
     email: process.env.TEST_SUPABASE_EMAIL!,
     password: process.env.TEST_SUPABASE_PASSWORD!,
@@ -29,62 +28,54 @@ describe('NominalRoll', () => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
     }, { timeout: 10000 })
 
-    expect(screen.getByText('TEST_SOLDIER_ONE')).toBeInTheDocument()
-    expect(screen.getByText('TEST_SOLDIER_TWO')).toBeInTheDocument()
-    expect(screen.getByText('TEST_OFFICER_ONE')).toBeInTheDocument()
+    expect(screen.getByText('TAN WEI LIANG')).toBeInTheDocument()
+    expect(screen.getByText('LEE JUN WEI')).toBeInTheDocument()
+    expect(screen.getByText('CHEN MING ZHI')).toBeInTheDocument()
   })
 
-  it('adds a new soldier and shows them in the list', async () => {
+  it('adds a new soldier using default PTE rank and shows them in the list', async () => {
     render(<NominalRoll company="test" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
-    // Open the add form
     await userEvent.click(screen.getByRole('button', { name: '+ Add' }))
 
-    // Fill in rank (type into the RankSearch input)
-    const rankInput = screen.getByPlaceholderText('e.g. CPL, 3SG, LTA')
-    await userEvent.clear(rankInput)
-    await userEvent.type(rankInput, 'SGT')
-
-    // Fill in name
-    await userEvent.type(screen.getByPlaceholderText('TAN AH KOW'), 'TEST_NEW_SOLDIER')
-
-    // Select platoon
+    // Leave rank at its default (form initialises to 'PTE')
+    await userEvent.type(screen.getByPlaceholderText('TAN AH KOW'), 'NEW_RECRUIT_TEST')
     await userEvent.selectOptions(screen.getByRole('combobox'), '3')
-
-    // Submit
     await userEvent.click(screen.getByRole('button', { name: 'Add Soldier' }))
 
     await waitFor(() => {
-      expect(screen.getByText('TEST_NEW_SOLDIER')).toBeInTheDocument()
+      expect(screen.getByText('NEW_RECRUIT_TEST')).toBeInTheDocument()
     }, { timeout: 10000 })
 
-    // Verify it's in the DB
     const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
-      .eq('name', 'TEST_NEW_SOLDIER')
+      .eq('name', 'NEW_RECRUIT_TEST')
     expect(data).toHaveLength(1)
+    expect(data![0].rank).toBe('PTE')
   })
 
   it('deletes a soldier and removes them from list and DB', async () => {
     render(<NominalRoll company="test" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
-    // Find the delete button for TEST_SOLDIER_TWO
-    const row = screen.getByText('TEST_SOLDIER_TWO').closest('tr')!
-    const deleteBtn = row.querySelector('button[title="Remove"]')!
-    await userEvent.click(deleteBtn)
+    // Delete ONG JUN SHENG (REC in Pl 4 — the only REC in the fixture)
+    // Delete requires 2 clicks: Remove → Confirm delete
+    const row = screen.getByText('ONG JUN SHENG').closest('tr')!
+    await userEvent.click(row.querySelector('button[title="Remove"]') as HTMLElement)
+    // After first click, the row enters confirming state; click the "Yes" (Confirm delete) button
+    const confirmBtn = await screen.findByTitle('Confirm delete', {}, { timeout: 3000 })
+    await userEvent.click(confirmBtn)
 
     await waitFor(() => {
-      expect(screen.queryByText('TEST_SOLDIER_TWO')).not.toBeInTheDocument()
+      expect(screen.queryByText('ONG JUN SHENG')).not.toBeInTheDocument()
     }, { timeout: 10000 })
 
-    // Verify removed from DB
     const { data } = await supabase
       .from('Test_NominalRoll')
       .select('*')
-      .eq('name', 'TEST_SOLDIER_TWO')
+      .eq('name', 'ONG JUN SHENG')
     expect(data).toHaveLength(0)
   })
 })
