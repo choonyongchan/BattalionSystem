@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ParadeState from '@/components/ParadeState'
 import { supabase } from '@/lib/supabase'
@@ -150,6 +150,54 @@ describe('ParadeState', () => {
       expect(textarea.value).toContain('PRESENT        : 8')
       expect(textarea.value).toContain('ABSENT         : 5')
     }, { timeout: 5000 })
+  })
+
+  it('edits an existing exception successfully (regression: "time" column must exist on _Exceptions)', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+
+    const row = (await screen.findByText('TAN WEI LIANG')).closest('tr')!
+    await userEvent.click(within(row).getByTitle('Edit'))
+
+    const reasonInput = screen.getByDisplayValue('Annual Leave')
+    await userEvent.clear(reasonInput)
+    await userEvent.type(reasonInput, 'Medical Leave')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Medical Leave')).toBeInTheDocument()
+    }, { timeout: 10000 })
+  })
+
+  it('MA add form shows red-border validation on Medical Center instead of a silently-disabled button', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+
+    const soldierInput = screen.getByPlaceholderText('Search soldier...')
+    await userEvent.type(soldierInput, 'HO KAI')
+    await userEvent.click(await screen.findByText('HO KAI XIANG', {}, { timeout: 5000 }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'MA' }))
+    await userEvent.type(screen.getByPlaceholderText('e.g. Skin Appt, IMH Appt'), 'Follow up')
+    // Add form's date defaults to today (not FIXTURE_DATE) — set it explicitly so the
+    // new exception is active on the date this test is viewing.
+    fireEvent.change(document.querySelector('input[type="date"]')!, { target: { value: FIXTURE_DATE } })
+
+    // Submit with Medical Center left blank
+    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
+
+    const medCenterInput = screen.getByPlaceholderText('e.g. CGH, NUH, Raffles')
+    await waitFor(() => expect(medCenterInput.className).toContain('border-red-500'))
+    expect(screen.queryByText('HO KAI XIANG')).not.toBeInTheDocument()
+
+    // Fill it in and resubmit — should now succeed
+    await userEvent.type(medCenterInput, 'CGH')
+    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('HO KAI XIANG')).toBeInTheDocument()
+    }, { timeout: 10000 })
   })
 
   it('date change updates the parade report absent count correctly', async () => {

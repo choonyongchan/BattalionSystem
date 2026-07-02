@@ -33,6 +33,7 @@ BEGIN
         counts_as_absence boolean NOT NULL DEFAULT true
       )', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS counts_as_absence boolean NOT NULL DEFAULT true', c);
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS time text', c);
     EXECUTE format('UPDATE public."%s_Exceptions" SET counts_as_absence = false WHERE scope = ANY(''{Status,Report Sick,Guard Duty}''::text[]) AND counts_as_absence = true', c);
 
     EXECUTE format('

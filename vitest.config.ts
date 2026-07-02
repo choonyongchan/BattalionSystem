@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    // Integration tests hit a real Supabase instance over the network — 5s default is too tight
+    testTimeout: 15000,
     // Integration tests share a real Supabase DB — run files sequentially to
     // avoid seed/truncate race conditions between parallel test files
     fileParallelism: false,

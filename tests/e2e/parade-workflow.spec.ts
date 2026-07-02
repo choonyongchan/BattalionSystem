@@ -74,6 +74,46 @@ test.describe('Parade State workflow', () => {
     await expect(output).toContainText('ABSENT         : 4')
   })
 
+  test('editing an existing exception saves successfully (regression: "time" column must exist)', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+    await page.getByRole('button', { name: 'Exceptions' }).click()
+
+    const row = page.locator('tr', { hasText: 'TAN WEI LIANG' })
+    await row.getByTitle('Edit').click()
+
+    const reasonInput = page.locator('input[value="Annual Leave"]')
+    await reasonInput.fill('Medical Leave')
+    await page.getByRole('button', { name: 'Save' }).click()
+
+    await expect(page.getByText('Medical Leave')).toBeVisible({ timeout: 10000 })
+  })
+
+  test('MA add form shows red-border validation on Medical Center instead of a stuck grey button', async ({ page }) => {
+    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.locator('input[type="date"]').fill('2026-01-15')
+    await page.getByRole('button', { name: 'Exceptions' }).click()
+    await page.getByRole('button', { name: '+ Exception' }).click()
+
+    await page.getByPlaceholder('Search soldier...').fill('HO KAI')
+    await page.getByText('HO KAI XIANG').first().click()
+    await page.getByRole('button', { name: 'MA' }).click()
+    await page.getByPlaceholder('e.g. Skin Appt, IMH Appt').fill('Follow up')
+
+    const addBtn = page.getByRole('button', { name: 'Add Exception' })
+    const medCenterInput = page.getByPlaceholder('e.g. CGH, NUH, Raffles')
+
+    // Submit with Medical Center blank — button must not be disabled, and the
+    // field should now show red-border feedback instead of doing nothing.
+    await expect(addBtn).toBeEnabled()
+    await addBtn.click()
+    await expect(medCenterInput).toHaveClass(/border-red-500/, { timeout: 5000 })
+
+    await medCenterInput.fill('CGH')
+    await addBtn.click()
+    await expect(page.getByText('HO KAI XIANG')).toBeVisible({ timeout: 10000 })
+  })
+
   test('switching to a date with no exceptions shows correct strength (all present)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
     // 2026-01-01: no fixture exceptions active → all 13 present

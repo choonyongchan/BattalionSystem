@@ -114,6 +114,7 @@ export default function ParadeState({
   const [editEx, setEditEx] = useState<Exception | null>(null)
   const [exSearch, setExSearch] = useState('')
   const [editExErrors, setEditExErrors] = useState<Record<string, boolean>>({})
+  const [addExErrors, setAddExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
   const exConfirm = useConfirmDelete<number>()
 
@@ -275,8 +276,23 @@ export default function ParadeState({
     return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start) && (exForm.scope !== 'MA' || medCenter.trim()) && isValidTime(exForm.time))
   }
 
+  function validateAddEx() {
+    const errors: Record<string, boolean> = {}
+    if (!exForm.name) errors.name = true
+    if (exForm.scope !== 'Status') {
+      const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
+      if (!exForm.reason.trim()) errors.reason = true
+      if (!exForm.end) errors.end = true
+      if (!singleDate && !exForm.start) errors.start = true
+      if (exForm.scope === 'MA' && !medCenter.trim()) errors.medCenter = true
+      if (exForm.scope === 'MA' && !isValidTime(exForm.time)) errors.time = true
+    }
+    setAddExErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function addException() {
-    if (!isExceptionValid()) return
+    if (!validateAddEx() || !isExceptionValid()) return
     let error: { message: string } | null = null
     if (exForm.scope === 'Status') {
       const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end, counts_as_absence: exForm.counts_as_absence }))
@@ -299,6 +315,7 @@ export default function ParadeState({
     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
     setStatusRows([{ start: date, end: date, reason: '' }])
     setMedCenter('')
+    setAddExErrors({})
     await load()
   }
 
@@ -426,6 +443,9 @@ export default function ParadeState({
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   const exClass = (field: string) => fieldInputClass(!!editExErrors[field], theme.focusRing)
+  const addExClass = (field: string) => addExErrors[field]
+    ? 'w-full border border-red-500 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ring-2 ring-red-500'
+    : inputClass
 
   const soldierDropdownProps = {
     getKey: (s: Soldier) => s.name,
@@ -740,6 +760,7 @@ export default function ParadeState({
                     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
                     setStatusRows([{ start: date, end: date, reason: '' }])
                     setMedCenter('')
+                    setAddExErrors({})
                   }
                   setShowForm(!showForm)
                 }}
@@ -761,7 +782,7 @@ export default function ParadeState({
                     items={soldiers}
                     value={exForm.name}
                     onChange={name => setExForm({ ...exForm, name })}
-                    inputClass={inputClass}
+                    inputClass={addExClass('name')}
                   />
                 </div>
 
@@ -852,7 +873,7 @@ export default function ParadeState({
                       type="date"
                       value={exForm.end}
                       onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
-                      className={inputClass} />
+                      className={addExClass('end')} />
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -862,7 +883,7 @@ export default function ParadeState({
                         type="date"
                         value={exForm.start}
                         onChange={(e) => setExForm({ ...exForm, start: e.target.value })}
-                        className={inputClass} />
+                        className={addExClass('start')} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">To</label>
@@ -870,7 +891,7 @@ export default function ParadeState({
                         type="date"
                         value={exForm.end}
                         onChange={(e) => setExForm({ ...exForm, end: e.target.value })}
-                        className={inputClass} />
+                        className={addExClass('end')} />
                     </div>
                   </div>
                 )}
@@ -884,7 +905,7 @@ export default function ParadeState({
                         placeholder="e.g. CGH, NUH, Raffles"
                         value={medCenter}
                         onChange={(e) => setMedCenter(e.target.value)}
-                        className={inputClass} />
+                        className={addExClass('medCenter')} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Appointment Time (optional)</label>
@@ -892,7 +913,7 @@ export default function ParadeState({
                         type="time"
                         value={exForm.time}
                         onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
-                        className={inputClass} />
+                        className={addExClass('time')} />
                     </div>
                   </>
                 )}
@@ -905,14 +926,13 @@ export default function ParadeState({
                       placeholder={REASON_HINTS[exForm.scope]}
                       value={exForm.reason}
                       onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
-                      className={inputClass} />
+                      className={addExClass('reason')} />
                   </div>
                 )}
 
                 <button
                   onClick={addException}
-                  disabled={!isExceptionValid()}
-                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
                 >
                   Add Exception
                 </button>
