@@ -48,7 +48,7 @@ export default function BulkImportModal({
     setImporting(true)
     const overwriteCount = valid.filter((r) => r.isOverwrite).length
     const payload = valid.map(({ rank, name, platoon, fourD }) => ({ rank, name, platoon, four_d: fourD }))
-    // @ts-ignore â€” tbl() return type can't narrow to a table literal so Insert resolves to never
+    // @ts-ignore — tbl() return type can't narrow to a table literal so Insert resolves to never
     const { error } = await supabase.from(tbl(company, 'NominalRoll')).upsert(payload, { onConflict: 'name' })
     if (error) {
       setErrors((prev) => [{ row: 0, message: error.message }, ...prev])
@@ -67,7 +67,7 @@ export default function BulkImportModal({
         <div className="p-5 space-y-4 overflow-y-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800">Bulk Import Soldiers</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg" aria-label="Close">âœ•</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg" aria-label="Close">✕</button>
           </div>
 
           <div className="flex gap-3">
@@ -85,7 +85,7 @@ export default function BulkImportModal({
 
           {errors.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1 max-h-40 overflow-y-auto">
-              <p className="text-xs font-semibold text-red-700 mb-1">{errors.length} error{errors.length !== 1 ? 's' : ''} found â€” fix and re-upload</p>
+              <p className="text-xs font-semibold text-red-700 mb-1">{errors.length} error{errors.length !== 1 ? 's' : ''} found — fix and re-upload</p>
               {errors.map((e, i) => (
                 <p key={i} className="text-xs text-red-600">Row {e.row}: {e.message}</p>
               ))}
@@ -112,7 +112,7 @@ export default function BulkImportModal({
                           <td className="px-3 py-2 font-mono text-gray-600">{row.rank}</td>
                           <td className="px-3 py-2 font-medium">{row.name}</td>
                           <td className="px-3 py-2 text-gray-500">{row.platoon}</td>
-                          <td className="px-3 py-2 text-gray-400">{row.fourD ?? 'â€”'}</td>
+                          <td className="px-3 py-2 text-gray-400">{row.fourD ?? '—'}</td>
                           <td className="px-3 py-2">{row.isOverwrite && <span className="text-amber-600 font-medium">overwrite</span>}</td>
                         </tr>
                       ))}

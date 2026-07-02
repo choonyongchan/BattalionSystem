@@ -471,7 +471,7 @@ export default function ParadeState({
         <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
         <p className="text-xs text-gray-500">
           {soldiers.length - new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
-          {activeExceptions.length > 0 && ` Â· ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
+          {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -534,10 +534,10 @@ export default function ParadeState({
               <span className="flex items-center gap-2">
                 Overwrite Strength
                 {anyMismatch() && (
-                  <span className="text-yellow-500 text-base leading-none" title="Some overrides differ from nominal roll">âš </span>
+                  <span className="text-yellow-500 text-base leading-none" title="Some overrides differ from nominal roll">✏️</span>
                 )}
               </span>
-              <span className="text-gray-400 text-xs">{showStrOverride ? 'â–²' : 'â–¼'}</span>
+              <span className="text-gray-400 text-xs">{showStrOverride ? '▲' : '▼'}</span>
             </button>
 
             {showStrOverride && (
