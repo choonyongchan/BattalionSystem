@@ -25,7 +25,10 @@ export interface ParseResult {
 export function parseCSV(text: string): string[][] {
   const { data } = Papa.parse<string[]>(text, {
     skipEmptyLines: true,
-    transform: (v) => v.trim(),
+    transform: (v) => {
+      const s = v.trim()
+      return s.length >= 2 && s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s
+    },
   })
   return data
 }
