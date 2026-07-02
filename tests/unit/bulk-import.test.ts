@@ -32,6 +32,16 @@ describe('parseCSV', () => {
     const result = parseCSV(`${HINTS}\n4D,Rank,Name,Platoon\n\n,PTE,LEE,2\n`)
     expect(result).toHaveLength(3)
   })
+
+  it('handles quoted field with an embedded comma', () => {
+    const result = parseCSV(`${HINTS}\n4D,Rank,Name,Platoon\n,PTE,"TAN, AH KOW",2`)
+    expect(result[2][2]).toBe('TAN, AH KOW')
+  })
+
+  it('handles escaped quotes inside a quoted field', () => {
+    const result = parseCSV(`${HINTS}\n4D,Rank,Name,Platoon\n,PTE,"TAN ""AK"" KOW",2`)
+    expect(result[2][2]).toBe('TAN "AK" KOW')
+  })
 })
 
 describe('validateAndTransform', () => {

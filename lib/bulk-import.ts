@@ -1,3 +1,4 @@
+import Papa from 'papaparse'
 import type { Soldier } from './supabase'
 import { VALID_RANKS } from './companies'
 
@@ -22,11 +23,11 @@ export interface ParseResult {
 }
 
 export function parseCSV(text: string): string[][] {
-  return text
-    .replace(/^﻿/, '')
-    .split(/\r?\n/)
-    .filter((line) => line.trim())
-    .map((line) => line.split(',').map((cell) => cell.trim()))
+  const { data } = Papa.parse<string[]>(text, {
+    skipEmptyLines: true,
+    transform: (v) => v.trim(),
+  })
+  return data
 }
 
 export function validateAndTransform(rows: string[][], existing: Soldier[]): ParseResult {
