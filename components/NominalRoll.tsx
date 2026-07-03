@@ -30,6 +30,8 @@ export default function NominalRoll({ company }: { company: Company }) {
 
   const [showImport, setShowImport] = useState(false)
   const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState<'four_d' | 'platoon' | 'rank' | 'name' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [form, setForm] = useState({ rank: 'PTE', name: '', platoon: '' })
   const [deletingName, setDeletingName] = useState<string | null>(null)
   const nameConfirm = useConfirmDelete<string>()
@@ -147,12 +149,35 @@ export default function NominalRoll({ company }: { company: Company }) {
     )
     : soldiers
 
-  const sorted = [...filtered].sort((a, b) =>
-    (a.four_d ?? '').localeCompare(b.four_d ?? '') ||
-    (a.platoon ?? '').localeCompare(b.platoon ?? '') ||
-    ((RANK_ORDER[b.rank] ?? 99) - (RANK_ORDER[a.rank] ?? 99)) ||
-    a.name.localeCompare(b.name)
-  )
+  function toggleSort(key: 'four_d' | 'platoon' | 'rank' | 'name') {
+    if (sortKey !== key) { setSortKey(key); setSortDir('asc') }
+    else if (sortDir === 'asc') setSortDir('desc')
+    else { setSortKey(null); setSortDir('asc') }
+  }
+
+  function sortValue(s: Soldier, key: 'four_d' | 'platoon' | 'rank' | 'name'): string | number {
+    switch (key) {
+      case 'four_d': return (s.four_d ?? '').toLowerCase()
+      case 'platoon': return (s.platoon ?? '').toLowerCase()
+      case 'rank': return RANK_ORDER[s.rank] ?? 99
+      case 'name': return s.name.toLowerCase()
+    }
+  }
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortKey) {
+      return (
+        (a.four_d ?? '').localeCompare(b.four_d ?? '') ||
+        (a.platoon ?? '').localeCompare(b.platoon ?? '') ||
+        ((RANK_ORDER[b.rank] ?? 99) - (RANK_ORDER[a.rank] ?? 99)) ||
+        a.name.localeCompare(b.name)
+      )
+    }
+    const va = sortValue(a, sortKey)
+    const vb = sortValue(b, sortKey)
+    const cmp = typeof va === 'number' ? va - (vb as number) : va.localeCompare(vb as string)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   const grouped = SECTION_ORDER.reduce(
     (acc, type) => {
@@ -231,7 +256,7 @@ export default function NominalRoll({ company }: { company: Company }) {
       <div className="flex justify-center">
         <input
           type="search"
-          placeholder="Search by rank, name, platoon…"
+          placeholder="Search by rank, name, platoon, 4D…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
@@ -314,10 +339,30 @@ export default function NominalRoll({ company }: { company: Company }) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Rank</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Platoon</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">4D</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">
+                        <button onClick={() => toggleSort('four_d')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          4D
+                          {sortKey === 'four_d' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">
+                        <button onClick={() => toggleSort('platoon')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Platoon
+                          {sortKey === 'platoon' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">
+                        <button onClick={() => toggleSort('rank')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Rank
+                          {sortKey === 'rank' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Name
+                          {sortKey === 'name' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
                       <th className="w-24" />
                     </tr>
                   </thead>
@@ -331,6 +376,33 @@ export default function NominalRoll({ company }: { company: Company }) {
                         >
                           {isEditing ? (
                             <>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={editRow.four_d}
+                                  onChange={(e) => setEditRow({ ...editRow, four_d: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') updateSoldier()
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  placeholder="e.g. 1234"
+                                  className={editClass('four_d')}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={editRow.platoon}
+                                  onChange={(e) => setEditRow({ ...editRow, platoon: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
+                                  }}
+                                  className={editClass('platoon')}
+                                >
+                                  <option value="">–</option>
+                                  {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                              </td>
                               <td className="px-2 py-2">
                                 <SearchDropdown
                                   items={ALL_RANKS}
@@ -352,7 +424,6 @@ export default function NominalRoll({ company }: { company: Company }) {
                               <td className="px-2 py-2">
                                 <input
                                   type="text"
-                                  autoFocus
                                   value={editRow.name}
                                   onChange={(e) => setEditRow({ ...editRow, name: e.target.value })}
                                   onKeyDown={(e) => {
@@ -360,32 +431,6 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
                                   }}
                                   className={editClass('name')}
-                                />
-                              </td>
-                              <td className="px-2 py-2">
-                                <select
-                                  value={editRow.platoon}
-                                  onChange={(e) => setEditRow({ ...editRow, platoon: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
-                                  }}
-                                  className={editClass('platoon')}
-                                >
-                                  <option value="">–</option>
-                                  {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                              </td>
-                              <td className="px-2 py-2">
-                                <input
-                                  type="text"
-                                  value={editRow.four_d}
-                                  onChange={(e) => setEditRow({ ...editRow, four_d: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') updateSoldier()
-                                    if (e.key === 'Escape') { setEditRow(null); setEditErrors({}) }
-                                  }}
-                                  placeholder="e.g. 1234"
-                                  className={editClass('four_d')}
                                 />
                               </td>
                               <td className="px-2 py-2">
@@ -408,10 +453,10 @@ export default function NominalRoll({ company }: { company: Company }) {
                             </>
                           ) : (
                             <>
+                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '–'}</td>
+                              <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
                               <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
                               <td className="px-4 py-3 font-medium">{s.name}</td>
-                              <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '–'}</td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button

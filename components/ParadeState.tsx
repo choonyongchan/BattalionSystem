@@ -81,9 +81,8 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
-  const [exceptionsSortDateAsc, setExceptionsSortAsc] = useState(true)
-  const [exceptionsSortNameAsc, setexceptionsSortNameAsc] = useState(true)
-  const [exceptionsLastSortAction, setexceptionsLastSortAction] = useState<'date' | 'name'>('date')
+  const [exceptionsSortKey, setExceptionsSortKey] = useState<'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end' | null>(null)
+  const [exceptionsSortDir, setExceptionsSortDir] = useState<'asc' | 'desc'>('asc')
   const [search, setSearch] = useState('')
   const [exceptionShowAll, setExceptionShowAll] = useState(false)
 
@@ -156,22 +155,33 @@ export default function ParadeState({
     setLoading(false)
   }
 
-  const sortedExceptions = exceptions.sort((a, b) => {
-    const compareByDate = () => {
+  function toggleExceptionsSort(key: 'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end') {
+    if (exceptionsSortKey !== key) { setExceptionsSortKey(key); setExceptionsSortDir('asc') }
+    else if (exceptionsSortDir === 'asc') setExceptionsSortDir('desc')
+    else { setExceptionsSortKey(null); setExceptionsSortDir('asc') }
+  }
+
+  function exceptionSortValue(e: Exception, key: 'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end'): string | number {
+    switch (key) {
+      case 'four_d': return (soldiers.find((s) => s.name === e.name)?.four_d ?? '').toLowerCase()
+      case 'name': return e.name.toLowerCase()
+      case 'scope': return (e.scope ?? '').toLowerCase()
+      case 'reason': return (e.reason ?? '').toLowerCase()
+      case 'start': return new Date(e.start ?? 0).getTime()
+      case 'end': return new Date(e.end ?? 0).getTime()
+    }
+  }
+
+  const sortedExceptions = [...exceptions].sort((a, b) => {
+    if (!exceptionsSortKey) {
       const dateA = new Date(a.start ?? 0).getTime()
       const dateB = new Date(b.start ?? 0).getTime()
-      return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
+      return dateA - dateB || a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     }
-
-    const compareByName = () => {
-      const nameA = a.name.toLowerCase()
-      const nameB = b.name.toLowerCase()
-      return exceptionsSortNameAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
-    }
-
-    return exceptionsLastSortAction == 'date'
-      ? compareByDate() || compareByName()
-      : compareByName() || compareByDate()
+    const va = exceptionSortValue(a, exceptionsSortKey)
+    const vb = exceptionSortValue(b, exceptionsSortKey)
+    const cmp = typeof va === 'number' ? va - (vb as number) : va.localeCompare(vb as string)
+    return exceptionsSortDir === 'asc' ? cmp : -cmp
   })
 
   const query = search.trim().toLowerCase()
@@ -179,7 +189,8 @@ export default function ParadeState({
     if (query) return (
       (e.name ?? '').toLowerCase().includes(query) ||
       (e.reason ?? '').toLowerCase().includes(query) ||
-      (String(e.scope ?? '')).toLowerCase().includes(query)
+      (String(e.scope ?? '')).toLowerCase().includes(query) ||
+      (soldiers.find((s) => s.name === e.name)?.four_d ?? '').toLowerCase().includes(query)
     )
   }
   )
@@ -749,7 +760,7 @@ export default function ParadeState({
           <div className="flex items-center justify-between gap-4">
             <input
               type="search"
-              placeholder="Search by name, scope, reason..."
+              placeholder="Search by name, scope, reason, 4D..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
@@ -932,9 +943,10 @@ export default function ParadeState({
                   </div>
                 )}
 
-                <label className="flex items-center gap-2 text-sm text-gray-700">
+                <label className="flex items-center gap-2 text-sm text-gray-700 -mx-1 px-1 py-2 cursor-pointer">
                   <input
                     type="checkbox"
+                    className="h-5 w-5"
                     checked={exForm.counts_as_absence}
                     onChange={(e) => { setExForm({ ...exForm, counts_as_absence: e.target.checked }); setExAbsenceTouched(true) }}
                   />
@@ -974,33 +986,41 @@ export default function ParadeState({
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
                       <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button
-                          onClick={() => {
-                            setexceptionsSortNameAsc(!exceptionsSortNameAsc)
-                            setexceptionsLastSortAction('name')
-                          }}
-                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                          title={`Sort by name ${exceptionsSortNameAsc ? 'descending' : 'ascending'}`}
-                        >
-                          Soldier
-                          <span className="text-xs">{exceptionsSortNameAsc ? '↑' : '↓'}</span>
+                        <button onClick={() => toggleExceptionsSort('four_d')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          4D
+                          {exceptionsSortKey === 'four_d' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button
-                          onClick={() => {
-                            setExceptionsSortAsc(!exceptionsSortDateAsc)
-                            setexceptionsLastSortAction('date')
-                          }}
-                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                          title={`Sort by date ${exceptionsSortDateAsc ? 'descending' : 'ascending'}`}
-                        >
-                          Period
-                          <span className="text-xs">{exceptionsSortDateAsc ? '↑' : '↓'}</span>
+                        <button onClick={() => toggleExceptionsSort('name')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Name
+                          {exceptionsSortKey === 'name' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button onClick={() => toggleExceptionsSort('scope')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Scope
+                          {exceptionsSortKey === 'scope' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button onClick={() => toggleExceptionsSort('reason')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Reason
+                          {exceptionsSortKey === 'reason' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button onClick={() => toggleExceptionsSort('start')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          Start
+                          {exceptionsSortKey === 'start' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button onClick={() => toggleExceptionsSort('end')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          End
+                          {exceptionsSortKey === 'end' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </button>
+                      </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Absent?</th>
                       <th className="w-24" />
                     </tr>
@@ -1014,6 +1034,9 @@ export default function ParadeState({
                           <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
                             {isEditing ? (
                               <>
+                                <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                                  {soldiers.find((s) => s.name === editEx!.name)?.four_d ?? '–'}
+                                </td>
                                 <td className="px-2 py-2">
                                   <SearchDropdown
                                     {...soldierDropdownProps}
@@ -1038,38 +1061,6 @@ export default function ParadeState({
                                       </button>
                                     ))}
                                   </div>
-                                </td>
-                                <td className="px-2 py-2">
-                                  {editSingleDate ? (
-                                    <div className="space-y-1">
-                                      <input
-                                        type="date"
-                                        value={editEx!.end ?? ''}
-                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
-                                        className={exClass('end')} />
-                                      {editEx!.scope === 'MA' && (
-                                        <input
-                                          type="time"
-                                          value={editEx!.time ?? ''}
-                                          onChange={(e2) => setEditEx({ ...editEx!, time: e2.target.value })}
-                                          className={exClass('time')} />
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex gap-1 items-center">
-                                      <input
-                                        type="date"
-                                        value={editEx!.start ?? ''}
-                                        onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
-                                        className={exClass('start')} />
-                                      <span className="text-gray-400 text-xs shrink-0">–</span>
-                                      <input
-                                        type="date"
-                                        value={editEx!.end ?? ''}
-                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
-                                        className={exClass('end')} />
-                                    </div>
-                                  )}
                                 </td>
                                 <td className="px-2 py-2">
                                   {editEx!.scope === 'MA' ? (
@@ -1105,11 +1096,49 @@ export default function ParadeState({
                                   )}
                                 </td>
                                 <td className="px-2 py-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={editEx!.counts_as_absence}
-                                    onChange={(e2) => { setEditEx({ ...editEx!, counts_as_absence: e2.target.checked }); setEditAbsenceTouched(true) }}
-                                  />
+                                  {editSingleDate ? (
+                                    <div className="space-y-1">
+                                      <input
+                                        type="date"
+                                        value={editEx!.end ?? ''}
+                                        onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
+                                        className={exClass('start')} />
+                                      {editEx!.scope === 'MA' && (
+                                        <input
+                                          type="time"
+                                          value={editEx!.time ?? ''}
+                                          onChange={(e2) => setEditEx({ ...editEx!, time: e2.target.value })}
+                                          className={exClass('time')} />
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="date"
+                                      value={editEx!.start ?? ''}
+                                      onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
+                                      className={exClass('start')} />
+                                  )}
+                                </td>
+                                <td className="px-2 py-2">
+                                  {editSingleDate ? (
+                                    <span className="text-gray-400 text-xs">same as start</span>
+                                  ) : (
+                                    <input
+                                      type="date"
+                                      value={editEx!.end ?? ''}
+                                      onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
+                                      className={exClass('end')} />
+                                  )}
+                                </td>
+                                <td className="px-2 py-2">
+                                  <label className="flex items-center justify-center h-full py-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="h-5 w-5"
+                                      checked={editEx!.counts_as_absence}
+                                      onChange={(e2) => { setEditEx({ ...editEx!, counts_as_absence: e2.target.checked }); setEditAbsenceTouched(true) }}
+                                    />
+                                  </label>
                                 </td>
                                 <td className="px-2 py-2">
                                   <div className="flex gap-1 justify-end">
@@ -1131,18 +1160,22 @@ export default function ParadeState({
                               </>
                             ) : (
                               <>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap">{e.name}</td>
+                                <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                                  {soldiers.find((s) => s.name === e.name)?.four_d ?? '–'}
+                                </td>
+                                <td className="px-4 py-3 font-medium whitespace-nowrap">
+                                  {soldiers.find((s) => s.name === e.name)?.rank ? `${soldiers.find((s) => s.name === e.name)?.rank} ${e.name}` : e.name}
+                                </td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
                                     {e.scope ?? '–'}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {e.start && e.end ? `${toSGDate(e.start)} – ${toSGDate(e.end)}` : '–'}
-                                </td>
                                 <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.start ? toSGDate(e.start) : '–'}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.end ? toSGDate(e.end) : '–'}</td>
                                 <td className="px-4 py-3">
-                                  <input type="checkbox" checked={e.counts_as_absence} disabled />
+                                  <input type="checkbox" className="h-5 w-5" checked={e.counts_as_absence} disabled />
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
