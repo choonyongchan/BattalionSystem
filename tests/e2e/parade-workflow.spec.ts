@@ -89,27 +89,22 @@ test.describe('Parade State workflow', () => {
     await expect(page.getByText('Medical Leave')).toBeVisible({ timeout: 10000 })
   })
 
-  test('MA add form shows red-border validation on Medical Center instead of a stuck grey button', async ({ page }) => {
+  test('Add Exception button is disabled until Soldier is picked; MA can be saved with Medical Center/Reason/Date blank', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
     await page.locator('input[type="date"]').fill('2026-01-15')
     await page.getByRole('button', { name: 'Exceptions' }).click()
     await page.getByRole('button', { name: '+ Exception' }).click()
 
+    const addBtn = page.getByRole('button', { name: 'Add Exception' })
+    await expect(addBtn).toBeDisabled()
+
     await page.getByPlaceholder('Search soldier...').fill('HO KAI')
     await page.getByText('HO KAI XIANG').first().click()
     await page.getByRole('button', { name: 'MA' }).click()
-    await page.getByPlaceholder('e.g. Skin Appt, IMH Appt').fill('Follow up')
 
-    const addBtn = page.getByRole('button', { name: 'Add Exception' })
-    const medCenterInput = page.getByPlaceholder('e.g. CGH, NUH, Raffles')
-
-    // Submit with Medical Center blank — button must not be disabled, and the
-    // field should now show red-border feedback instead of doing nothing.
+    // Soldier + Scope are the only compulsory fields — Medical Center, Reason,
+    // and Date are all left blank here, and the button should still be enabled.
     await expect(addBtn).toBeEnabled()
-    await addBtn.click()
-    await expect(medCenterInput).toHaveClass(/border-red-500/, { timeout: 5000 })
-
-    await medCenterInput.fill('CGH')
     await addBtn.click()
     await expect(page.getByText('HO KAI XIANG')).toBeVisible({ timeout: 10000 })
   })

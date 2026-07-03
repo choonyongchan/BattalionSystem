@@ -158,8 +158,8 @@ export default function ParadeState({
 
   const sortedExceptions = exceptions.sort((a, b) => {
     const compareByDate = () => {
-      const dateA = new Date(a.start).getTime()
-      const dateB = new Date(b.start).getTime()
+      const dateA = new Date(a.start ?? 0).getTime()
+      const dateB = new Date(b.start ?? 0).getTime()
       return exceptionsSortDateAsc ? dateA - dateB : dateB - dateA
     }
 
@@ -267,28 +267,27 @@ export default function ParadeState({
     return !!m && +m[1] <= 23 && +m[2] <= 59
   }
 
+  function buildReason(mainReason: string, medCenterVal: string, scope: ExceptionScope): string | null {
+    const r = mainReason.trim()
+    if (scope !== 'MA') return r || null
+    const mc = medCenterVal.trim()
+    if (mc && r) return `${mc}: ${r}`
+    return mc || r || null
+  }
+
   function isExceptionValid() {
     if (!exForm.name) return false
     if (exForm.scope === 'Status') {
-      if (!statusRows.every((r) => r.reason.trim() && r.start && r.end)) return false
-      const reasons = statusRows.map((r) => r.reason.trim().toLowerCase())
+      const reasons = statusRows.map((r) => r.reason.trim().toLowerCase()).filter((r) => r)
       return new Set(reasons).size === reasons.length
     }
-    const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-    return !!(exForm.reason.trim() && exForm.end && (singleDate || exForm.start) && (exForm.scope !== 'MA' || medCenter.trim()) && isValidTime(exForm.time))
+    return isValidTime(exForm.time)
   }
 
   function validateAddEx() {
     const errors: Record<string, boolean> = {}
     if (!exForm.name) errors.name = true
-    if (exForm.scope !== 'Status') {
-      const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-      if (!exForm.reason.trim()) errors.reason = true
-      if (!exForm.end) errors.end = true
-      if (!singleDate && !exForm.start) errors.start = true
-      if (exForm.scope === 'MA' && !medCenter.trim()) errors.medCenter = true
-      if (exForm.scope === 'MA' && !isValidTime(exForm.time)) errors.time = true
-    }
+    if (exForm.scope === 'MA' && !isValidTime(exForm.time)) errors.time = true
     setAddExErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -297,17 +296,16 @@ export default function ParadeState({
     if (!validateAddEx() || !isExceptionValid()) return
     let error: { message: string } | null = null
     if (exForm.scope === 'Status') {
-      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim(), start: r.start, end: r.end, counts_as_absence: exForm.counts_as_absence }))
+      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim() || null, start: r.start || null, end: r.end || null, counts_as_absence: exForm.counts_as_absence }))
         ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
     } else {
       const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
-      const savedReason = exForm.scope === 'MA' ? `${medCenter.trim()}: ${exForm.reason.trim()}` : exForm.reason.trim()
         ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
           name: exForm.name,
           scope: exForm.scope,
-          reason: savedReason,
-          start: singleDate ? exForm.end : exForm.start,
-          end: exForm.end,
+          reason: buildReason(exForm.reason, medCenter, exForm.scope),
+          start: (singleDate ? exForm.end : exForm.start) || null,
+          end: exForm.end || null,
           counts_as_absence: exForm.counts_as_absence,
           ...(exForm.scope === 'MA' && exForm.time ? { time: exForm.time } : {}),
         }))
@@ -343,14 +341,17 @@ export default function ParadeState({
     setSavingDuty(false)
   }
 
+  function isEditExceptionValid() {
+    if (!editEx) return false
+    if (!editEx.name) return false
+    if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) return false
+    return true
+  }
+
   function validateEditEx() {
     if (!editEx) return false
-    const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
     const errors: Record<string, boolean> = {}
     if (!editEx.name) errors.name = true
-    if (!editEx.reason.trim()) errors.reason = true
-    if (!editEx.end) errors.end = true
-    if (!singleDate && !editEx.start) errors.start = true
     if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
     setEditExErrors(errors)
     return Object.keys(errors).length === 0
@@ -360,19 +361,16 @@ export default function ParadeState({
     if (!editEx || !validateEditEx()) return
     setSavingEx(true)
     const singleDate = SINGLE_DATE_SCOPES.includes(editEx.scope as ExceptionScope)
-    const savedReason = editEx.scope === 'MA' && editMedCenter.trim()
-      ? `${editMedCenter.trim()}: ${editEx.reason.trim()}`
-      : editEx.reason.trim()
     const { error } = await supabase
       .from(tbl(company, 'Exceptions'))
       .update({
         name: editEx.name,
         scope: editEx.scope,
-        reason: savedReason,
-        start: singleDate ? editEx.end : editEx.start,
-        end: editEx.end,
+        reason: buildReason(editEx.reason ?? '', editMedCenter, editEx.scope as ExceptionScope),
+        start: (singleDate ? editEx.end : editEx.start) || null,
+        end: editEx.end || null,
         counts_as_absence: editEx.counts_as_absence,
-        time: editEx.scope === 'MA' ? (editEx.time ?? null) : null,
+        time: editEx.scope === 'MA' ? (editEx.time || null) : null,
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
@@ -780,7 +778,7 @@ export default function ParadeState({
             return (
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Soldier</label>
+                  <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
                   <SearchDropdown
                     {...soldierDropdownProps}
                     items={soldiers}
@@ -791,7 +789,7 @@ export default function ParadeState({
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-500 mb-2">Scope</label>
+                  <label className="block text-xs text-gray-500 mb-2">Scope <span className="text-red-500">*</span></label>
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                     {EXCEPTION_SCOPES.map((s) => (
                       <button
@@ -945,7 +943,8 @@ export default function ParadeState({
 
                 <button
                   onClick={addException}
-                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+                  disabled={!isExceptionValid()}
+                  className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   Add Exception
                 </button>
@@ -1045,7 +1044,7 @@ export default function ParadeState({
                                     <div className="space-y-1">
                                       <input
                                         type="date"
-                                        value={editEx!.end}
+                                        value={editEx!.end ?? ''}
                                         onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value, start: e2.target.value })}
                                         className={exClass('end')} />
                                       {editEx!.scope === 'MA' && (
@@ -1060,13 +1059,13 @@ export default function ParadeState({
                                     <div className="flex gap-1 items-center">
                                       <input
                                         type="date"
-                                        value={editEx!.start}
+                                        value={editEx!.start ?? ''}
                                         onChange={(e2) => setEditEx({ ...editEx!, start: e2.target.value })}
                                         className={exClass('start')} />
                                       <span className="text-gray-400 text-xs shrink-0">–</span>
                                       <input
                                         type="date"
-                                        value={editEx!.end}
+                                        value={editEx!.end ?? ''}
                                         onChange={(e2) => setEditEx({ ...editEx!, end: e2.target.value })}
                                         className={exClass('end')} />
                                     </div>
@@ -1083,7 +1082,7 @@ export default function ParadeState({
                                         className={exClass('reason')} />
                                       <input
                                         type="text"
-                                        value={editEx!.reason}
+                                        value={editEx!.reason ?? ''}
                                         onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
                                         onKeyDown={(e2) => {
                                           if (e2.key === 'Enter') updateException()
@@ -1095,7 +1094,7 @@ export default function ParadeState({
                                   ) : (
                                     <input
                                       type="text"
-                                      value={editEx!.reason}
+                                      value={editEx!.reason ?? ''}
                                       onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
                                       onKeyDown={(e2) => {
                                         if (e2.key === 'Enter') updateException()
@@ -1116,8 +1115,8 @@ export default function ParadeState({
                                   <div className="flex gap-1 justify-end">
                                     <button
                                       onClick={updateException}
-                                      disabled={savingEx}
-                                      className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                      disabled={savingEx || !isEditExceptionValid()}
+                                      className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
                                       {savingEx ? '…' : 'Save'}
                                     </button>

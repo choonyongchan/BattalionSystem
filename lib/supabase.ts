@@ -9,9 +9,9 @@ type NominalRollTable = {
   Relationships: []
 }
 type ExceptionsTable = {
-  Row:           { id: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence: boolean; time?: string | null }
-  Insert:        { id?: number; name: string; scope: string; reason: string; start: string; end: string; counts_as_absence?: boolean; time?: string | null }
-  Update:        { id?: number; name?: string; scope?: string; reason?: string; start?: string; end?: string; counts_as_absence?: boolean; time?: string | null }
+  Row:           { id: number; name: string; scope: string; reason: string | null; start: string | null; end: string | null; counts_as_absence: boolean; time?: string | null }
+  Insert:        { id?: number; name: string; scope: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null }
+  Update:        { id?: number; name?: string; scope?: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null }
   Relationships: []
 }
 type DutyTable = {
@@ -63,9 +63,9 @@ export interface Exception {
   id: number
   name: string
   scope: string
-  reason: string
-  start: string
-  end: string
+  reason: string | null
+  start: string | null
+  end: string | null
   counts_as_absence: boolean
   time?: string | null
 }

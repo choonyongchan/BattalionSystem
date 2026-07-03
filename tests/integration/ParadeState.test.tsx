@@ -246,31 +246,24 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
   })
 
-  it('MA add form shows red-border validation on Medical Center instead of a silently-disabled button', async () => {
+  it('Add Exception button stays disabled until a soldier is picked, then MA can be saved with Medical Center/Reason/Date left blank', async () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+
+    const addButton = screen.getByRole('button', { name: 'Add Exception' })
+    expect(addButton).toBeDisabled()
 
     const soldierInput = screen.getByPlaceholderText('Search soldier...')
     await userEvent.type(soldierInput, 'HO KAI')
     await userEvent.click(await screen.findByText('HO KAI XIANG', {}, { timeout: 5000 }))
 
     await userEvent.click(screen.getByRole('button', { name: 'MA' }))
-    await userEvent.type(screen.getByPlaceholderText('e.g. Skin Appt, IMH Appt'), 'Follow up')
-    // Add form's date defaults to today (not FIXTURE_DATE) — set it explicitly so the
-    // new exception is active on the date this test is viewing.
-    fireEvent.change(document.querySelector('input[type="date"]')!, { target: { value: FIXTURE_DATE } })
 
-    // Submit with Medical Center left blank
-    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
-
-    const medCenterInput = screen.getByPlaceholderText('e.g. CGH, NUH, Raffles')
-    await waitFor(() => expect(medCenterInput.className).toContain('border-red-500'))
-    expect(screen.queryByText('HO KAI XIANG')).not.toBeInTheDocument()
-
-    // Fill it in and resubmit — should now succeed
-    await userEvent.type(medCenterInput, 'CGH')
-    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
+    // Soldier + Scope are the only compulsory fields — Medical Center, Reason,
+    // and Date are all left blank here.
+    await waitFor(() => expect(addButton).not.toBeDisabled())
+    await userEvent.click(addButton)
 
     await waitFor(() => {
       expect(screen.getByText('HO KAI XIANG')).toBeInTheDocument()

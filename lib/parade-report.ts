@@ -223,7 +223,7 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
   lines.push('UPCOMING MA:')
   const allEx = input.allExceptions ?? activeExceptions
   allEx
-    .filter((e) => e.scope === 'MA' && new Date(e.end) >= new Date(date))
+    .filter((e): e is Exception & { end: string } => e.scope === 'MA' && !!e.end && new Date(e.end) >= new Date(date))
     .forEach((e) => {
       const dn = displayName(e.name, soldiers)
       const dateStr = toDDMMYY(e.end)
