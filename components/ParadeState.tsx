@@ -32,7 +32,7 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
 
 const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
-const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA', 'Others']
+const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA']
 
 type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
 
@@ -94,6 +94,8 @@ export default function ParadeState({
 
   const [showForm, setShowForm] = useState(false)
   const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+  const [exAbsenceTouched, setExAbsenceTouched] = useState(false)
+  const [editAbsenceTouched, setEditAbsenceTouched] = useState(false)
   const [medCenter, setMedCenter] = useState('')
   const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
@@ -313,6 +315,7 @@ export default function ParadeState({
     if (error) { setError(error.message); return }
     setShowForm(false)
     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+    setExAbsenceTouched(false)
     setStatusRows([{ start: date, end: date, reason: '' }])
     setMedCenter('')
     setAddExErrors({})
@@ -758,6 +761,7 @@ export default function ParadeState({
                 onClick={() => {
                   if (showForm) {
                     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+                    setExAbsenceTouched(false)
                     setStatusRows([{ start: date, end: date, reason: '' }])
                     setMedCenter('')
                     setAddExErrors({})
@@ -793,7 +797,7 @@ export default function ParadeState({
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setExForm({ ...exForm, scope: s })}
+                        onClick={() => setExForm({ ...exForm, scope: s, counts_as_absence: exAbsenceTouched ? exForm.counts_as_absence : ABSENCE_SCOPES.includes(s) })}
                         className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${exForm.scope === s
                           ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
                           : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
@@ -930,6 +934,15 @@ export default function ParadeState({
                   </div>
                 )}
 
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={exForm.counts_as_absence}
+                    onChange={(e) => { setExForm({ ...exForm, counts_as_absence: e.target.checked }); setExAbsenceTouched(true) }}
+                  />
+                  Absent?
+                </label>
+
                 <button
                   onClick={addException}
                   className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
@@ -989,6 +1002,7 @@ export default function ParadeState({
                         </button>
                       </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Absent?</th>
                       <th className="w-24" />
                     </tr>
                   </thead>
@@ -1016,7 +1030,7 @@ export default function ParadeState({
                                       <button
                                         key={s}
                                         type="button"
-                                        onClick={() => setEditEx({ ...editEx!, scope: s })}
+                                        onClick={() => setEditEx({ ...editEx!, scope: s, counts_as_absence: editAbsenceTouched ? editEx!.counts_as_absence : ABSENCE_SCOPES.includes(s) })}
                                         className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${editEx!.scope === s
                                           ? `${theme.buttonBg} text-white border-transparent`
                                           : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
@@ -1092,6 +1106,13 @@ export default function ParadeState({
                                   )}
                                 </td>
                                 <td className="px-2 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={editEx!.counts_as_absence}
+                                    onChange={(e2) => { setEditEx({ ...editEx!, counts_as_absence: e2.target.checked }); setEditAbsenceTouched(true) }}
+                                  />
+                                </td>
+                                <td className="px-2 py-2">
                                   <div className="flex gap-1 justify-end">
                                     <button
                                       onClick={updateException}
@@ -1122,6 +1143,9 @@ export default function ParadeState({
                                 </td>
                                 <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
                                 <td className="px-4 py-3">
+                                  <input type="checkbox" checked={e.counts_as_absence} disabled />
+                                </td>
+                                <td className="px-4 py-3">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
                                       onClick={() => exConfirm.isConfirming(e.id)
@@ -1135,6 +1159,7 @@ export default function ParadeState({
                                             setEditMedCenter('')
                                             setEditEx({ ...e })
                                           }
+                                          setEditAbsenceTouched(false)
                                           setEditExErrors({})
                                         })()}
                                       className={exConfirm.isConfirming(e.id)
@@ -1164,7 +1189,7 @@ export default function ParadeState({
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={5} className="bg-gray-50 px-4 py-3 text-left">
+                      <td colSpan={6} className="bg-gray-50 px-4 py-3 text-left">
                         <button
                           type="button"
                           onClick={() => setExceptionShowAll((prev) => !prev)}

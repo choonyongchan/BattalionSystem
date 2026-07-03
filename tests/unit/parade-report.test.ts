@@ -76,6 +76,17 @@ describe('generateParadeReport — standard', () => {
     expect(report).toContain('ABSENT         : 0')
   })
 
+  it('Guard Duty and Others exceptions do not reduce present count', () => {
+    // WONG KAH MENG (Guard Duty) and LIM WEI JIAN (Others), both counts_as_absence: false
+    const exceptions: Exception[] = [
+      { id: 6, ...FIXTURE_EXCEPTIONS[5] },
+      { id: 7, ...FIXTURE_EXCEPTIONS[6] },
+    ]
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('PRESENT        : 13')
+    expect(report).toContain('ABSENT         : 0')
+  })
+
   it('all exceptions non-absence → present equals total, absent 0', () => {
     const exceptions: Exception[] = FIXTURE_EXCEPTIONS.map((e, i) => ({
       id: i + 1, ...e, counts_as_absence: false,

@@ -106,6 +106,83 @@ describe('ParadeState', () => {
     })
   })
 
+  // ── Absent? checkbox ──────────────────────────────────────────────────────────
+
+  it('Absent? checkbox defaults per scope in the add-exception form', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Absent?' }) as HTMLInputElement
+    expect(checkbox.checked).toBe(true) // scope defaults to Off/Leave
+
+    await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+    expect(checkbox.checked).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'MA' }))
+    expect(checkbox.checked).toBe(true)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Others' }))
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('manually toggling Absent? is preserved across scope changes', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Absent?' }) as HTMLInputElement
+    expect(checkbox.checked).toBe(true) // Off/Leave default
+
+    await userEvent.click(checkbox) // manually uncheck
+    expect(checkbox.checked).toBe(false)
+
+    // Att C would normally default to true — manual toggle should stick
+    await userEvent.click(screen.getByRole('button', { name: 'Att C' }))
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('the checkbox in a read-only exception row is disabled', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+
+    const row = (await screen.findByText('TAN WEI LIANG')).closest('tr')!
+    const checkbox = within(row).getByRole('checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+    expect(checkbox).toBeDisabled()
+  })
+
+  it('adding an exception with Absent? unchecked does not reduce present count', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+
+    const soldierInput = screen.getByPlaceholderText('Search soldier...')
+    await userEvent.type(soldierInput, 'NG BOON')
+    await userEvent.click(await screen.findByText('NG BOON SENG', {}, { timeout: 5000 }))
+
+    // Off/Leave defaults Absent? to checked — uncheck it
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Absent?' }))
+    await userEvent.type(screen.getByPlaceholderText('e.g. Annual Leave, Off'), 'Off')
+    // Add form's date fields default to today (not FIXTURE_DATE) — set them explicitly so the
+    // new exception is active on the date this test is viewing.
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FIXTURE_DATE } })
+    fireEvent.change(dateInputs[1], { target: { value: FIXTURE_DATE } })
+    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('NG BOON SENG')).toBeInTheDocument()
+    }, { timeout: 10000 })
+
+    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await waitFor(() => {
+      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      expect(textarea.value).toContain('PRESENT        : 9')
+      expect(textarea.value).toContain('ABSENT         : 4')
+    }, { timeout: 5000 })
+  })
+
   it('includes CDO duty assignment in generated report', async () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
