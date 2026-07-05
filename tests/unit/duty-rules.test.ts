@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dutyRules } from '@/lib/duty-rules'
+import { isEligible, eligibleSoldiers } from '@/lib/duty-rules'
 import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import type { Soldier } from '@/lib/supabase'
 
@@ -15,23 +15,23 @@ const NO_RANK_RULES = {}
 
 describe('CDO eligibility', () => {
   it('LTA is eligible (upper bound)', () => {
-    expect(dutyRules.isEligible('CDO', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDO', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('2LT is eligible (lower bound)', () => {
-    expect(dutyRules.isEligible('CDO', s('2LT'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDO', s('2LT'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('CPT is NOT eligible (one step above upper bound LTA)', () => {
-    expect(dutyRules.isEligible('CDO', s('CPT'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDO', s('CPT'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('3SG is NOT eligible (WOSPEC, far below lower bound)', () => {
-    expect(dutyRules.isEligible('CDO', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDO', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('REC is NOT eligible (far below lower bound)', () => {
-    expect(dutyRules.isEligible('CDO', s('REC'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDO', s('REC'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 })
 
@@ -40,23 +40,23 @@ describe('CDO eligibility', () => {
 
 describe('CDS eligibility', () => {
   it('2SG is eligible (lower bound)', () => {
-    expect(dutyRules.isEligible('CDS', s('2SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDS', s('2SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('1SG is eligible (upper bound)', () => {
-    expect(dutyRules.isEligible('CDS', s('1SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDS', s('1SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('3SG is NOT eligible (one step below lower bound 2SG)', () => {
-    expect(dutyRules.isEligible('CDS', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDS', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('SSG is NOT eligible (one step above upper bound 1SG)', () => {
-    expect(dutyRules.isEligible('CDS', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDS', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('CPL is NOT eligible (Enlistee, below range)', () => {
-    expect(dutyRules.isEligible('CDS', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDS', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 })
 
@@ -65,31 +65,31 @@ describe('CDS eligibility', () => {
 
 describe('COS eligibility', () => {
   it('PTE is eligible (lower bound)', () => {
-    expect(dutyRules.isEligible('COS', s('PTE'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('COS', s('PTE'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('3SG is eligible (upper bound)', () => {
-    expect(dutyRules.isEligible('COS', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('COS', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('CPL is eligible (mid-range)', () => {
-    expect(dutyRules.isEligible('COS', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('COS', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('LCP is eligible (mid-range)', () => {
-    expect(dutyRules.isEligible('COS', s('LCP'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('COS', s('LCP'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('REC is NOT eligible (one step below lower bound PTE)', () => {
-    expect(dutyRules.isEligible('COS', s('REC'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('COS', s('REC'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('SSG is NOT eligible (one step above upper bound 3SG)', () => {
-    expect(dutyRules.isEligible('COS', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('COS', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('LTA is NOT eligible (Officer, far above upper bound)', () => {
-    expect(dutyRules.isEligible('COS', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('COS', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 })
 
@@ -98,23 +98,23 @@ describe('COS eligibility', () => {
 
 describe('PDS1 eligibility', () => {
   it('3SG is eligible (lower bound)', () => {
-    expect(dutyRules.isEligible('PDS1', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('PDS1', s('3SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('1SG is eligible (upper bound)', () => {
-    expect(dutyRules.isEligible('PDS1', s('1SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('PDS1', s('1SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('2SG is eligible (mid-range)', () => {
-    expect(dutyRules.isEligible('PDS1', s('2SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('PDS1', s('2SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
   it('CPL is NOT eligible (one step below lower bound 3SG — Enlistee)', () => {
-    expect(dutyRules.isEligible('PDS1', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('PDS1', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('SSG is NOT eligible (one step above upper bound 1SG)', () => {
-    expect(dutyRules.isEligible('PDS1', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('PDS1', s('SSG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 })
 
@@ -124,19 +124,19 @@ describe('name overrides', () => {
   it('soldier in name override list is eligible regardless of rank', () => {
     const cpl: Soldier = { rank: 'CPL', name: 'TAN AH KOW', platoon: '1' }
     // CPL would normally fail CDO, but override includes this name
-    expect(dutyRules.isEligible('CDO', cpl, { CDO: ['TAN AH KOW'] }, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDO', cpl, { CDO: ['TAN AH KOW'] }, NO_RANK_RULES)).toBe(true)
   })
 
   it('soldier NOT in name override list is ineligible even if rank would pass', () => {
     const lta: Soldier = { rank: 'LTA', name: 'LEE BOON SENG', platoon: '1' }
     // LTA passes CDO rank rule, but override is set to someone else
-    expect(dutyRules.isEligible('CDO', lta, { CDO: ['SOMEONE_ELSE'] }, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('CDO', lta, { CDO: ['SOMEONE_ELSE'] }, NO_RANK_RULES)).toBe(false)
   })
 
   it('empty name override array falls back to rank rule', () => {
     const lta: Soldier = { rank: 'LTA', name: 'LEE BOON SENG', platoon: '1' }
     // Empty list means no override — rank rule applies; LTA passes CDO
-    expect(dutyRules.isEligible('CDO', lta, { CDO: [] }, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('CDO', lta, { CDO: [] }, NO_RANK_RULES)).toBe(true)
   })
 })
 
@@ -146,16 +146,16 @@ describe('rank rule overrides', () => {
   it('custom rank rule overrides DEFAULT_RANK_RULES for that duty', () => {
     // Override CDO to allow 3SG..SSG range instead of 2LT..LTA
     const customRule = { CDO: { from: '3SG', to: 'SSG' } }
-    expect(dutyRules.isEligible('CDO', s('3SG'), NO_OVERRIDES, customRule)).toBe(true)
-    expect(dutyRules.isEligible('CDO', s('SSG'), NO_OVERRIDES, customRule)).toBe(true)
-    expect(dutyRules.isEligible('CDO', s('LTA'), NO_OVERRIDES, customRule)).toBe(false)
+    expect(isEligible('CDO', s('3SG'), NO_OVERRIDES, customRule)).toBe(true)
+    expect(isEligible('CDO', s('SSG'), NO_OVERRIDES, customRule)).toBe(true)
+    expect(isEligible('CDO', s('LTA'), NO_OVERRIDES, customRule)).toBe(false)
   })
 
   it('rank rule override does not affect other duty types', () => {
     const customRule = { CDO: { from: '3SG', to: 'SSG' } }
     // CDS still uses its default rule
-    expect(dutyRules.isEligible('CDS', s('1SG'), NO_OVERRIDES, customRule)).toBe(true)
-    expect(dutyRules.isEligible('CDS', s('3SG'), NO_OVERRIDES, customRule)).toBe(false)
+    expect(isEligible('CDS', s('1SG'), NO_OVERRIDES, customRule)).toBe(true)
+    expect(isEligible('CDS', s('3SG'), NO_OVERRIDES, customRule)).toBe(false)
   })
 })
 
@@ -163,15 +163,15 @@ describe('rank rule overrides', () => {
 
 describe('edge cases', () => {
   it('unknown duty type returns false', () => {
-    expect(dutyRules.isEligible('XYZ', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('XYZ', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('soldier with unknown rank (not in RANK_ORDER) returns false', () => {
-    expect(dutyRules.isEligible('COS', s('BRIG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+    expect(isEligible('COS', s('BRIG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('eligibleSoldiers returns empty array for empty soldiers list', () => {
-    const result = dutyRules.eligibleSoldiers('COS', [], NO_OVERRIDES, NO_RANK_RULES)
+    const result = eligibleSoldiers('COS', [], NO_OVERRIDES, NO_RANK_RULES)
     expect(result).toHaveLength(0)
   })
 
@@ -180,7 +180,7 @@ describe('edge cases', () => {
       { rank: 'REC', name: 'A', platoon: '1' },
       { rank: 'REC', name: 'B', platoon: '1' },
     ]
-    const result = dutyRules.eligibleSoldiers('COS', allREC, NO_OVERRIDES, NO_RANK_RULES)
+    const result = eligibleSoldiers('COS', allREC, NO_OVERRIDES, NO_RANK_RULES)
     expect(result).toHaveLength(0)
   })
 })
@@ -189,7 +189,7 @@ describe('edge cases', () => {
 
 describe('eligibleSoldiers — fixture soldiers', () => {
   it('CDO returns only 2LT..LTA soldiers (LEE JUN WEI and CHEN MING ZHI)', () => {
-    const result = dutyRules.eligibleSoldiers('CDO', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
+    const result = eligibleSoldiers('CDO', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
     const names = result.map(s => s.name)
     expect(names).toContain('LEE JUN WEI')
     expect(names).toContain('CHEN MING ZHI')
@@ -201,7 +201,7 @@ describe('eligibleSoldiers — fixture soldiers', () => {
   it('COS returns PTE..3SG range only (7 of 13): excludes Officers, higher WOSPECs, and REC', () => {
     // DEFAULT_RANK_RULES.COS = { from: 'PTE'(1), to: '3SG'(5) }
     // Eligible: PTE, LCP, CPL, CFC, 3SG — not REC (below), not SSG/1SG/CPT/LTA (above)
-    const result = dutyRules.eligibleSoldiers('COS', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
+    const result = eligibleSoldiers('COS', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
     const names = result.map(s => s.name)
     expect(result).toHaveLength(7)
     // Included: 3SG×2, CPL×2, PTE×2, LCP×1
@@ -220,7 +220,7 @@ describe('eligibleSoldiers — fixture soldiers', () => {
   })
 
   it('PDS1 returns 3SG×2 + 1SG×1 (NG BOON SENG, HO KAI XIANG, WONG KAH MENG)', () => {
-    const result = dutyRules.eligibleSoldiers('PDS1', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
+    const result = eligibleSoldiers('PDS1', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
     const names = result.map(s => s.name)
     expect(names).toContain('NG BOON SENG')   // 3SG
     expect(names).toContain('HO KAI XIANG')   // 3SG

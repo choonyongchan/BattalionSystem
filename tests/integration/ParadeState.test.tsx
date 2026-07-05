@@ -44,7 +44,8 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
 
     await waitFor(() => {
-      expect(screen.getByText('TAN WEI LIANG')).toBeInTheDocument()
+      // Name cell renders "RANK NAME" combined (e.g. "CPT TAN WEI LIANG")
+      expect(screen.getByText(/TAN WEI LIANG/)).toBeInTheDocument()
       expect(screen.getByText('Off/Leave')).toBeInTheDocument()
     })
   })
@@ -53,11 +54,11 @@ describe('ParadeState', () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
 
-    const searchInput = await screen.findByPlaceholderText('Search by name, scope, reason...')
+    const searchInput = await screen.findByPlaceholderText('Search by name, scope, reason, 4D...')
     await userEvent.type(searchInput, 'TAN WEI')
 
     await waitFor(() => {
-      expect(screen.getByText('TAN WEI LIANG')).toBeInTheDocument()
+      expect(screen.getByText(/TAN WEI LIANG/)).toBeInTheDocument()
     })
   })
 
@@ -99,10 +100,10 @@ describe('ParadeState', () => {
       expect(textarea.value).toContain('ABSENT         : 4')
     }, { timeout: 5000 })
 
-    // GOH RONG HAO should still appear in exceptions list
+    // GOH RONG HAO should still appear in exceptions list (report textarea also contains this text)
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
     await waitFor(() => {
-      expect(screen.getByText('GOH RONG HAO')).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: /GOH RONG HAO/ })).toBeInTheDocument()
     })
   })
 
@@ -146,7 +147,7 @@ describe('ParadeState', () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
 
-    const row = (await screen.findByText('TAN WEI LIANG')).closest('tr')!
+    const row = (await screen.findByText(/TAN WEI LIANG/)).closest('tr')!
     const checkbox = within(row).getByRole('checkbox') as HTMLInputElement
     expect(checkbox.checked).toBe(true)
     expect(checkbox).toBeDisabled()
@@ -172,7 +173,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
 
     await waitFor(() => {
-      expect(screen.getByText('NG BOON SENG')).toBeInTheDocument()
+      expect(screen.getByText(/NG BOON SENG/)).toBeInTheDocument()
     }, { timeout: 10000 })
 
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
@@ -217,7 +218,7 @@ describe('ParadeState', () => {
 
     // CHEN MING ZHI should now appear in exceptions list
     await waitFor(() => {
-      expect(screen.getByText('CHEN MING ZHI')).toBeInTheDocument()
+      expect(screen.getByText(/CHEN MING ZHI/)).toBeInTheDocument()
     }, { timeout: 10000 })
 
     // Generate report — present drops from 9 to 8
@@ -233,7 +234,7 @@ describe('ParadeState', () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
 
-    const row = (await screen.findByText('TAN WEI LIANG')).closest('tr')!
+    const row = (await screen.findByText(/TAN WEI LIANG/)).closest('tr')!
     await userEvent.click(within(row).getByTitle('Edit'))
 
     const reasonInput = screen.getByDisplayValue('Annual Leave')
@@ -266,7 +267,7 @@ describe('ParadeState', () => {
     await userEvent.click(addButton)
 
     await waitFor(() => {
-      expect(screen.getByText('HO KAI XIANG')).toBeInTheDocument()
+      expect(screen.getByText(/HO KAI XIANG/)).toBeInTheDocument()
     }, { timeout: 10000 })
   })
 

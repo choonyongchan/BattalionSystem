@@ -6,19 +6,24 @@ import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, RANK_ORDER, DEFAULT_RANK_RULES, ALL_DUTY_TYPES } from '@/lib/companies'
-import { dutyRules } from '@/lib/duty-rules'
+import { eligibleSoldiers } from '@/lib/duty-rules'
 import { useConfirmDelete } from '@/lib/hooks'
 import SearchDropdown from '@/components/SearchDropdown'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
+import {
+  EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
+  isValidTime, buildReason, exceptionSortValue,
+  strWarn as checkStrWarn, anyMismatch as checkAnyMismatch,
+  isExceptionValid as checkExceptionValid, validateAddEx as computeAddExErrors,
+  isEditExceptionValid as checkEditExceptionValid, validateEditEx as computeEditExErrors,
+} from '@/lib/exception-validation'
+import type { ExceptionScope, ExForm } from '@/lib/exception-validation'
 
 function fieldInputClass(hasError: boolean, focusRing: string) {
   const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
   return hasError ? `${base} border-red-500 ring-2 ring-red-500` : `${base} border-gray-300 ${focusRing}`
 }
-
-const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
-type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
 const REASON_HINTS: Record<ExceptionScope, string> = {
   'Att C': 'e.g. Flu, Fever',
@@ -30,11 +35,7 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
   'Others': 'e.g. ...',
 }
 
-const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
-
 const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA']
-
-type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
@@ -161,25 +162,14 @@ export default function ParadeState({
     else { setExceptionsSortKey(null); setExceptionsSortDir('asc') }
   }
 
-  function exceptionSortValue(e: Exception, key: 'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end'): string | number {
-    switch (key) {
-      case 'four_d': return (soldiers.find((s) => s.name === e.name)?.four_d ?? '').toLowerCase()
-      case 'name': return e.name.toLowerCase()
-      case 'scope': return (e.scope ?? '').toLowerCase()
-      case 'reason': return (e.reason ?? '').toLowerCase()
-      case 'start': return new Date(e.start ?? 0).getTime()
-      case 'end': return new Date(e.end ?? 0).getTime()
-    }
-  }
-
   const sortedExceptions = [...exceptions].sort((a, b) => {
     if (!exceptionsSortKey) {
       const dateA = new Date(a.start ?? 0).getTime()
       const dateB = new Date(b.start ?? 0).getTime()
       return dateA - dateB || a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     }
-    const va = exceptionSortValue(a, exceptionsSortKey)
-    const vb = exceptionSortValue(b, exceptionsSortKey)
+    const va = exceptionSortValue(a, exceptionsSortKey, soldiers)
+    const vb = exceptionSortValue(b, exceptionsSortKey, soldiers)
     const cmp = typeof va === 'number' ? va - (vb as number) : va.localeCompare(vb as string)
     return exceptionsSortDir === 'asc' ? cmp : -cmp
   })
@@ -247,17 +237,11 @@ export default function ParadeState({
   }, [soldiers])
 
   function strWarn(platoon: string, rt: string): string | null {
-    const raw = strOverrides[platoon]?.[rt]
-    if (!raw && raw !== '0') return null
-    const override = Number(raw)
-    if (isNaN(override)) return null
-    const computed = computedStrength[platoon]?.[rt] ?? 0
-    if (override !== computed) return `Nominal roll has ${computed} – override is ${override}`
-    return null
+    return checkStrWarn(platoon, rt, strOverrides, computedStrength)
   }
 
   function anyMismatch(): boolean {
-    return STR_PLATOONS.some((p) => RANK_TYPES.some((rt) => strWarn(p, rt) !== null))
+    return checkAnyMismatch(STR_PLATOONS, RANK_TYPES, strOverrides, computedStrength)
   }
 
   async function saveStrengthCell(platoon: string, rt: string, val: string) {
@@ -272,33 +256,12 @@ export default function ParadeState({
     }
   }
 
-  function isValidTime(t: string) {
-    if (!t) return true
-    const m = t.match(/^(\d{2}):(\d{2})$/)
-    return !!m && +m[1] <= 23 && +m[2] <= 59
-  }
-
-  function buildReason(mainReason: string, medCenterVal: string, scope: ExceptionScope): string | null {
-    const r = mainReason.trim()
-    if (scope !== 'MA') return r || null
-    const mc = medCenterVal.trim()
-    if (mc && r) return `${mc}: ${r}`
-    return mc || r || null
-  }
-
   function isExceptionValid() {
-    if (!exForm.name) return false
-    if (exForm.scope === 'Status') {
-      const reasons = statusRows.map((r) => r.reason.trim().toLowerCase()).filter((r) => r)
-      return new Set(reasons).size === reasons.length
-    }
-    return isValidTime(exForm.time)
+    return checkExceptionValid(exForm, statusRows)
   }
 
   function validateAddEx() {
-    const errors: Record<string, boolean> = {}
-    if (!exForm.name) errors.name = true
-    if (exForm.scope === 'MA' && !isValidTime(exForm.time)) errors.time = true
+    const errors = computeAddExErrors(exForm)
     setAddExErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -353,17 +316,11 @@ export default function ParadeState({
   }
 
   function isEditExceptionValid() {
-    if (!editEx) return false
-    if (!editEx.name) return false
-    if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) return false
-    return true
+    return checkEditExceptionValid(editEx)
   }
 
   function validateEditEx() {
-    if (!editEx) return false
-    const errors: Record<string, boolean> = {}
-    if (!editEx.name) errors.name = true
-    if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
+    const errors = computeEditExErrors(editEx)
     setEditExErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -427,7 +384,7 @@ export default function ParadeState({
       date,
       companyLabel,
       soldiers,
-      activeExceptions,
+      activeExceptions: defaultExceptions,
       configs: filteredConfigs,
       duties,
       strengthOverrides: strOverridesAsNumbers,
@@ -482,8 +439,8 @@ export default function ParadeState({
       <div>
         <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
         <p className="text-xs text-gray-500">
-          {soldiers.length - new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
-          {activeExceptions.length > 0 && ` · ${activeExceptions.length} exception${activeExceptions.length !== 1 ? 's' : ''}`}
+          {soldiers.length - new Set(defaultExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
+          {defaultExceptions.length > 0 && ` · ${defaultExceptions.length} exception${defaultExceptions.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -692,7 +649,7 @@ export default function ParadeState({
                             <td className="px-2 py-2">
                               <SearchDropdown
                                 {...soldierDropdownProps}
-                                items={dutyRules.eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
+                                items={eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
                                 value={editDuty.name}
                                 onChange={name => setEditDuty({ ...editDuty, name })}
                                 inputClass={dutyEditInputClass}
@@ -768,7 +725,8 @@ export default function ParadeState({
             <div className="flex-shrink-0">
               <button
                 onClick={() => {
-                  if (showForm) {
+                  if (!showForm) {
+                    // Reset using the currently-viewed parade date, not a stale snapshot from last close
                     setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
                     setExAbsenceTouched(false)
                     setStatusRows([{ start: date, end: date, reason: '' }])

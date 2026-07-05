@@ -46,8 +46,6 @@ export const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-export function getSupabaseClient(_company?: Company) { return supabase }
-
 // ponytail: any cast — Supabase can't narrow dynamic table names; cast results at call sites
 export const tbl = (company: Company, table: string) =>
   `${companyLabel(company)}_${table}` as any

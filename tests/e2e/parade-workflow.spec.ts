@@ -21,6 +21,7 @@ test.describe('Parade State workflow', () => {
 
   test('Exceptions tab shows fixture exception (TAN WEI LIANG on Off/Leave)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
     await page.getByRole('button', { name: 'Exceptions' }).click()
@@ -31,9 +32,10 @@ test.describe('Parade State workflow', () => {
 
   test('generated parade state has correct strength numbers (13 total, 9 present, 4 absent)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: /generate parade state/i }).click()
+    await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
@@ -43,9 +45,10 @@ test.describe('Parade State workflow', () => {
 
   test('generated report includes exception details', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: /generate parade state/i }).click()
+    await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('OFF/LEAVE:', { timeout: 10000 })
@@ -54,9 +57,10 @@ test.describe('Parade State workflow', () => {
 
   test('generated report includes duty assignments', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: /generate parade state/i }).click()
+    await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('CDO: LTA LEE JUN WEI', { timeout: 10000 })
@@ -65,9 +69,10 @@ test.describe('Parade State workflow', () => {
   test('Status exception (non-absence) does not increase absent count', async ({ page }) => {
     // GOH RONG HAO has Status / counts_as_absence: false → still 9 present, 4 absent
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: /generate parade state/i }).click()
+    await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('PRESENT        : 9', { timeout: 10000 })
@@ -76,6 +81,7 @@ test.describe('Parade State workflow', () => {
 
   test('editing an existing exception saves successfully (regression: "time" column must exist)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
     await page.getByRole('button', { name: 'Exceptions' }).click()
 
@@ -91,6 +97,7 @@ test.describe('Parade State workflow', () => {
 
   test('Add Exception button is disabled until Soldier is picked; MA can be saved with Medical Center/Reason/Date blank', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
     await page.getByRole('button', { name: 'Exceptions' }).click()
     await page.getByRole('button', { name: '+ Exception' }).click()
@@ -111,10 +118,11 @@ test.describe('Parade State workflow', () => {
 
   test('switching to a date with no exceptions shows correct strength (all present)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     // 2026-01-01: no fixture exceptions active → all 13 present
     await page.locator('input[type="date"]').fill('2026-01-01')
 
-    await page.getByRole('button', { name: /generate parade state/i }).click()
+    await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })

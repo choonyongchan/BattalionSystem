@@ -6,7 +6,8 @@ import { supabase, tbl } from '@/lib/supabase'
 import type { Soldier, DutyEntry, Configuration } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
-import { dutyRules } from '@/lib/duty-rules'
+import { isEligible as checkEligible } from '@/lib/duty-rules'
+import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
 import { useAuth } from '@/lib/useAuth'
 import CommanderLoginForm from './CommanderLoginForm'
 
@@ -64,20 +65,9 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   }
 
   // ponytail: O(n) scan — battalion data is small; upgrade to RPC if duties > 10k rows
-  const points = useMemo(() => {
-    const acc: Record<string, number> = {}
-    for (const d of duties) acc[d.name] = (acc[d.name] ?? 0) + (weights[d.duty_type] ?? 1)
-    return acc
-  }, [duties, weights])
-
-  const dutyCounts = useMemo(() => {
-    const acc: Record<string, Record<string, number>> = {}
-    for (const d of duties) {
-      acc[d.name] ??= {}
-      acc[d.name][d.duty_type] = (acc[d.name][d.duty_type] ?? 0) + 1
-    }
-    return acc
-  }, [duties])
+  const points = useMemo(() => computePoints(duties, weights), [duties, weights])
+  const dutyCounts = useMemo(() => computeDutyCounts(duties), [duties])
+  const cosPoints = useMemo(() => computePoints(duties, weights, 'COS'), [duties, weights])
 
   const today = new Date().toISOString().slice(0, 10)
   const backToBack = useMemo(
@@ -85,36 +75,19 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     [duties, today],
   )
 
-  function isEligible(dt: string, s: Soldier) {
-    return dutyRules.isEligible(dt, s, eligibilityOverrides, rankRuleOverrides)
-  }
-
   const eligibleForDuty = useMemo(
-    () => soldiers.filter(s => dutyTypes.some(dt => isEligible(dt, s))),
+    () => getEligibleForDuty(dutyTypes, soldiers, eligibilityOverrides, rankRuleOverrides),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [soldiers, eligibilityOverrides, rankRuleOverrides],
   )
 
   const visible = useMemo(
-    () => filter === 'all' ? eligibleForDuty : eligibleForDuty.filter(s => isEligible(filter, s)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => filter === 'all' ? eligibleForDuty : eligibleForDuty.filter(s => checkEligible(filter, s, eligibilityOverrides, rankRuleOverrides)),
     [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides],
   )
 
-  const cosPoints = useMemo(() => {
-    const acc: Record<string, number> = {}
-    for (const d of duties) {
-      if (d.duty_type === 'COS') acc[d.name] = (acc[d.name] ?? 0) + (weights['COS'] ?? 1)
-    }
-    return acc
-  }, [duties, weights])
-
   const sorted = useMemo(
-    () => [...visible].sort((a, b) => {
-      const va = sortBy === 'cos' ? (cosPoints[a.name] ?? 0) : (points[a.name] ?? 0)
-      const vb = sortBy === 'cos' ? (cosPoints[b.name] ?? 0) : (points[b.name] ?? 0)
-      return va - vb
-    }),
+    () => sortByPoints(visible, sortBy === 'cos' ? cosPoints : points),
     [visible, points, cosPoints, sortBy],
   )
   const maxPts = Math.max(...sorted.map(s => points[s.name] ?? 0), 1)

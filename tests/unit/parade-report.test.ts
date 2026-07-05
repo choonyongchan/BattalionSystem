@@ -315,3 +315,44 @@ describe('generateParadeReport — hercules', () => {
     expect(report).toContain('Current Str: 13')
   })
 })
+
+// ── Archer formatter ──────────────────────────────────────────────────────────
+
+describe('generateParadeReport — archer', () => {
+  const archerConfig = PARADE_CONFIG.archer
+
+  it('lists CDO/CDS/COS duty lines and correct company strength', () => {
+    const exceptions = FIXTURE_EXCEPTIONS.filter(e => e.counts_as_absence).map((e, i) => ({ id: i + 1, ...e }))
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, archerConfig, 'archer')
+    expect(report).toContain('CDO: LEE JUN WEI')
+    expect(report).toContain('Total Strength: 9/13')
+  })
+})
+
+// ── Braves formatter ──────────────────────────────────────────────────────────
+
+describe('generateParadeReport — braves', () => {
+  const bravesConfig = PARADE_CONFIG.braves
+
+  it('uses bracketed OFFICER/WOSPEC/ENLISTEE strength format', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, bravesConfig, 'braves')
+    expect(report).toContain('[OFFICER]: 03/03')
+    expect(report).toContain('[WOSPEC]: 04/04')
+    expect(report).toContain('[ENLISTEE]: 06/06')
+  })
+})
+
+// ── Cougar formatter ──────────────────────────────────────────────────────────
+
+describe('generateParadeReport — cougar', () => {
+  const cougarConfig = PARADE_CONFIG.cougar
+
+  it('only reports PLATOON 1, PLATOON 4, and COMMANDERS (platoons 2/3 excluded by design)', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, cougarConfig, 'cougar')
+    expect(report).toContain('PLATOON 1:')
+    expect(report).toContain('PLATOON 4:')
+    expect(report).toContain('COMMANDERS:')
+    expect(report).not.toContain('PLATOON 2')
+    expect(report).not.toContain('PLATOON 3')
+  })
+})

@@ -8,6 +8,7 @@ import { COMPANY_THEMES, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/com
 import { useConfirmDelete } from '@/lib/hooks'
 import SearchDropdown from '@/components/SearchDropdown'
 import BulkImportModal from '@/components/BulkImportModal'
+import { validateEdit as computeEditErrors, sortValue, RANK_ORDER } from '@/lib/nominal-roll-validation'
 
 function fieldInputClass(hasError: boolean, focusRing: string) {
   const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
@@ -17,7 +18,6 @@ function fieldInputClass(hasError: boolean, focusRing: string) {
 const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
 
 const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
-const RANK_ORDER = Object.fromEntries(Object.values(RANKS_BY_TYPE).flat().map((r, i) => [r, i]))
 
 export default function NominalRoll({ company }: { company: Company }) {
   const theme = COMPANY_THEMES[company]
@@ -111,11 +111,7 @@ export default function NominalRoll({ company }: { company: Company }) {
   }
 
   function validateEdit() {
-    if (!editRow) return false
-    const errors: Record<string, boolean> = {}
-    if (!editRow.name.trim()) errors.name = true
-    if (!editRow.platoon) errors.platoon = true
-    if (!ALL_RANKS.some((r) => r.rank === editRow.rank)) errors.rank = true
+    const errors = computeEditErrors(editRow)
     setEditErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -153,15 +149,6 @@ export default function NominalRoll({ company }: { company: Company }) {
     if (sortKey !== key) { setSortKey(key); setSortDir('asc') }
     else if (sortDir === 'asc') setSortDir('desc')
     else { setSortKey(null); setSortDir('asc') }
-  }
-
-  function sortValue(s: Soldier, key: 'four_d' | 'platoon' | 'rank' | 'name'): string | number {
-    switch (key) {
-      case 'four_d': return (s.four_d ?? '').toLowerCase()
-      case 'platoon': return (s.platoon ?? '').toLowerCase()
-      case 'rank': return RANK_ORDER[s.rank] ?? 99
-      case 'name': return s.name.toLowerCase()
-    }
   }
 
   const sorted = [...filtered].sort((a, b) => {

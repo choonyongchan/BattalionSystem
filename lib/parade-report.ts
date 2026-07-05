@@ -92,6 +92,20 @@ function groupByPlatoon(exceptions: Exception[], soldiers: Soldier[]): Record<st
   return result
 }
 
+const PLATOON_KEYS = ['HQ', '1', '2', '3', '4']
+
+function platoonsWithLabels(labelFor: (key: string) => string): { key: string; label: string }[] {
+  return PLATOON_KEYS.map((key) => ({ key, label: labelFor(key) }))
+}
+
+function computePlatoonTotals(
+  soldiers: Soldier[], plt: string, absentSet: Set<string>, overrides: Record<string, Record<string, number>>,
+) {
+  const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
+  const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, absentSet, overrides), 0)
+  return { pltTotal, pltPresent }
+}
+
 // ── Hercules ──────────────────────────────────────────────────────────────────
 
 function generateHerculesReport(input: ParadeReportInput, config: ParadeStateConfig): string {
@@ -184,19 +198,12 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
   lines.push(`WOSPEC: ${compPresent['WOSPEC']}/${compTotal['WOSPEC']}`)
 
   const exByPlt  = groupByPlatoon(activeExceptions, soldiers)
-  const platoons = [
-    { key: 'HQ', label: 'HQ' },
-    { key: '1',  label: 'PL 1' },
-    { key: '2',  label: 'PL 2' },
-    { key: '3',  label: 'PL 3' },
-    { key: '4',  label: 'PL 4' },
-  ]
+  const platoons = platoonsWithLabels((key) => (key === 'HQ' ? 'HQ' : `PL ${key}`))
 
   for (const { key: plt, label: pltLabel } of platoons) {
     lines.push(sep(50))
     const pltAbsent  = new Set((exByPlt[plt] ?? []).filter((e) => e.counts_as_absence).map((e) => e.name))
-    const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
-    const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, pltAbsent, overrides), 0)
+    const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, plt, pltAbsent, overrides)
 
     lines.push(`${pltLabel}: ${pltPresent}/${pltTotal}`)
     lines.push(`OFFICER: ${platPresent(soldiers, plt, 'Officer', pltAbsent, overrides)}/${platTotal(soldiers, plt, 'Officer', overrides)}`)
@@ -277,21 +284,14 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
   lines.push(`Enlistees: ${compPresent['Enlistee']}/${compTotal['Enlistee']}`)
 
   const exByPlt  = groupByPlatoon(activeExceptions, soldiers)
-  const platoons = [
-    { key: 'HQ', label: 'HQ' },
-    { key: '1',  label: 'PLT 1' },
-    { key: '2',  label: 'PLT 2' },
-    { key: '3',  label: 'PLT 3' },
-    { key: '4',  label: 'PLT 4' },
-  ]
+  const platoons = platoonsWithLabels((key) => (key === 'HQ' ? 'HQ' : `PLT ${key}`))
 
   for (const { key: plt, label: pltLabel } of platoons) {
     lines.push('')
     lines.push('______')
     lines.push('')
     const pltAbsent  = new Set((exByPlt[plt] ?? []).filter((e) => e.counts_as_absence).map((e) => e.name))
-    const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
-    const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, pltAbsent, overrides), 0)
+    const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, plt, pltAbsent, overrides)
 
     lines.push(`${pltLabel}: ${pltPresent}/${pltTotal}`)
     lines.push(`Officer: ${platPresent(soldiers, plt, 'Officer', pltAbsent, overrides)}/${platTotal(soldiers, plt, 'Officer', overrides)}`)
@@ -375,13 +375,7 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
   }
 
   const exByPlt  = groupByPlatoon(activeExceptions, soldiers)
-  const platoons = [
-    { key: 'HQ', label: 'BRAVES HQ' },
-    { key: '1',  label: 'PLATOON 1' },
-    { key: '2',  label: 'PLATOON 2' },
-    { key: '3',  label: 'PLATOON 3' },
-    { key: '4',  label: 'PLATOON 4' },
-  ]
+  const platoons = platoonsWithLabels((key) => (key === 'HQ' ? 'BRAVES HQ' : `PLATOON ${key}`))
 
   for (const { key: plt, label: pltLabel } of platoons) {
     lines.push('')
@@ -392,8 +386,7 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
     lines.push('')
 
     const pltAbsent  = new Set((exByPlt[plt] ?? []).filter((e) => e.counts_as_absence).map((e) => e.name))
-    const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
-    const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, pltAbsent, overrides), 0)
+    const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, plt, pltAbsent, overrides)
 
     lines.push(`TOTAL STRENGTH: ${pltTotal}`)
     lines.push(`CURRENT STRENGTH: ${pltPresent}`)
@@ -450,8 +443,7 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
   ]
   for (const { key: plt, label: pltLabel } of cougarPlatoons) {
     const pltAbsent  = new Set(activeExceptions.filter((e) => e.counts_as_absence && soldierPlatoon(soldiers, e.name) === plt).map((e) => e.name))
-    const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
-    const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, pltAbsent, overrides), 0)
+    const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, plt, pltAbsent, overrides)
     if (pltTotal > 0) lines.push(`${pltLabel}: ${pltPresent}/${pltTotal}`)
   }
 
@@ -584,6 +576,18 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 
+/**
+ * Renders the parade-state text report for a company.
+ *
+ * Note: when `input.paradeType` is 'Last Parade', every occurrence of the
+ * literal string 'FIRST' in `config.header` is replaced with 'LAST' before
+ * rendering — this mutates the effective header text, not just a label field.
+ *
+ * @param input - Report data (soldiers, exceptions, duties, strength overrides).
+ * @param config - Per-company parade-state config (headers, scopes, duty types).
+ * @param company - Company key selecting which renderer to dispatch to; falls back to the standard renderer if omitted/unrecognized.
+ * @returns The fully formatted report as a newline-joined string.
+ */
 export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig, company?: Company): string {
   const sorted: ParadeReportInput = {
     ...input,
