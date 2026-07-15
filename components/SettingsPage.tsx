@@ -9,6 +9,7 @@ import CommanderLoginForm from './CommanderLoginForm'
 import DutyWeightsSection from './settings/DutyWeightsSection'
 import ParadeTimesSection from './settings/ParadeTimesSection'
 import EligibilitySection from './settings/EligibilitySection'
+import AbsenceDefaultsSection from './settings/AbsenceDefaultsSection'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
@@ -35,7 +36,7 @@ export default function SettingsPage({ company, label }: { company: Company; lab
       </AccordionItem>
       <AccordionItem value="absence-defaults" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>Absence Scope Defaults</AccordionTrigger>
-        <AccordionContent>{/* filled in by Task 17 */}</AccordionContent>
+        <AccordionContent><AbsenceDefaultsSection company={company} settings={settings} /></AccordionContent>
       </AccordionItem>
       <AccordionItem value="public-holidays" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>
