@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ParadeState from '@/components/ParadeState'
 import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
@@ -29,9 +30,18 @@ async function setParadeDate(date: string) {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 
+function renderParadeState() {
+  const client = new QueryClient()
+  return render(
+    <QueryClientProvider client={client}>
+      <ParadeState company="test" companyLabel="Test" />
+    </QueryClientProvider>,
+  )
+}
+
 // Render ParadeState and land on the Duties tab with FIXTURE_DATE selected.
 async function renderOnFixtureDate() {
-  render(<ParadeState company="test" companyLabel="Test" />)
+  renderParadeState()
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
   await setParadeDate(FIXTURE_DATE)
 }
