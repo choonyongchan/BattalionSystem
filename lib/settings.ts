@@ -1,5 +1,8 @@
 import z from 'zod'
 import { isFriday, parseISO } from 'date-fns'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase, tbl } from './supabase'
+import type { Company } from './companies'
 
 export const DAY_TYPES = ['Normal', 'Friday', 'PublicHoliday'] as const
 export type DayType = (typeof DAY_TYPES)[number]
@@ -64,4 +67,73 @@ export function resolveDayType(dateISO: string, holidays: Set<string>): DayType 
   if (holidays.has(dateISO)) return 'PublicHoliday'
   if (isFriday(parseISO(dateISO))) return 'Friday'
   return 'Normal'
+}
+
+export async function loadSettings(company: Company): Promise<AppSettings> {
+  const { data, error } = await supabase
+    .from(tbl(company, 'Settings'))
+    .select('*')
+    .eq('id', 1)
+    .maybeSingle()
+  if (error || !data) return DEFAULT_SETTINGS
+  return mergeSettings(data as Partial<Record<keyof AppSettings, unknown>>)
+}
+
+export async function saveSettings(company: Company, partial: Partial<AppSettings>): Promise<void> {
+  const parsed = AppSettingsSchema.partial().parse(partial)
+  const { error } = await supabase.from(tbl(company, 'Settings')).update(parsed).eq('id', 1)
+  if (error) throw error
+}
+
+export interface PublicHoliday {
+  date: string
+  name: string
+}
+
+export async function loadPublicHolidays(): Promise<PublicHoliday[]> {
+  const { data, error } = await supabase.from('PublicHolidays').select('*').order('date', { ascending: true })
+  if (error || !data) return []
+  return data
+}
+
+export async function addPublicHoliday(date: string, name: string): Promise<void> {
+  const { error } = await supabase.from('PublicHolidays').upsert({ date, name })
+  if (error) throw error
+}
+
+export async function removePublicHoliday(date: string): Promise<void> {
+  const { error } = await supabase.from('PublicHolidays').delete().eq('date', date)
+  if (error) throw error
+}
+
+export function useSettingsQuery(company: Company) {
+  return useQuery({ queryKey: ['settings', company], queryFn: () => loadSettings(company) })
+}
+
+export function useSaveSettingsMutation(company: Company) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (partial: Partial<AppSettings>) => saveSettings(company, partial),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', company] }),
+  })
+}
+
+export function usePublicHolidaysQuery() {
+  return useQuery({ queryKey: ['publicHolidays'], queryFn: loadPublicHolidays })
+}
+
+export function useAddHolidayMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ date, name }: { date: string; name: string }) => addPublicHoliday(date, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['publicHolidays'] }),
+  })
+}
+
+export function useRemoveHolidayMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (date: string) => removePublicHoliday(date),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['publicHolidays'] }),
+  })
 }
