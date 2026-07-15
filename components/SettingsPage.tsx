@@ -6,6 +6,7 @@ import { COMPANY_THEMES } from '@/lib/companies'
 import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
+import DutyWeightsSection from './settings/DutyWeightsSection'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
@@ -20,7 +21,7 @@ export default function SettingsPage({ company, label }: { company: Company; lab
     <Accordion defaultValue={['duty-weights']} className="space-y-3">
       <AccordionItem value="duty-weights" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>Duty Weights</AccordionTrigger>
-        <AccordionContent>{/* filled in by Task 14 */}</AccordionContent>
+        <AccordionContent><DutyWeightsSection company={company} settings={settings} /></AccordionContent>
       </AccordionItem>
       <AccordionItem value="parade-times" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>Parade Times</AccordionTrigger>
