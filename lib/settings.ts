@@ -1,4 +1,5 @@
 import z from 'zod'
+import { isFriday, parseISO } from 'date-fns'
 
 export const DAY_TYPES = ['Normal', 'Friday', 'PublicHoliday'] as const
 export type DayType = (typeof DAY_TYPES)[number]
@@ -56,4 +57,11 @@ export function mergeSettings(raw: Partial<Record<keyof AppSettings, unknown>> |
     ;(merged as Record<string, unknown>)[key] = result.success ? result.data : DEFAULT_SETTINGS[key]
   }
   return merged
+}
+
+/** Single source of truth for day-type classification, reused by lib/duty-dashboard.ts. */
+export function resolveDayType(dateISO: string, holidays: Set<string>): DayType {
+  if (holidays.has(dateISO)) return 'PublicHoliday'
+  if (isFriday(parseISO(dateISO))) return 'Friday'
+  return 'Normal'
 }

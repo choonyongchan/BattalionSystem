@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings } from '@/lib/settings'
+import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, resolveDayType } from '@/lib/settings'
 
 const VALID_SETTINGS = {
   duty_base_weights: { CDO: 2, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1 },
@@ -59,5 +59,29 @@ describe('mergeSettings', () => {
     expect(result.duty_base_weights).toEqual(DEFAULT_SETTINGS.duty_base_weights)
     expect(result.duty_weight_exceptions).toEqual(VALID_SETTINGS.duty_weight_exceptions)
     expect(result.parade_times).toEqual(VALID_SETTINGS.parade_times)
+  })
+})
+
+describe('resolveDayType', () => {
+  it('returns Normal for an ordinary weekday with no holidays', () => {
+    // 2026-01-15 is a Thursday
+    expect(resolveDayType('2026-01-15', new Set())).toBe('Normal')
+  })
+
+  it('returns Friday for a Friday not in the holiday set', () => {
+    // 2026-01-16 is a Friday
+    expect(resolveDayType('2026-01-16', new Set())).toBe('Friday')
+  })
+
+  it('returns PublicHoliday when the date is in the holiday set', () => {
+    expect(resolveDayType('2026-01-15', new Set(['2026-01-15']))).toBe('PublicHoliday')
+  })
+
+  it('PublicHoliday takes precedence over Friday when a Friday is also a holiday', () => {
+    expect(resolveDayType('2026-01-16', new Set(['2026-01-16']))).toBe('PublicHoliday')
+  })
+
+  it('an empty holiday set never matches', () => {
+    expect(resolveDayType('2026-01-01', new Set())).not.toBe('PublicHoliday')
   })
 })
