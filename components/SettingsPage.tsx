@@ -10,6 +10,7 @@ import DutyWeightsSection from './settings/DutyWeightsSection'
 import ParadeTimesSection from './settings/ParadeTimesSection'
 import EligibilitySection from './settings/EligibilitySection'
 import AbsenceDefaultsSection from './settings/AbsenceDefaultsSection'
+import PublicHolidaysSection from './settings/PublicHolidaysSection'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
@@ -42,7 +43,7 @@ export default function SettingsPage({ company, label }: { company: Company; lab
         <AccordionTrigger>
           Public Holidays <span className="ml-2 text-xs font-normal text-gray-400">(shared across all companies)</span>
         </AccordionTrigger>
-        <AccordionContent>{/* filled in by Task 18, uses publicHolidays */}</AccordionContent>
+        <AccordionContent><PublicHolidaysSection publicHolidays={publicHolidays ?? []} /></AccordionContent>
       </AccordionItem>
     </Accordion>
   )
