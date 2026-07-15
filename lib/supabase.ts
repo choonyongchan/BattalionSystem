@@ -27,15 +27,59 @@ type ConfigTable = {
   Relationships: []
 }
 
+// @deprecated — superseded by SettingsTable. Kept only because lib/parade-report.ts's
+// Configuration import is removed in a later task; this type itself is dead once that lands.
+type SettingsTable = {
+  Row: {
+    id: number
+    duty_base_weights: Record<string, number>
+    duty_day_multipliers: Record<string, number>
+    duty_weight_exceptions: Record<string, number>
+    eligibility_name_overrides: Record<string, string[]>
+    eligibility_rank_overrides: Record<string, { from: string; to: string }>
+    absence_scope_defaults: Record<string, boolean>
+    parade_times: Record<string, string>
+  }
+  Insert: {
+    id?: number
+    duty_base_weights?: Record<string, number>
+    duty_day_multipliers?: Record<string, number>
+    duty_weight_exceptions?: Record<string, number>
+    eligibility_name_overrides?: Record<string, string[]>
+    eligibility_rank_overrides?: Record<string, { from: string; to: string }>
+    absence_scope_defaults?: Record<string, boolean>
+    parade_times?: Record<string, string>
+  }
+  Update: {
+    id?: number
+    duty_base_weights?: Record<string, number>
+    duty_day_multipliers?: Record<string, number>
+    duty_weight_exceptions?: Record<string, number>
+    eligibility_name_overrides?: Record<string, string[]>
+    eligibility_rank_overrides?: Record<string, { from: string; to: string }>
+    absence_scope_defaults?: Record<string, boolean>
+    parade_times?: Record<string, string>
+  }
+  Relationships: []
+}
+
+type PublicHolidaysTable = {
+  Row:           { date: string; name: string }
+  Insert:        { date: string; name?: string }
+  Update:        { date?: string; name?: string }
+  Relationships: []
+}
+
 type CompanyTables =
   { [C in Company as `${Capitalize<C>}_NominalRoll`]:   NominalRollTable } &
   { [C in Company as `${Capitalize<C>}_Exceptions`]:    ExceptionsTable  } &
   { [C in Company as `${Capitalize<C>}_Duty`]:          DutyTable        } &
-  { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      }
+  { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      } &
+  { [C in Company as `${Capitalize<C>}_Settings`]:      SettingsTable    }
 
 type Database = {
   public: {
-    Tables:    CompanyTables
+    Tables: CompanyTables & { PublicHolidays: PublicHolidaysTable }
     Views:     Record<string, never>
     Functions: Record<string, never>
   }
