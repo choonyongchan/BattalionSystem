@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
 import DutyWeightsSection from './settings/DutyWeightsSection'
+import ParadeTimesSection from './settings/ParadeTimesSection'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
@@ -25,7 +26,7 @@ export default function SettingsPage({ company, label }: { company: Company; lab
       </AccordionItem>
       <AccordionItem value="parade-times" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>Parade Times</AccordionTrigger>
-        <AccordionContent>{/* filled in by Task 15 */}</AccordionContent>
+        <AccordionContent><ParadeTimesSection company={company} settings={settings} /></AccordionContent>
       </AccordionItem>
       <AccordionItem value="eligibility" className="bg-white border border-gray-200 rounded-2xl px-4">
         <AccordionTrigger>Duty Eligibility Overrides</AccordionTrigger>
