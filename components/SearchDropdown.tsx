@@ -27,6 +27,7 @@ export default function SearchDropdown<T>({
   const [query, setQuery] = useState(() => selected ? getLabel(selected) : value)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const filtered = query.trim() ? items.filter(i => matches(i, query)) : items
 
@@ -38,9 +39,16 @@ export default function SearchDropdown<T>({
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [])
 
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+    setOpen(true)
+  }, [])
+
   return (
     <div ref={ref} className="relative">
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true) }}
