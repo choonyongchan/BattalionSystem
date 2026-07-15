@@ -48,8 +48,10 @@ BEGIN
         PRIMARY KEY (duty_type, date)
       )', c);
 
-    -- Deprecated: superseded by "%s_Settings" below (typed jsonb singleton). Left in place —
-    -- this sync tool has no DROP/rollback capability. Safe to drop manually once confidence is high.
+    -- Deprecated: superseded by "%s_Settings" below (typed jsonb singleton) and lib/settings.ts.
+    -- New code must NOT write to this table — see the matching @deprecated marker on
+    -- ConfigTable/Configuration in lib/supabase.ts. Left in place — this sync tool has no
+    -- DROP/rollback capability. Safe to drop manually once confidence is high.
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Configuration" (
         parade_type text NOT NULL,

@@ -20,6 +20,9 @@ type DutyTable = {
   Update:        { duty_type?: string; date?: string; name?: string }
   Relationships: []
 }
+// @deprecated — superseded by the new Settings table (see SettingsTable below) and
+// lib/settings.ts. Kept only because the live Configuration table still exists; application
+// code should not write new data through this type.
 type ConfigTable = {
   Row:           { parade_type: string; time: string }
   Insert:        { parade_type: string; time: string }
@@ -27,8 +30,6 @@ type ConfigTable = {
   Relationships: []
 }
 
-// @deprecated — superseded by SettingsTable. Kept only because lib/parade-report.ts's
-// Configuration import is removed in a later task; this type itself is dead once that lands.
 type SettingsTable = {
   Row: {
     id: number
@@ -118,6 +119,9 @@ export interface DutyEntry {
   name: string
 }
 
+// @deprecated — superseded by the new Settings table and lib/settings.ts. Kept only because
+// the live Configuration table still exists; application code should not write new data
+// through this type.
 export interface Configuration {
   parade_type: string
   time: string

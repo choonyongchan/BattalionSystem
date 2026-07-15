@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isEligible, eligibleSoldiers } from '@/lib/duty-rules'
+import { isEligible, eligibleSoldiers, isRankRangeInvalid } from '@/lib/duty-rules'
 import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import type { Soldier } from '@/lib/supabase'
 
@@ -226,5 +226,25 @@ describe('eligibleSoldiers — fixture soldiers', () => {
     expect(names).toContain('HO KAI XIANG')   // 3SG
     expect(names).toContain('WONG KAH MENG')  // 1SG
     expect(result).toHaveLength(3)
+  })
+})
+
+// ── isRankRangeInvalid ────────────────────────────────────────────────────────
+
+describe('isRankRangeInvalid', () => {
+  it('returns false for a valid range (from before to)', () => {
+    expect(isRankRangeInvalid({ from: '2LT', to: 'LTA' })).toBe(false)
+  })
+
+  it('returns false for a single-rank range (from equals to)', () => {
+    expect(isRankRangeInvalid({ from: '3SG', to: '3SG' })).toBe(false)
+  })
+
+  it('returns true for a reversed range (from after to)', () => {
+    expect(isRankRangeInvalid({ from: 'LTA', to: '2LT' })).toBe(true)
+  })
+
+  it('returns true when a rank is not in RANK_ORDER', () => {
+    expect(isRankRangeInvalid({ from: 'BRIG', to: 'LTA' })).toBe(true)
   })
 })

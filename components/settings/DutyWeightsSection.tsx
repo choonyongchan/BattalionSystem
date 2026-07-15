@@ -9,6 +9,7 @@ import { ALL_DUTY_TYPES } from '@/lib/companies'
 import { DAY_TYPES } from '@/lib/settings'
 import type { AppSettings, DayType } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
+import { hasDuplicateExceptionRows } from '@/lib/duty-weights-validation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -23,15 +24,7 @@ const FormSchema = z.object({
   }),
   exceptionRows: z.array(z.object({ dutyType: z.string(), dayType: z.enum(DAY_TYPES), points: z.number().nonnegative() })),
 }).refine(
-  (data) => {
-    const seen = new Set<string>()
-    for (const row of data.exceptionRows) {
-      const key = `${row.dutyType}:${row.dayType}`
-      if (seen.has(key)) return false
-      seen.add(key)
-    }
-    return true
-  },
+  (data) => !hasDuplicateExceptionRows(data.exceptionRows),
   { message: 'Duplicate exception rows for the same duty type and day type are not allowed', path: ['exceptionRows'] }
 )
 type FormValues = z.infer<typeof FormSchema>

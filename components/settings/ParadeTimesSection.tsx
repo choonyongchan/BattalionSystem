@@ -52,7 +52,7 @@ export default function ParadeTimesSection({ company, settings }: { company: Com
         </div>
       ))}
       {errors.parade_times && (
-        <p className="text-xs text-red-500">{(errors.parade_times as { message?: string }).message}</p>
+        <p className="text-xs text-red-600">{(errors.parade_times as { message?: string }).message}</p>
       )}
       <Button type="submit" disabled={saveMutation.isPending || !isDirty}>
         {saveMutation.isPending ? 'Saving…' : 'Save Parade Times'}

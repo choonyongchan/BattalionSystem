@@ -2,6 +2,7 @@ import z from 'zod'
 import { isFriday, parseISO } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, tbl } from './supabase'
+import type { Soldier } from './supabase'
 import type { Company } from './companies'
 
 export const DAY_TYPES = ['Normal', 'Friday', 'PublicHoliday'] as const
@@ -116,6 +117,16 @@ export function useSaveSettingsMutation(company: Company) {
     mutationFn: (partial: Partial<AppSettings>) => saveSettings(company, partial),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings', company] }),
   })
+}
+
+export async function loadNominalRoll(company: Company): Promise<Soldier[]> {
+  const { data, error } = await supabase.from(tbl(company, 'NominalRoll')).select('*')
+  if (error || !data) return []
+  return data as unknown as Soldier[]
+}
+
+export function useNominalRollQuery(company: Company) {
+  return useQuery({ queryKey: ['nominalRoll', company], queryFn: () => loadNominalRoll(company) })
 }
 
 export function usePublicHolidaysQuery() {

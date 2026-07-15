@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES } from '@/lib/companies'
 import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
@@ -14,7 +13,6 @@ import PublicHolidaysSection from './settings/PublicHolidaysSection'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
-  const theme = COMPANY_THEMES[company]
   const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
   const { data: settings, isLoading: settingsLoading } = useSettingsQuery(company)
   const { data: publicHolidays, isLoading: holidaysLoading } = usePublicHolidaysQuery()

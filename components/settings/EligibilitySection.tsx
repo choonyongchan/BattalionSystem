@@ -1,60 +1,59 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { supabase, tbl } from '@/lib/supabase'
-import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { ALL_DUTY_TYPES, RANK_ORDER, DEFAULT_RANK_RULES } from '@/lib/companies'
 import type { AppSettings } from '@/lib/settings'
-import { useSaveSettingsMutation } from '@/lib/settings'
+import { useSaveSettingsMutation, useNominalRollQuery } from '@/lib/settings'
+import { isRankRangeInvalid } from '@/lib/duty-rules'
 import SearchDropdown from '@/components/SearchDropdown'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
-// A from-rank that sorts after the to-rank in RANK_ORDER produces a rank range that matches
-// zero soldiers (see lib/duty-rules.ts's isInRange) — that's a silent footgun rather than a
-// crash, so it's caught here and surfaced as a blocking inline error instead of being saved.
-function isRankRangeInvalid(rule: { from: string; to: string }): boolean {
-  const fi = RANK_ORDER.indexOf(rule.from)
-  const ti = RANK_ORDER.indexOf(rule.to)
-  return fi === -1 || ti === -1 || fi > ti
+type FormValues = {
+  eligibility_name_overrides: AppSettings['eligibility_name_overrides']
+  eligibility_rank_overrides: AppSettings['eligibility_rank_overrides']
 }
 
 export default function EligibilitySection({ company, settings }: { company: Company; settings: AppSettings }) {
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
-  const [nameOverrides, setNameOverrides] = useState(settings.eligibility_name_overrides)
-  const [rankOverrides, setRankOverrides] = useState(settings.eligibility_rank_overrides)
+  const { data: soldiers = [] } = useNominalRollQuery(company)
+  const { watch, setValue, handleSubmit, formState: { isDirty } } = useForm<FormValues>({
+    defaultValues: {
+      eligibility_name_overrides: settings.eligibility_name_overrides,
+      eligibility_rank_overrides: settings.eligibility_rank_overrides,
+    },
+  })
+  const nameOverrides = watch('eligibility_name_overrides')
+  const rankOverrides = watch('eligibility_rank_overrides')
   const saveMutation = useSaveSettingsMutation(company)
-
-  useEffect(() => {
-    supabase.from(tbl(company, 'NominalRoll')).select('*').then(({ data }) => setSoldiers((data ?? []) as unknown as Soldier[]))
-  }, [company])
 
   function addName(dt: string, name: string) {
     if (!name) return
-    setNameOverrides((prev) => {
-      const existing = prev[dt] ?? []
-      if (existing.includes(name)) return prev
-      return { ...prev, [dt]: [...existing, name] }
-    })
+    const existing = nameOverrides[dt] ?? []
+    if (existing.includes(name)) return
+    setValue('eligibility_name_overrides', { ...nameOverrides, [dt]: [...existing, name] }, { shouldDirty: true })
   }
   function removeName(dt: string, name: string) {
-    setNameOverrides((prev) => ({ ...prev, [dt]: (prev[dt] ?? []).filter((n) => n !== name) }))
+    setValue(
+      'eligibility_name_overrides',
+      { ...nameOverrides, [dt]: (nameOverrides[dt] ?? []).filter((n) => n !== name) },
+      { shouldDirty: true },
+    )
   }
   function setRankRule(dt: string, from: string, to: string) {
-    setRankOverrides((prev) => ({ ...prev, [dt]: { from, to } }))
+    setValue('eligibility_rank_overrides', { ...rankOverrides, [dt]: { from, to } }, { shouldDirty: true })
   }
 
   const invalidDutyTypes = ALL_DUTY_TYPES.filter((dt) =>
     isRankRangeInvalid(rankOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
   )
 
-  function save() {
+  function onSubmit(values: FormValues) {
     if (invalidDutyTypes.length > 0) return
     saveMutation.mutate({
-      eligibility_name_overrides: nameOverrides,
-      eligibility_rank_overrides: rankOverrides,
+      eligibility_name_overrides: values.eligibility_name_overrides,
+      eligibility_rank_overrides: values.eligibility_rank_overrides,
     }, {
       onSuccess: () => toast.success('Eligibility overrides saved'),
       onError: () => toast.error('Failed to save eligibility overrides'),
@@ -62,7 +61,7 @@ export default function EligibilitySection({ company, settings }: { company: Com
   }
 
   return (
-    <div className="space-y-5 pb-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-4">
       <p className="text-xs text-gray-500">
         Precedence: a name-list override (if non-empty) wins; otherwise the rank-range override applies.
       </p>
@@ -118,9 +117,9 @@ export default function EligibilitySection({ company, settings }: { company: Com
           </div>
         )
       })}
-      <Button type="button" onClick={save} disabled={saveMutation.isPending || invalidDutyTypes.length > 0}>
+      <Button type="submit" disabled={saveMutation.isPending || !isDirty || invalidDutyTypes.length > 0}>
         {saveMutation.isPending ? 'Saving…' : 'Save Eligibility Overrides'}
       </Button>
-    </div>
+    </form>
   )
 }
