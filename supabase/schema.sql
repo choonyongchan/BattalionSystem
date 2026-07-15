@@ -42,11 +42,13 @@ BEGIN
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Duty" (
-        duty_type text NOT NULL CHECK (duty_type = ANY (ARRAY[''CDO'',''CDS'',''COS'',''PDS1'',''PDS2'',''PDS3'',''PDS4''])),
+        duty_type text NOT NULL CHECK (duty_type = ANY (ARRAY[''CDO'',''CDS'',''COS'',''PDS1'',''PDS2'',''PDS3'',''PDS4'',''Duty Clerk''])),
         date      date NOT NULL,
         name      text NOT NULL,
         PRIMARY KEY (duty_type, date)
       )', c);
+    EXECUTE format('ALTER TABLE public."%s_Duty" DROP CONSTRAINT IF EXISTS "%s_Duty_duty_type_check"', c, c);
+    EXECUTE format('ALTER TABLE public."%s_Duty" ADD CONSTRAINT "%s_Duty_duty_type_check" CHECK (duty_type = ANY (ARRAY[''CDO'',''CDS'',''COS'',''PDS1'',''PDS2'',''PDS3'',''PDS4'',''Duty Clerk'']))', c, c);
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Configuration" (

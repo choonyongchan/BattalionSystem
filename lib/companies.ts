@@ -34,6 +34,7 @@ export const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = 
   PDS2: { from: '3SG', to: '1SG' },
   PDS3: { from: '3SG', to: '1SG' },
   PDS4: { from: '3SG', to: '1SG' },
+  'Duty Clerk': { from: 'REC', to: 'CFC' },
 }
 
 export const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
@@ -63,6 +64,7 @@ export const DUTY_ELIGIBILITY_DESC: Record<string, string> = {
   PDS2: '3SG & above',
   PDS3: '3SG & above',
   PDS4: '3SG & above',
+  'Duty Clerk': 'REC - CFC',
 }
 
 export interface ScopeConfig {
@@ -137,7 +139,7 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
   },
   hercules: {
     header: ['FIRST PARADE STATE', 'HQ Company'],
-    visibleDutyTypes: ['COS'],
+    visibleDutyTypes: ['COS', 'Duty Clerk'],
     scopeConfigs: [
       { key: 'Off/Leave',   label: 'Off/Leave' },
       { key: 'MA',          label: 'MA' },

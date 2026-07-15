@@ -61,6 +61,27 @@ function offsetDate(iso: string, days: number) {
   return d.toISOString().split('T')[0]
 }
 
+function startOfWeek(iso: string) {
+  const d = new Date(iso)
+  const day = d.getDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + mondayOffset)
+  return d.toISOString().split('T')[0]
+}
+
+function weekDates(iso: string) {
+  const monday = startOfWeek(iso)
+  return Array.from({ length: 7 }, (_, i) => offsetDate(monday, i))
+}
+
+function dayHeaderLabel(iso: string) {
+  const d = new Date(iso)
+  return {
+    weekday: d.toLocaleDateString('en-SG', { weekday: 'short' }),
+    day: d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }),
+  }
+}
+
 export default function ParadeState({
   company,
   companyLabel,
@@ -107,6 +128,12 @@ export default function ParadeState({
   const [savingDuty, setSavingDuty] = useState(false)
   const dutyConfirm = useConfirmDelete<string>()
 
+  // Guard Duty (unlimited headcount, lives in the Duties tab but stored as an Exception)
+  const [showGuardDutyForm, setShowGuardDutyForm] = useState(false)
+  const [gdForm, setGdForm] = useState<{ name: string; reason: string; date: string }>({ name: '', reason: '', date })
+  const [editGuardDuty, setEditGuardDuty] = useState<Exception | null>(null)
+  const gdConfirm = useConfirmDelete<number>()
+
   // Duty rank rule editor
   const [showRankRules, setShowRankRules] = useState(false)
   const [editRankRules, setEditRankRules] = useState<Record<string, { from: string; to: string }>>({})
@@ -130,7 +157,7 @@ export default function ParadeState({
     const [soldiersRes, exceptionsRes, dutiesRes, configsRes, strRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*'),
       supabase.from(tbl(company, 'Exceptions')).select('*'),
-      supabase.from(tbl(company, 'Duty')).select('*').eq('date', date),
+      supabase.from(tbl(company, 'Duty')).select('*').gte('date', weekDates(date)[0]).lte('date', weekDates(date)[6]),
       supabase.from(tbl(company, 'Configuration')).select('*'),
       supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
@@ -205,6 +232,8 @@ export default function ParadeState({
       ? queriedExceptions
       : (exceptionShowAll ? sortedExceptions : defaultExceptions)
   )
+
+  const exceptionsTabRows = activeExceptions.filter((e) => e.scope !== 'Guard Duty')
 
   const eligibilityOverrides = useMemo(() => {
     const ov: Record<string, string[]> = {}
@@ -291,6 +320,35 @@ export default function ParadeState({
     setStatusRows([{ start: date, end: date, reason: '' }])
     setMedCenter('')
     setAddExErrors({})
+    await load()
+  }
+
+  async function addGuardDuty() {
+    if (!gdForm.name) return
+    const { error } = await supabase.from(tbl(company, 'Exceptions')).insert({
+      name: gdForm.name,
+      scope: 'Guard Duty',
+      reason: gdForm.reason.trim() || null,
+      start: gdForm.date || null,
+      end: gdForm.date || null,
+      counts_as_absence: false,
+    })
+    if (error) { setError(error.message); return }
+    setShowGuardDutyForm(false)
+    setGdForm({ name: '', reason: '', date })
+    await load()
+  }
+
+  async function updateGuardDuty() {
+    if (!editGuardDuty) return
+    const { error } = await supabase.from(tbl(company, 'Exceptions')).update({
+      name: editGuardDuty.name,
+      reason: editGuardDuty.reason ?? null,
+      start: editGuardDuty.end || null,
+      end: editGuardDuty.end || null,
+    }).eq('id', editGuardDuty.id)
+    if (error) { setError(error.message); return }
+    setEditGuardDuty(null)
     await load()
   }
 
@@ -386,7 +444,7 @@ export default function ParadeState({
       soldiers,
       activeExceptions: defaultExceptions,
       configs: filteredConfigs,
-      duties,
+      duties: duties.filter((d) => d.date === date),
       strengthOverrides: strOverridesAsNumbers,
       allExceptions: exceptions,
       paradeType,
@@ -430,6 +488,12 @@ export default function ParadeState({
   }
 
   const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+
+  const dutyTypesToShow = company === 'hercules' ? [...ALL_DUTY_TYPES, 'Duty Clerk'] : ALL_DUTY_TYPES
+
+  const guardDutyScopes: ExceptionScope[] = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty')
+
+  const guardDutyEntries = defaultExceptions.filter((e) => e.scope === 'Guard Duty')
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
@@ -556,15 +620,53 @@ export default function ParadeState({
       {activeSection === 'duties' && (
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-2">
-            <button onClick={() => setDate(offsetDate(date, -1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
+            <button onClick={() => setDate(offsetDate(date, -7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
+            <button
+              onClick={() => setDate(todayISO())}
+              className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 border border-gray-300 rounded-xl transition-colors"
+            >
+              Today
+            </button>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
             />
-            <button onClick={() => setDate(offsetDate(date, 1))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
+            <button onClick={() => setDate(offsetDate(date, 7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
           </div>
+
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {weekDates(date).map((iso) => {
+              const label = dayHeaderLabel(iso)
+              const isToday = iso === todayISO()
+              const isSelected = iso === date
+              const dayDuties = dutyTypesToShow
+                .map((dt) => ({ dt, entry: duties.find((x) => x.duty_type === dt && x.date === iso) }))
+                .filter((x) => x.entry)
+              return (
+                <button
+                  key={iso}
+                  onClick={() => setDate(iso)}
+                  className={`text-left rounded-xl border p-1.5 sm:p-2 transition-colors ${isSelected ? `${theme.buttonBg} border-transparent text-white` : isToday ? `bg-gray-50 border-gray-300` : `bg-white border-gray-200 hover:bg-gray-50`}`}
+                >
+                  <div className={`text-[10px] sm:text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>{label.weekday}</div>
+                  <div className={`text-xs sm:text-sm font-semibold mb-1 ${isSelected ? 'text-white' : 'text-gray-700'}`}>{label.day}</div>
+                  <div className="space-y-0.5">
+                    {dayDuties.map(({ dt, entry }) => (
+                      <div key={dt} className={`text-[9px] sm:text-[11px] leading-tight truncate ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
+                        <span className="font-medium">{dt}</span> {displayName(entry!.name, soldiers)}
+                      </div>
+                    ))}
+                    {dayDuties.length === 0 && (
+                      <div className={`text-[9px] sm:text-[11px] ${isSelected ? 'text-white/50' : 'text-gray-300'}`}>–</div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
           <div className="flex items-center gap-3 justify-end">
             <button
               onClick={() => {
@@ -635,8 +737,8 @@ export default function ParadeState({
                   </tr>
                 </thead>
                 <tbody>
-                  {ALL_DUTY_TYPES.map((dt, i) => {
-                    const d = duties.find(x => x.duty_type === dt)
+                  {dutyTypesToShow.map((dt, i) => {
+                    const d = duties.find(x => x.duty_type === dt && x.date === date)
                     const isEditing = editDuty?.duty_type === dt
                     return (
                       <tr
@@ -707,6 +809,153 @@ export default function ParadeState({
               </table>
             </div>
           </div>
+
+          {/* Guard Duty — unlike the duties above, an arbitrary number of people can be assigned */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <span className="text-sm font-medium text-gray-500">Guard Duty</span>
+              <button
+                onClick={() => {
+                  if (!showGuardDutyForm) setGdForm({ name: '', reason: '', date })
+                  setShowGuardDutyForm((v) => !v)
+                }}
+                className={`px-3 py-1.5 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs font-medium rounded-lg transition-colors`}
+              >
+                {showGuardDutyForm ? 'Cancel' : '+ Add'}
+              </button>
+            </div>
+
+            {showGuardDutyForm && (
+              <div className="p-4 space-y-3 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
+                  <SearchDropdown
+                    {...soldierDropdownProps}
+                    items={soldiers}
+                    value={gdForm.name}
+                    onChange={(name) => setGdForm({ ...gdForm, name })}
+                    inputClass={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={gdForm.date}
+                    onChange={(e) => setGdForm({ ...gdForm, date: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Reason</label>
+                  <input
+                    type="text"
+                    placeholder={REASON_HINTS['Guard Duty']}
+                    value={gdForm.reason}
+                    onChange={(e) => setGdForm({ ...gdForm, reason: e.target.value })}
+                    className={inputClass}
+                  />
+                </div>
+                <button
+                  onClick={addGuardDuty}
+                  disabled={!gdForm.name}
+                  className={`w-full py-2.5 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  Add Guard Duty
+                </button>
+              </div>
+            )}
+
+            {guardDutyEntries.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">No Guard Duty entries for this date.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                      <th className="w-24" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guardDutyEntries.map((e, i) => {
+                      const isEditing = editGuardDuty?.id === e.id
+                      return (
+                        <tr
+                          key={e.id}
+                          className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                        >
+                          {isEditing ? (
+                            <>
+                              <td className="px-2 py-2">
+                                <SearchDropdown
+                                  {...soldierDropdownProps}
+                                  items={soldiers}
+                                  value={editGuardDuty!.name}
+                                  onChange={(name) => setEditGuardDuty({ ...editGuardDuty!, name })}
+                                  inputClass={dutyEditInputClass}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={editGuardDuty!.reason ?? ''}
+                                  onChange={(e2) => setEditGuardDuty({ ...editGuardDuty!, reason: e2.target.value })}
+                                  className={dutyEditInputClass}
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={updateGuardDuty}
+                                    className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg`}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditGuardDuty(null)}
+                                    className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-3 font-medium">{displayName(e.name, soldiers)}</td>
+                              <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1 justify-end items-center">
+                                  <button
+                                    onClick={() => setEditGuardDuty({ ...e })}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
+                                    title="Edit"
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    onClick={() => gdConfirm.isConfirming(e.id) ? gdConfirm.resolve(e.id, () => deleteException(e.id)) : gdConfirm.request(e.id)}
+                                    className={gdConfirm.isConfirming(e.id)
+                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                    title={gdConfirm.isConfirming(e.id) ? 'Confirm clear' : 'Clear'}
+                                  >
+                                    {gdConfirm.isConfirming(e.id) ? 'Yes' : '✕'}
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -760,7 +1009,7 @@ export default function ParadeState({
                 <div>
                   <label className="block text-xs text-gray-500 mb-2">Scope <span className="text-red-500">*</span></label>
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                    {EXCEPTION_SCOPES.map((s) => (
+                    {guardDutyScopes.map((s) => (
                       <button
                         key={s}
                         type="button"
@@ -922,7 +1171,7 @@ export default function ParadeState({
             )
           })()}
 
-          {activeExceptions.length === 0 ? (
+          {exceptionsTabRows.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">
               <div>
                 {query
@@ -984,7 +1233,7 @@ export default function ParadeState({
                     </tr>
                   </thead>
                   <tbody>
-                    {activeExceptions.map((e, i) => {
+                    {exceptionsTabRows.map((e, i) => {
                       const isEditing = editEx?.id === e.id
                       const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
                       return (
@@ -1006,7 +1255,7 @@ export default function ParadeState({
                                 </td>
                                 <td className="px-2 py-2">
                                   <div className="flex flex-wrap gap-1">
-                                    {EXCEPTION_SCOPES.map((s) => (
+                                    {guardDutyScopes.map((s) => (
                                       <button
                                         key={s}
                                         type="button"
