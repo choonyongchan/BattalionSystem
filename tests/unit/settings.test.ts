@@ -3,10 +3,11 @@ import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, resolveDayType } fr
 
 const VALID_SETTINGS = {
   duty_base_weights: { CDO: 2, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1 },
-  duty_day_multipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 },
+  duty_day_multipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 },
   duty_weight_exceptions: { 'COS:PublicHoliday': 5 },
   eligibility_name_overrides: { CDO: ['LEE JUN WEI'] },
   eligibility_rank_overrides: { COS: { from: 'PTE', to: '3SG' } },
+  guard_duty_rank_overrides: { CDOS: { from: '2SG', to: '2SG' } },
   absence_scope_defaults: {
     'Att C': true, 'Off/Leave': true, MA: true,
     Status: false, 'Guard Duty': false, 'Report Sick': false, Others: false,
@@ -20,7 +21,7 @@ describe('AppSettingsSchema', () => {
   })
 
   it('rejects duty_day_multipliers missing a required key', () => {
-    const bad = { ...VALID_SETTINGS, duty_day_multipliers: { Normal: 1, Friday: 0.5 } }
+    const bad = { ...VALID_SETTINGS, duty_day_multipliers: { MonThurs: 1, Friday: 0.5 } }
     expect(AppSettingsSchema.safeParse(bad).success).toBe(false)
   })
 
@@ -63,14 +64,24 @@ describe('mergeSettings', () => {
 })
 
 describe('resolveDayType', () => {
-  it('returns Normal for an ordinary weekday with no holidays', () => {
+  it('returns MonThurs for an ordinary weekday with no holidays', () => {
     // 2026-01-15 is a Thursday
-    expect(resolveDayType('2026-01-15', new Set())).toBe('Normal')
+    expect(resolveDayType('2026-01-15', new Set())).toBe('MonThurs')
   })
 
   it('returns Friday for a Friday not in the holiday set', () => {
     // 2026-01-16 is a Friday
     expect(resolveDayType('2026-01-16', new Set())).toBe('Friday')
+  })
+
+  it('returns Saturday for a Saturday not in the holiday set', () => {
+    // 2026-01-17 is a Saturday
+    expect(resolveDayType('2026-01-17', new Set())).toBe('Saturday')
+  })
+
+  it('returns Sunday for a Sunday not in the holiday set', () => {
+    // 2026-01-18 is a Sunday
+    expect(resolveDayType('2026-01-18', new Set())).toBe('Sunday')
   })
 
   it('returns PublicHoliday when the date is in the holiday set', () => {
@@ -79,6 +90,10 @@ describe('resolveDayType', () => {
 
   it('PublicHoliday takes precedence over Friday when a Friday is also a holiday', () => {
     expect(resolveDayType('2026-01-16', new Set(['2026-01-16']))).toBe('PublicHoliday')
+  })
+
+  it('PublicHoliday takes precedence over Saturday when a Saturday is also a holiday', () => {
+    expect(resolveDayType('2026-01-17', new Set(['2026-01-17']))).toBe('PublicHoliday')
   })
 
   it('an empty holiday set never matches', () => {

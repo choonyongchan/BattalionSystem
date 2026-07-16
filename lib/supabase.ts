@@ -38,6 +38,7 @@ type SettingsTable = {
     duty_weight_exceptions: Record<string, number>
     eligibility_name_overrides: Record<string, string[]>
     eligibility_rank_overrides: Record<string, { from: string; to: string }>
+    guard_duty_rank_overrides: Record<string, { from: string; to: string }>
     absence_scope_defaults: Record<string, boolean>
     parade_times: Record<string, string>
   }
@@ -48,6 +49,7 @@ type SettingsTable = {
     duty_weight_exceptions?: Record<string, number>
     eligibility_name_overrides?: Record<string, string[]>
     eligibility_rank_overrides?: Record<string, { from: string; to: string }>
+    guard_duty_rank_overrides?: Record<string, { from: string; to: string }>
     absence_scope_defaults?: Record<string, boolean>
     parade_times?: Record<string, string>
   }
@@ -58,6 +60,7 @@ type SettingsTable = {
     duty_weight_exceptions?: Record<string, number>
     eligibility_name_overrides?: Record<string, string[]>
     eligibility_rank_overrides?: Record<string, { from: string; to: string }>
+    guard_duty_rank_overrides?: Record<string, { from: string; to: string }>
     absence_scope_defaults?: Record<string, boolean>
     parade_times?: Record<string, string>
   }

@@ -1,12 +1,20 @@
 import z from 'zod'
-import { isFriday, parseISO } from 'date-fns'
+import { isFriday, isSaturday, isSunday, parseISO } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, tbl } from './supabase'
 import type { Soldier } from './supabase'
 import type { Company } from './companies'
 
-export const DAY_TYPES = ['Normal', 'Friday', 'PublicHoliday'] as const
+export const DAY_TYPES = ['MonThurs', 'Friday', 'Saturday', 'Sunday', 'PublicHoliday'] as const
 export type DayType = (typeof DAY_TYPES)[number]
+
+export const DAY_TYPE_LABELS: Record<DayType, string> = {
+  MonThurs: 'Mon-Thurs',
+  Friday: 'Fri',
+  Saturday: 'Sat',
+  Sunday: 'Sun',
+  PublicHoliday: 'PH',
+}
 
 const RankRuleSchema = z.object({ from: z.string(), to: z.string() })
 
@@ -15,13 +23,16 @@ const RankRuleSchema = z.object({ from: z.string(), to: z.string() })
 export const AppSettingsSchema = z.object({
   duty_base_weights: z.record(z.string(), z.number()),
   duty_day_multipliers: z.object({
-    Normal: z.number(),
+    MonThurs: z.number(),
     Friday: z.number(),
+    Saturday: z.number(),
+    Sunday: z.number(),
     PublicHoliday: z.number(),
   }),
   duty_weight_exceptions: z.record(z.string(), z.number()),
   eligibility_name_overrides: z.record(z.string(), z.array(z.string())),
   eligibility_rank_overrides: z.record(z.string(), RankRuleSchema),
+  guard_duty_rank_overrides: z.record(z.string(), RankRuleSchema),
   absence_scope_defaults: z.record(z.string(), z.boolean()),
   parade_times: z.record(z.string(), z.string()),
 })
@@ -31,11 +42,12 @@ export type AppSettings = z.infer<typeof AppSettingsSchema>
 // Mirrors the SQL column DEFAULTs in supabase/schema.sql's "<Company>_Settings" table —
 // keep in sync manually.
 export const DEFAULT_SETTINGS: AppSettings = {
-  duty_base_weights: { CDO: 1, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1 },
-  duty_day_multipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 },
+  duty_base_weights: { CDO: 1, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1, 'Guard Duty': 1 },
+  duty_day_multipliers: { MonThurs: 1, Friday: 1.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 },
   duty_weight_exceptions: {},
   eligibility_name_overrides: {},
   eligibility_rank_overrides: {},
+  guard_duty_rank_overrides: {},
   absence_scope_defaults: {
     'Att C': true,
     'Off/Leave': true,
@@ -66,8 +78,11 @@ export function mergeSettings(raw: Partial<Record<keyof AppSettings, unknown>> |
 /** Single source of truth for day-type classification, reused by lib/duty-dashboard.ts. */
 export function resolveDayType(dateISO: string, holidays: Set<string>): DayType {
   if (holidays.has(dateISO)) return 'PublicHoliday'
-  if (isFriday(parseISO(dateISO))) return 'Friday'
-  return 'Normal'
+  const date = parseISO(dateISO)
+  if (isSaturday(date)) return 'Saturday'
+  if (isSunday(date)) return 'Sunday'
+  if (isFriday(date)) return 'Friday'
+  return 'MonThurs'
 }
 
 export async function loadSettings(company: Company): Promise<AppSettings> {

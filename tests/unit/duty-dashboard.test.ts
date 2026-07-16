@@ -10,14 +10,14 @@ const NO_HOLIDAYS = new Set<string>()
 function weights(overrides: Partial<WeightSettings> = {}): WeightSettings {
   return {
     baseWeights: {},
-    dayMultipliers: {} as Record<'Normal' | 'Friday' | 'PublicHoliday', number>,
+    dayMultipliers: {} as Record<'MonThurs' | 'Friday' | 'Saturday' | 'Sunday' | 'PublicHoliday', number>,
     exceptions: {},
     ...overrides,
   }
 }
 
 describe('computePoints', () => {
-  it('defaults to weight 1 when settings are empty (FIXTURE_DATE is a Thursday → Normal)', () => {
+  it('defaults to weight 1 when settings are empty (FIXTURE_DATE is a Thursday → MonThurs)', () => {
     expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS)).toEqual({
       'LEE JUN WEI': 1, 'WONG KAH MENG': 1, 'YEO JIA HENG': 1, 'HO KAI XIANG': 1,
     })
@@ -30,13 +30,13 @@ describe('computePoints', () => {
 
   it('applies the Friday multiplier for a duty dated on a Friday', () => {
     const fridayDuty: DutyEntry[] = [{ duty_type: 'CDO', date: '2026-01-16', name: 'LEE JUN WEI' }]
-    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 } })
+    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 } })
     expect(computePoints(fridayDuty, w, NO_HOLIDAYS)['LEE JUN WEI']).toBe(1) // 2 * 0.5
   })
 
   it('applies the PublicHoliday multiplier when the date is in the holiday set', () => {
     const holidayDuty: DutyEntry[] = [{ duty_type: 'CDO', date: '2026-01-15', name: 'LEE JUN WEI' }]
-    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 } })
+    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 } })
     const holidays = new Set(['2026-01-15'])
     expect(computePoints(holidayDuty, w, holidays)['LEE JUN WEI']).toBe(4) // 2 * 2
   })
@@ -45,7 +45,7 @@ describe('computePoints', () => {
     const holidayDuty: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-15', name: 'YEO JIA HENG' }]
     const w = weights({
       baseWeights: { COS: 1 },
-      dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 },
+      dayMultipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 },
       exceptions: { 'COS:PublicHoliday': 5 },
     })
     const holidays = new Set(['2026-01-15'])

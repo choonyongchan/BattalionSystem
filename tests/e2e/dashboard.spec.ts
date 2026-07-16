@@ -9,14 +9,14 @@ test.describe('Duty Dashboard workflow', () => {
     await page.goto('/test/') // Dashboard is the default tab
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
-    await expect(page.getByText('Point Leaderboard')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('Duty Breakdown')).toBeVisible({ timeout: 15000 })
   })
 
-  test('leaderboard shows the seeded CDO duty holder with 1 point', async ({ page }) => {
-    const leaderboard = page.getByText('Point Leaderboard').locator('xpath=following::table[1]')
-    const row = leaderboard.locator('tr', { hasText: 'LEE JUN WEI' })
+  test('breakdown shows the seeded CDO duty holder with 1 point', async ({ page }) => {
+    const breakdown = page.getByText('Duty Breakdown').locator('xpath=following::table[1]')
+    const row = breakdown.locator('tr', { hasText: 'LEE JUN WEI' })
     await expect(row).toBeVisible({ timeout: 10000 })
-    await expect(row.locator('td').nth(3)).toHaveText('1')
+    await expect(row.locator('td').last()).toHaveText('1')
   })
 
   test('CDO filter pill narrows the list to CDO-eligible soldiers only', async ({ page }) => {

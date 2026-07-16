@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -15,9 +15,15 @@ beforeAll(async () => {
   if (error) throw new Error(`Test setup sign-in failed: ${error.message}`)
   await truncateTestDb()
   await seedTestDb()
+
+  // Parade State is always generated for "today" regardless of the duty date
+  // selected in the UI, so pin the system clock to FIXTURE_DATE for these tests.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(`${FIXTURE_DATE}T08:00:00`))
 }, 30000)
 
 afterAll(async () => {
+  vi.useRealTimers()
   await supabase.auth.signOut()
 })
 
@@ -283,21 +289,24 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
   })
 
-  it('date change updates the parade report absent count correctly', async () => {
+  it('navigating the duty date does not change the generated parade report (always uses today)', async () => {
     // ponytail: 30s — renderOnFixtureDate + setParadeDate both hit real Supabase
-    // On 2026-01-17: only CHONG KAH WAI (ends 17th) counts as absence;
-    // CHEN MING ZHI (Jun 26) expired
     await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    const reportBeforeNav = await waitFor(() => {
+      const ta = document.querySelector('textarea') as HTMLTextAreaElement
+      expect(ta.value).toContain('TOTAL STRENGTH')
+      return ta.value
+    }, { timeout: 10000 })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
-
-    // Change date to 2026-01-17 (setParadeDate navigates to Duties tab internally)
+    // Change the duty date picker to a different date (setParadeDate navigates to
+    // Duties tab internally) — this must have no effect on the generated report,
+    // since Parade State is always generated for today regardless of duty date.
     await setParadeDate('2026-01-17')
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     await waitFor(() => {
       const ta = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(ta.value).toContain('ABSENT         : 1')
-      expect(ta.value).toContain('PRESENT        : 12')
+      expect(ta.value).toBe(reportBeforeNav)
     }, { timeout: 10000 })
   }, 30000)
 })

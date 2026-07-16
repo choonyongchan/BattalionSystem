@@ -1,5 +1,5 @@
 import type { Soldier, DutyEntry } from './supabase'
-import { isEligible } from './duty-rules'
+import { isEligible, isEligibleForGuardDuty } from './duty-rules'
 import { resolveDayType } from './settings'
 import type { DayType } from './settings'
 
@@ -46,8 +46,11 @@ export function getEligibleForDuty(
   soldiers: Soldier[],
   eligibilityOverrides: Record<string, string[]>,
   rankRuleOverrides: Record<string, { from: string; to: string }>,
+  guardDutyRankOverrides: Record<string, { from: string; to: string }> = {},
 ): Soldier[] {
-  return soldiers.filter((s) => dutyTypes.some((dt) => isEligible(dt, s, eligibilityOverrides, rankRuleOverrides)))
+  return soldiers.filter((s) => dutyTypes.some((dt) =>
+    dt === 'Guard Duty' ? isEligibleForGuardDuty(s, guardDutyRankOverrides) : isEligible(dt, s, eligibilityOverrides, rankRuleOverrides),
+  ))
 }
 
 export function sortByPoints(soldiers: Soldier[], points: Record<string, number>): Soldier[] {

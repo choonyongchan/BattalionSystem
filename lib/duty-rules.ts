@@ -1,7 +1,7 @@
 import type { Soldier } from './supabase'
-import { DUTY_ELIGIBILITY, DEFAULT_RANK_RULES, RANK_ORDER } from './companies'
+import { DUTY_ELIGIBILITY, DEFAULT_RANK_RULES, RANK_ORDER, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from './companies'
 
-function isInRange(rule: { from: string; to: string }, rank: string): boolean {
+export function isInRange(rule: { from: string; to: string }, rank: string): boolean {
   const fi = RANK_ORDER.indexOf(rule.from)
   const ti = RANK_ORDER.indexOf(rule.to)
   const ri = RANK_ORDER.indexOf(rank)
@@ -34,4 +34,9 @@ export function isEligible(dt: string, soldier: Soldier, nameOverrides: Record<s
 
 export function eligibleSoldiers(dt: string, soldiers: Soldier[], nameOverrides: Record<string, string[]>, rankRuleOverrides: Record<string, { from: string; to: string }>): Soldier[] {
   return soldiers.filter((s) => isEligible(dt, s, nameOverrides, rankRuleOverrides))
+}
+
+/** Guard Duty has no single rank rule — a soldier is eligible if their rank fits any of the 4 role ranges. */
+export function isEligibleForGuardDuty(soldier: Soldier, guardDutyRankOverrides: Record<string, { from: string; to: string }>): boolean {
+  return GUARD_DUTY_ROLES.some((role) => isInRange(guardDutyRankOverrides[role] ?? DEFAULT_GUARD_DUTY_RANK_RULES[role], soldier.rank))
 }

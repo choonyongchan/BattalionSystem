@@ -7,6 +7,10 @@ test.describe('Parade State workflow', () => {
     const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
     test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
 
+    // Parade State is always generated for "today" regardless of the duty date
+    // selected in the UI, so pin the browser clock to the fixture date (2026-01-15).
+    await page.clock.setFixedTime(new Date('2026-01-15T08:00:00'))
+
     await page.goto('/test/')
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
@@ -116,17 +120,18 @@ test.describe('Parade State workflow', () => {
     await expect(page.getByText('HO KAI XIANG')).toBeVisible({ timeout: 10000 })
   })
 
-  test('switching to a date with no exceptions shows correct strength (all present)', async ({ page }) => {
+  test('switching the duty date does not change the generated parade state (always uses today)', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
-    // 2026-01-01: no fixture exceptions active → all 13 present
+    // Navigate away to a date with no fixture exceptions — the report must still
+    // reflect today (2026-01-15, per the mocked clock), not this selected date.
     await page.locator('input[type="date"]').fill('2026-01-01')
 
     await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
-    await expect(output).toContainText('PRESENT        : 13')
-    await expect(output).toContainText('ABSENT         : 0')
+    await expect(output).toContainText('PRESENT        : 9')
+    await expect(output).toContainText('ABSENT         : 4')
   })
 })

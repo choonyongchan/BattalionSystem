@@ -37,6 +37,15 @@ export const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = 
   'Duty Clerk': { from: 'REC', to: 'CFC' },
 }
 
+export const GUARD_DUTY_ROLES = ['CDOS', 'Guard Comd', 'Guard 2IC', 'Regimental Guard'] as const
+
+export const DEFAULT_GUARD_DUTY_RANK_RULES: Record<string, { from: string; to: string }> = {
+  CDOS: { from: '3SG', to: '2SG' },
+  'Guard Comd': { from: '3SG', to: '2SG' },
+  'Guard 2IC': { from: '3SG', to: '2SG' },
+  'Regimental Guard': { from: 'PTE', to: '2SG' },
+}
+
 export const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 
 export function getRankType(rank: string): 'Officer' | 'WOSPEC' | 'Enlistee' {

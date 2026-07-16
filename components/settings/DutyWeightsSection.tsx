@@ -5,8 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
-import { ALL_DUTY_TYPES, COMPANY_THEMES } from '@/lib/companies'
-import { DAY_TYPES } from '@/lib/settings'
+import { ALL_DUTY_TYPES, PARADE_CONFIG, COMPANY_THEMES } from '@/lib/companies'
+import { DAY_TYPES, DAY_TYPE_LABELS } from '@/lib/settings'
 import type { AppSettings, DayType } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
 import { hasDuplicateExceptionRows } from '@/lib/duty-weights-validation'
@@ -17,8 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const FormSchema = z.object({
   duty_base_weights: z.record(z.string(), z.number().nonnegative()),
   duty_day_multipliers: z.object({
-    Normal: z.number().nonnegative(),
+    MonThurs: z.number().nonnegative(),
     Friday: z.number().nonnegative(),
+    Saturday: z.number().nonnegative(),
+    Sunday: z.number().nonnegative(),
     PublicHoliday: z.number().nonnegative(),
   }),
   exceptionRows: z.array(z.object({ dutyType: z.string(), dayType: z.enum(DAY_TYPES), points: z.number().nonnegative() })),
@@ -43,6 +45,10 @@ function rowsToExceptions(rows: FormValues['exceptionRows']): Record<string, num
 
 export default function DutyWeightsSection({ company, settings }: { company: Company; settings: AppSettings }) {
   const theme = COMPANY_THEMES[company]
+  const dutyTypes = [
+    ...(PARADE_CONFIG[company].visibleDutyTypes.length > 0 ? PARADE_CONFIG[company].visibleDutyTypes : ALL_DUTY_TYPES),
+    'Guard Duty',
+  ]
   const { register, control, handleSubmit, formState: { isDirty, errors } } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -72,7 +78,7 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
       <div>
         <Label className="text-xs text-gray-500 mb-2 block">Base weight per duty type</Label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-          {ALL_DUTY_TYPES.map((dt) => (
+          {dutyTypes.map((dt) => (
             <div key={dt}>
               <Label className="text-xs text-gray-500 mb-1 block">{dt}</Label>
               <Input type="number" step={0.5} min={0} {...register(`duty_base_weights.${dt}`, { valueAsNumber: true })} />
@@ -86,10 +92,10 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
 
       <div>
         <Label className="text-xs text-gray-500 mb-2 block">Day-type multiplier</Label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {DAY_TYPES.map((day) => (
             <div key={day}>
-              <Label className="text-xs text-gray-500 mb-1 block">{day}</Label>
+              <Label className="text-xs text-gray-500 mb-1 block">{DAY_TYPE_LABELS[day]}</Label>
               <Input type="number" step={0.1} min={0} {...register(`duty_day_multipliers.${day}`, { valueAsNumber: true })} />
               {errors.duty_day_multipliers?.[day] && (
                 <p className="text-xs text-red-600 mt-1">{errors.duty_day_multipliers[day]?.message}</p>
@@ -111,7 +117,7 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
                   <Select value={ctrlField.value} onValueChange={ctrlField.onChange}>
                     <SelectTrigger className="flex-1"><SelectValue placeholder="Duty type" /></SelectTrigger>
                     <SelectContent>
-                      {ALL_DUTY_TYPES.map((dt) => <SelectItem key={dt} value={dt}>{dt}</SelectItem>)}
+                      {dutyTypes.map((dt) => <SelectItem key={dt} value={dt}>{dt}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
@@ -137,7 +143,7 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
           ))}
           <button
             type="button"
-            onClick={() => append({ dutyType: ALL_DUTY_TYPES[0], dayType: 'PublicHoliday', points: 1 })}
+            onClick={() => append({ dutyType: dutyTypes[0], dayType: 'PublicHoliday', points: 1 })}
             className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
           >
             + Add exception

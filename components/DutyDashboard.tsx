@@ -3,10 +3,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { supabase, tbl } from '@/lib/supabase'
-import type { Soldier, DutyEntry } from '@/lib/supabase'
+import type { Soldier, DutyEntry, Exception } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
-import { isEligible as checkEligible } from '@/lib/duty-rules'
+import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/lib/duty-rules'
 import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
 import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
@@ -16,21 +16,23 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const theme = COMPANY_THEMES[company]
   const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
 
-  // Use company's configured duty types; fall back to all 7
-  const dutyTypes = PARADE_CONFIG[company].visibleDutyTypes.length > 0
-    ? PARADE_CONFIG[company].visibleDutyTypes
-    : ALL_DUTY_TYPES
+  // Use company's configured duty types; fall back to all 7. Guard Duty is always appended —
+  // it's tracked in Exceptions rather than the Duty table and isn't company-gated.
+  const dutyTypes = [
+    ...(PARADE_CONFIG[company].visibleDutyTypes.length > 0 ? PARADE_CONFIG[company].visibleDutyTypes : ALL_DUTY_TYPES),
+    'Guard Duty',
+  ]
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [duties, setDuties] = useState<DutyEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
-  const [sortBy, setSortBy] = useState<'total' | 'cos'>('total')
 
   const { data: settings } = useSettingsQuery(company)
   const { data: publicHolidays } = usePublicHolidaysQuery()
   const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
   const rankRuleOverrides = settings?.eligibility_rank_overrides ?? {}
+  const guardDutyRankOverrides = settings?.guard_duty_rank_overrides ?? {}
   const holidays = useMemo(() => new Set((publicHolidays ?? []).map(h => h.date)), [publicHolidays])
 
   useEffect(() => { if (isCommander || embedded) load() }, [company, isCommander, embedded])
@@ -38,24 +40,33 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   async function load() {
     setLoading(true)
     const sb = supabase
-    const [{ data: sol }, { data: dut }] = await Promise.all([
+    const [{ data: sol }, { data: dut }, { data: gd }] = await Promise.all([
       sb.from(tbl(company, 'NominalRoll')).select('*'),
       sb.from(tbl(company, 'Duty')).select('*'),
+      sb.from(tbl(company, 'Exceptions')).select('*').eq('scope', 'Guard Duty'),
     ])
     setSoldiers((sol ?? []) as unknown as Soldier[])
-    setDuties((dut ?? []) as unknown as DutyEntry[])
+    const guardDutyEntries: DutyEntry[] = ((gd ?? []) as unknown as Exception[]).map((e) => ({
+      duty_type: 'Guard Duty',
+      date: e.end ?? e.start ?? '',
+      name: e.name,
+    }))
+    setDuties([...(dut ?? []) as unknown as DutyEntry[], ...guardDutyEntries])
     setLoading(false)
   }
 
   // ponytail: O(n) scan — battalion data is small; upgrade to RPC if duties > 10k rows
   const weightSettings = useMemo(() => ({
     baseWeights: settings?.duty_base_weights ?? {},
-    dayMultipliers: settings?.duty_day_multipliers ?? { Normal: 1, Friday: 1, PublicHoliday: 1 },
+    dayMultipliers: settings?.duty_day_multipliers ?? { MonThurs: 1, Friday: 1, Saturday: 1, Sunday: 1, PublicHoliday: 1 },
     exceptions: settings?.duty_weight_exceptions ?? {},
   }), [settings])
   const points = useMemo(() => computePoints(duties, weightSettings, holidays), [duties, weightSettings, holidays])
   const dutyCounts = useMemo(() => computeDutyCounts(duties), [duties])
-  const cosPoints = useMemo(() => computePoints(duties, weightSettings, holidays, 'COS'), [duties, weightSettings, holidays])
+  const filterPoints = useMemo(
+    () => filter === 'all' ? points : computePoints(duties, weightSettings, holidays, filter),
+    [filter, points, duties, weightSettings, holidays],
+  )
 
   const today = new Date().toISOString().slice(0, 10)
   const backToBack = useMemo(
@@ -64,21 +75,25 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   )
 
   const eligibleForDuty = useMemo(
-    () => getEligibleForDuty(dutyTypes, soldiers, eligibilityOverrides, rankRuleOverrides),
+    () => getEligibleForDuty(dutyTypes, soldiers, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [soldiers, eligibilityOverrides, rankRuleOverrides],
+    [soldiers, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],
   )
 
   const visible = useMemo(
-    () => filter === 'all' ? eligibleForDuty : eligibleForDuty.filter(s => checkEligible(filter, s, eligibilityOverrides, rankRuleOverrides)),
-    [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides],
+    () => filter === 'all'
+      ? eligibleForDuty
+      : filter === 'Guard Duty'
+        ? eligibleForDuty.filter(s => isEligibleForGuardDuty(s, guardDutyRankOverrides))
+        : eligibleForDuty.filter(s => checkEligible(filter, s, eligibilityOverrides, rankRuleOverrides)),
+    [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],
   )
 
   const sorted = useMemo(
-    () => sortByPoints(visible, sortBy === 'cos' ? cosPoints : points),
-    [visible, points, cosPoints, sortBy],
+    () => sortByPoints(visible, filterPoints),
+    [visible, filterPoints],
   )
-  const maxPts = Math.max(...sorted.map(s => points[s.name] ?? 0), 1)
+  const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
   const dashboardContent = loading ? (
     <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
@@ -90,7 +105,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
               {['all', ...dutyTypes].map(f => (
                 <button
                   key={f}
-                  onClick={() => { setFilter(f); if (f !== 'COS') setSortBy('total') }}
+                  onClick={() => setFilter(f)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     filter === f
                       ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white`
@@ -102,95 +117,8 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
               ))}
             </div>
 
-            {/* Leaderboard */}
+            {/* Breakdown */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`text-xs font-semibold uppercase tracking-widest ${theme.activeText}`}>
-                  Point Leaderboard
-                </h3>
-                <span className="text-xs text-gray-400">{sorted.length} personnel</span>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left px-4 py-3 font-medium text-gray-500 w-10">#</th>
-                        <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                        <th className="text-left px-4 py-3 font-medium text-gray-500 w-16">Rank</th>
-                        <th className="text-right px-4 py-3 w-20">
-                          <button
-                            onClick={() => setSortBy('total')}
-                            className={`font-medium underline-offset-2 transition-colors ${sortBy === 'total' ? `${theme.activeText} underline` : 'text-gray-500 hover:text-gray-700 hover:underline'}`}
-                          >
-                            Total Pts {sortBy === 'total' ? '↑' : ''}
-                          </button>
-                        </th>
-                        {filter === 'COS' && (
-                          <th className="text-right px-4 py-3 w-20">
-                            <button
-                              onClick={() => setSortBy('cos')}
-                              className={`font-medium underline-offset-2 transition-colors ${sortBy === 'cos' ? `${theme.activeText} underline` : 'text-gray-500 hover:text-gray-700 hover:underline'}`}
-                            >
-                              COS Pts {sortBy === 'cos' ? '↑' : ''}
-                            </button>
-                          </th>
-                        )}
-                        <th className="px-4 py-3 w-28" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sorted.length === 0 ? (
-                        <tr>
-                          <td colSpan={filter === 'COS' ? 6 : 5} className="px-4 py-8 text-center text-sm text-gray-400">
-                            No personnel in this category
-                          </td>
-                        </tr>
-                      ) : sorted.map((s, i) => {
-                        const totalPts = points[s.name] ?? 0
-                        const cosPts = cosPoints[s.name] ?? 0
-                        const nonCosPts = totalPts - cosPts
-                        const nonCosPct = (nonCosPts / maxPts) * 100
-                        const cosPct = (cosPts / maxPts) * 100
-                        const isTop = i === 0
-                        const isBot = i === sorted.length - 1 && sorted.length > 1
-                        return (
-                          <tr
-                            key={s.name}
-                            className={`border-b border-gray-100 last:border-0 ${
-                              isTop ? theme.badgeBg : isBot ? 'bg-red-50' : i % 2 === 1 ? 'bg-gray-50/50' : ''
-                            }`}
-                          >
-                            <td className={`px-4 py-3 font-bold text-xs ${isTop ? theme.badgeText : isBot ? 'text-red-400' : 'text-gray-300'}`}>
-                              {i + 1}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-gray-500">{s.rank}</td>
-                            <td className={`px-4 py-3 text-right font-bold ${isTop ? theme.badgeText : isBot ? 'text-red-500' : 'text-gray-700'}`}>
-                              {totalPts}
-                            </td>
-                            {filter === 'COS' && (
-                              <td className="px-4 py-3 text-right text-gray-500 text-sm">
-                                {cosPts > 0 ? cosPts : <span className="text-gray-200">—</span>}
-                              </td>
-                            )}
-                            <td className="px-4 py-3">
-                              <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden flex">
-                                <div className={`h-1.5 ${theme.buttonBg}`} style={{ width: `${nonCosPct}%` }} />
-                                <div className="h-1.5 bg-gray-400" style={{ width: `${cosPct}%` }} />
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Breakdown — hidden when a specific duty type is selected */}
-            {filter === 'all' && <div>
               <h3 className={`text-xs font-semibold uppercase tracking-widest mb-3 ${theme.activeText}`}>
                 Duty Breakdown
               </h3>
@@ -200,36 +128,50 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                        {dutyTypes.map(dt => (
-                          <th key={dt} className="text-center px-3 py-3 font-medium text-gray-500 w-14">{dt}</th>
-                        ))}
-                        <th className="text-center px-3 py-3 font-medium text-gray-500 w-14">Total</th>
+                        {filter === 'all' ? (
+                          <>
+                            {dutyTypes.map(dt => (
+                              <th key={dt} className="text-center px-3 py-3 font-medium text-gray-500 w-14">{dt}</th>
+                            ))}
+                            <th className="text-center px-3 py-3 font-medium text-gray-500 w-14">Total</th>
+                          </>
+                        ) : (
+                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-20">{filter} Pts</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {sorted.length === 0 ? (
                         <tr>
-                          <td colSpan={dutyTypes.length + 2} className="px-4 py-8 text-center text-sm text-gray-400">
+                          <td colSpan={filter === 'all' ? dutyTypes.length + 2 : 2} className="px-4 py-8 text-center text-sm text-gray-400">
                             No personnel in this category
                           </td>
                         </tr>
                       ) : sorted.map((s, i) => {
-                        const total = points[s.name] ?? 0
+                        const total = filterPoints[s.name] ?? 0
                         const isMax = total === maxPts && sorted.length > 1 && total > 0
                         return (
                           <tr key={s.name} className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
                             <td className="px-4 py-3 font-medium text-gray-900">{s.rank} {s.name}</td>
-                            {dutyTypes.map(dt => {
-                              const count = dutyCounts[s.name]?.[dt] ?? 0
-                              return (
-                                <td key={dt} className={`px-3 py-3 text-center ${count === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
-                                  {count === 0 ? '—' : count}
+                            {filter === 'all' ? (
+                              <>
+                                {dutyTypes.map(dt => {
+                                  const count = dutyCounts[s.name]?.[dt] ?? 0
+                                  return (
+                                    <td key={dt} className={`px-3 py-3 text-center ${count === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
+                                      {count === 0 ? '—' : count}
+                                    </td>
+                                  )
+                                })}
+                                <td className={`px-3 py-3 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                                  {total}
                                 </td>
-                              )
-                            })}
-                            <td className={`px-3 py-3 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
-                              {total}
-                            </td>
+                              </>
+                            ) : (
+                              <td className={`px-3 py-3 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                                {total}
+                              </td>
+                            )}
                           </tr>
                         )
                       })}
@@ -237,7 +179,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                   </table>
                 </div>
               </div>
-            </div>}
+            </div>
 
 
     </div>

@@ -5,8 +5,8 @@ import { supabase, tbl } from '@/lib/supabase'
 import { displayName } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES } from '@/lib/companies'
-import { eligibleSoldiers } from '@/lib/duty-rules'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from '@/lib/companies'
+import { eligibleSoldiers, isInRange } from '@/lib/duty-rules'
 import { useConfirmDelete } from '@/lib/hooks'
 import SearchDropdown from '@/components/SearchDropdown'
 import { track } from '@vercel/analytics'
@@ -127,7 +127,7 @@ export default function ParadeState({
 
   // Guard Duty (unlimited headcount, lives in the Duties tab but stored as an Exception)
   const [showGuardDutyForm, setShowGuardDutyForm] = useState(false)
-  const [gdForm, setGdForm] = useState<{ name: string; reason: string; date: string }>({ name: '', reason: '', date })
+  const [gdForm, setGdForm] = useState<{ name: string; reason: string }>({ name: '', reason: '' })
   const [editGuardDuty, setEditGuardDuty] = useState<Exception | null>(null)
   const gdConfirm = useConfirmDelete<number>()
 
@@ -194,9 +194,9 @@ export default function ParadeState({
   }
   )
 
-  const defaultExceptions = sortedExceptions
-    .filter((e) => {
-      const d = new Date(date)
+  function exceptionsActiveOn(targetDateIso: string) {
+    return sortedExceptions.filter((e) => {
+      const d = new Date(targetDateIso)
       const start = e.start ? new Date(e.start) : null
       const end = e.end ? new Date(e.end) : null
       if (start && d < start) return false
@@ -205,6 +205,9 @@ export default function ParadeState({
       return true
 
     })
+  }
+
+  const defaultExceptions = exceptionsActiveOn(date)
 
   // If there's a query, use the queried exceptions; otherwise, show all
   let activeExceptions = (
@@ -295,13 +298,13 @@ export default function ParadeState({
       name: gdForm.name,
       scope: 'Guard Duty',
       reason: gdForm.reason.trim() || null,
-      start: gdForm.date || null,
-      end: gdForm.date || null,
+      start: date || null,
+      end: date || null,
       counts_as_absence: false,
     })
     if (error) { setError(error.message); return }
     setShowGuardDutyForm(false)
-    setGdForm({ name: '', reason: '', date })
+    setGdForm({ name: '', reason: '' })
     await load()
   }
 
@@ -375,7 +378,8 @@ export default function ParadeState({
     setExceptions((prev) => prev.map((e) => e.id === id ? { ...e, counts_as_absence: value } : e))
   }
 
-  function generate(paradeType: 'First Parade' | 'Last Parade') {
+  async function generate(paradeType: 'First Parade' | 'Last Parade') {
+    const today = todayISO()
     const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
     for (const [platoon, rtMap] of Object.entries(strOverrides)) {
       strOverridesAsNumbers[platoon] = {}
@@ -383,20 +387,23 @@ export default function ParadeState({
         if (val !== '') strOverridesAsNumbers[platoon][rt] = Number(val)
       }
     }
+    // Parade State is always generated for TODAY, regardless of the duty date selected in the Duties tab.
+    const todaysDutiesRes = await supabase.from(tbl(company, 'Duty')).select('*').eq('date', today)
+    const todaysDuties = (todaysDutiesRes.data ?? []) as unknown as DutyEntry[]
     const report = generateParadeReport({
-      date,
+      date: today,
       companyLabel,
       soldiers,
-      activeExceptions: defaultExceptions,
+      activeExceptions: exceptionsActiveOn(today),
       paradeTimeStr: paradeTimes[paradeType] ?? '',
-      duties: duties.filter((d) => d.date === date),
+      duties: todaysDuties,
       strengthOverrides: strOverridesAsNumbers,
       allExceptions: exceptions,
       paradeType,
     }, PARADE_CONFIG[company], company)
     setOutput(report)
     setLastParadeType(paradeType)
-    track('parade_state_generated', { company, soldierCount: soldiers.length, date, paradeType })
+    track('parade_state_generated', { company, soldierCount: soldiers.length, date: today, paradeType })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
@@ -430,6 +437,14 @@ export default function ParadeState({
       </div>
     ),
     placeholder: 'Search soldier...',
+  }
+
+  const guardDutyRankOverrides = settings?.guard_duty_rank_overrides ?? {}
+  function eligibleGuardSoldiers(role: string) {
+    if (!role) return soldiers
+    const rule = guardDutyRankOverrides[role] ?? DEFAULT_GUARD_DUTY_RANK_RULES[role]
+    if (!rule) return soldiers
+    return soldiers.filter((s) => isInRange(rule, s.rank))
   }
 
   const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
@@ -688,7 +703,7 @@ export default function ParadeState({
               <span className="text-sm font-medium text-gray-500">Guard Duty</span>
               <button
                 onClick={() => {
-                  if (!showGuardDutyForm) setGdForm({ name: '', reason: '', date })
+                  if (!showGuardDutyForm) setGdForm({ name: '', reason: '' })
                   setShowGuardDutyForm((v) => !v)
                 }}
                 className={`px-3 py-1.5 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs font-medium rounded-lg transition-colors`}
@@ -700,32 +715,31 @@ export default function ParadeState({
             {showGuardDutyForm && (
               <div className="p-4 space-y-3 border-b border-gray-100 bg-gray-50/50">
                 <div>
+                  <label className="block text-xs text-gray-500 mb-1">Role</label>
+                  <select
+                    value={gdForm.reason}
+                    onChange={(e) => {
+                      const reason = e.target.value
+                      const stillEligible = eligibleGuardSoldiers(reason).some((s) => s.name === gdForm.name)
+                      setGdForm({ ...gdForm, reason, name: stillEligible ? gdForm.name : '' })
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">Select role</option>
+                    {GUARD_DUTY_ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
                   <SearchDropdown
                     {...soldierDropdownProps}
-                    items={soldiers}
+                    items={eligibleGuardSoldiers(gdForm.reason)}
                     value={gdForm.name}
                     onChange={(name) => setGdForm({ ...gdForm, name })}
                     inputClass={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={gdForm.date}
-                    onChange={(e) => setGdForm({ ...gdForm, date: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Reason</label>
-                  <input
-                    type="text"
-                    placeholder={REASON_HINTS['Guard Duty']}
-                    value={gdForm.reason}
-                    onChange={(e) => setGdForm({ ...gdForm, reason: e.target.value })}
-                    className={inputClass}
+                    disabled={!gdForm.reason}
                   />
                 </div>
                 <button
@@ -745,8 +759,8 @@ export default function ParadeState({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Role</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
                       <th className="w-24" />
                     </tr>
                   </thead>
@@ -761,20 +775,29 @@ export default function ParadeState({
                           {isEditing ? (
                             <>
                               <td className="px-2 py-2">
+                                <select
+                                  value={editGuardDuty!.reason ?? ''}
+                                  onChange={(e2) => {
+                                    const reason = e2.target.value
+                                    const stillEligible = eligibleGuardSoldiers(reason).some((s) => s.name === editGuardDuty!.name)
+                                    setEditGuardDuty({ ...editGuardDuty!, reason, name: stillEligible ? editGuardDuty!.name : '' })
+                                  }}
+                                  className={dutyEditInputClass}
+                                >
+                                  <option value="">Select role</option>
+                                  {GUARD_DUTY_ROLES.map((r) => (
+                                    <option key={r} value={r}>{r}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
                                 <SearchDropdown
                                   {...soldierDropdownProps}
-                                  items={soldiers}
+                                  items={eligibleGuardSoldiers(editGuardDuty!.reason ?? '')}
                                   value={editGuardDuty!.name}
                                   onChange={(name) => setEditGuardDuty({ ...editGuardDuty!, name })}
                                   inputClass={dutyEditInputClass}
-                                />
-                              </td>
-                              <td className="px-2 py-2">
-                                <input
-                                  type="text"
-                                  value={editGuardDuty!.reason ?? ''}
-                                  onChange={(e2) => setEditGuardDuty({ ...editGuardDuty!, reason: e2.target.value })}
-                                  className={dutyEditInputClass}
+                                  disabled={!editGuardDuty!.reason}
                                 />
                               </td>
                               <td className="px-2 py-2">
@@ -796,8 +819,8 @@ export default function ParadeState({
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-3 font-medium">{displayName(e.name, soldiers)}</td>
                               <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
+                              <td className="px-4 py-3 font-medium">{displayName(e.name, soldiers)}</td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button

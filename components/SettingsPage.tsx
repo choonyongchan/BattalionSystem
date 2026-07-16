@@ -10,15 +10,17 @@ import CommanderLoginForm from './CommanderLoginForm'
 import DutyWeightsSection from './settings/DutyWeightsSection'
 import ParadeTimesSection from './settings/ParadeTimesSection'
 import EligibilitySection from './settings/EligibilitySection'
+import GuardDutyRolesSection from './settings/GuardDutyRolesSection'
 import AbsenceDefaultsSection from './settings/AbsenceDefaultsSection'
 import PublicHolidaysSection from './settings/PublicHolidaysSection'
 
-type SettingsTab = 'duty-weights' | 'parade-times' | 'eligibility' | 'absence-defaults' | 'public-holidays'
+type SettingsTab = 'duty-weights' | 'parade-times' | 'eligibility' | 'guard-duty-roles' | 'absence-defaults' | 'public-holidays'
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'duty-weights', label: 'Duty Weights' },
   { id: 'parade-times', label: 'Parade Times' },
   { id: 'eligibility', label: 'Duty Eligibility' },
+  { id: 'guard-duty-roles', label: 'Guard Duty Roles' },
   { id: 'absence-defaults', label: 'Absence Defaults' },
   { id: 'public-holidays', label: 'Public Holidays' },
 ]
@@ -56,6 +58,7 @@ export default function SettingsPage({ company, label }: { company: Company; lab
         {activeTab === 'duty-weights' && <DutyWeightsSection company={company} settings={settings} />}
         {activeTab === 'parade-times' && <ParadeTimesSection company={company} settings={settings} />}
         {activeTab === 'eligibility' && <EligibilitySection company={company} settings={settings} />}
+        {activeTab === 'guard-duty-roles' && <GuardDutyRolesSection company={company} settings={settings} />}
         {activeTab === 'absence-defaults' && <AbsenceDefaultsSection company={company} settings={settings} />}
         {activeTab === 'public-holidays' && (
           <div>

@@ -78,19 +78,21 @@ BEGIN
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Settings" (
         id                          smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-        duty_base_weights           jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1}'',
-        duty_day_multipliers        jsonb NOT NULL DEFAULT ''{"Normal":1,"Friday":0.5,"PublicHoliday":2}'',
+        duty_base_weights           jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1,"Guard Duty":1}'',
+        duty_day_multipliers        jsonb NOT NULL DEFAULT ''{"MonThurs":1,"Friday":1.5,"Saturday":2,"Sunday":1.5,"PublicHoliday":2}'',
         duty_weight_exceptions      jsonb NOT NULL DEFAULT ''{}'',
         eligibility_name_overrides  jsonb NOT NULL DEFAULT ''{}'',
         eligibility_rank_overrides  jsonb NOT NULL DEFAULT ''{}'',
+        guard_duty_rank_overrides   jsonb NOT NULL DEFAULT ''{}'',
         absence_scope_defaults      jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}'',
         parade_times                jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''
       )', c);
-    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_base_weights jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1}''', c);
-    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_day_multipliers jsonb NOT NULL DEFAULT ''{"Normal":1,"Friday":0.5,"PublicHoliday":2}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_base_weights jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1,"Guard Duty":1}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_day_multipliers jsonb NOT NULL DEFAULT ''{"MonThurs":1,"Friday":1.5,"Saturday":2,"Sunday":1.5,"PublicHoliday":2}''', c);
     EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_weight_exceptions jsonb NOT NULL DEFAULT ''{}''', c);
     EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS eligibility_name_overrides jsonb NOT NULL DEFAULT ''{}''', c);
     EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS eligibility_rank_overrides jsonb NOT NULL DEFAULT ''{}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS guard_duty_rank_overrides jsonb NOT NULL DEFAULT ''{}''', c);
     EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS absence_scope_defaults jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}''', c);
     EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS parade_times jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''', c);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Settings" TO authenticated', c);

@@ -12,6 +12,7 @@ export default function SearchDropdown<T>({
   onChange,
   inputClass,
   placeholder,
+  disabled,
 }: {
   items: T[]
   value: string
@@ -22,6 +23,7 @@ export default function SearchDropdown<T>({
   onChange: (key: string) => void
   inputClass: string
   placeholder?: string
+  disabled?: boolean
 }) {
   const selected = items.find(i => getKey(i) === value)
   const [query, setQuery] = useState(() => selected ? getLabel(selected) : value)
@@ -40,9 +42,11 @@ export default function SearchDropdown<T>({
   }, [])
 
   useEffect(() => {
+    if (!value) return
     inputRef.current?.focus()
     inputRef.current?.select()
     setOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -54,10 +58,11 @@ export default function SearchDropdown<T>({
         onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className={inputClass}
+        className={`${inputClass} ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
         autoComplete="off"
+        disabled={disabled}
       />
-      {open && filtered.length > 0 && (
+      {!disabled && open && filtered.length > 0 && (
         <ul className="absolute z-30 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg">
           {filtered.map(item => (
             <li key={getKey(item)}>
