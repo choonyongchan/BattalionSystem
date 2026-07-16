@@ -3,16 +3,17 @@
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
+import { COMPANY_THEMES } from '@/lib/companies'
 import { EXCEPTION_SCOPES } from '@/lib/exception-validation'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 
 type FormValues = { absence_scope_defaults: AppSettings['absence_scope_defaults'] }
 
 export default function AbsenceDefaultsSection({ company, settings }: { company: Company; settings: AppSettings }) {
+  const theme = COMPANY_THEMES[company]
   const { watch, setValue, handleSubmit, formState: { isDirty } } = useForm<FormValues>({
     defaultValues: { absence_scope_defaults: settings.absence_scope_defaults },
   })
@@ -42,9 +43,13 @@ export default function AbsenceDefaultsSection({ company, settings }: { company:
           <Switch checked={defaults[scope] ?? false} onCheckedChange={(v) => toggle(scope, v)} />
         </div>
       ))}
-      <Button type="submit" disabled={saveMutation.isPending || !isDirty}>
+      <button
+        type="submit"
+        disabled={saveMutation.isPending || !isDirty}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+      >
         {saveMutation.isPending ? 'Saving…' : 'Save Absence Scope Defaults'}
-      </Button>
+      </button>
     </form>
   )
 }

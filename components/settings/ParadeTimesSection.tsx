@@ -4,13 +4,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
+import { COMPANY_THEMES } from '@/lib/companies'
 import { AppSettingsSchema } from '@/lib/settings'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
 import { isValidTime } from '@/lib/exception-validation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 
 const ParadeTimesSchema = AppSettingsSchema.pick({ parade_times: true }).extend({
   parade_times: AppSettingsSchema.shape.parade_times.refine(
@@ -23,6 +23,7 @@ type FormValues = { parade_times: Record<string, string> }
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
 export default function ParadeTimesSection({ company, settings }: { company: Company; settings: AppSettings }) {
+  const theme = COMPANY_THEMES[company]
   const { register, handleSubmit, formState: { errors, isDirty } } = useForm<FormValues>({
     resolver: zodResolver(ParadeTimesSchema),
     defaultValues: { parade_times: settings.parade_times },
@@ -54,9 +55,13 @@ export default function ParadeTimesSection({ company, settings }: { company: Com
       {errors.parade_times && (
         <p className="text-xs text-red-600">{(errors.parade_times as { message?: string }).message}</p>
       )}
-      <Button type="submit" disabled={saveMutation.isPending || !isDirty}>
+      <button
+        type="submit"
+        disabled={saveMutation.isPending || !isDirty}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+      >
         {saveMutation.isPending ? 'Saving…' : 'Save Parade Times'}
-      </Button>
+      </button>
     </form>
   )
 }

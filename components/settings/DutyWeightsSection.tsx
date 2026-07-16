@@ -5,14 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
-import { ALL_DUTY_TYPES } from '@/lib/companies'
+import { ALL_DUTY_TYPES, COMPANY_THEMES } from '@/lib/companies'
 import { DAY_TYPES } from '@/lib/settings'
 import type { AppSettings, DayType } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
 import { hasDuplicateExceptionRows } from '@/lib/duty-weights-validation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const FormSchema = z.object({
@@ -43,6 +42,7 @@ function rowsToExceptions(rows: FormValues['exceptionRows']): Record<string, num
 }
 
 export default function DutyWeightsSection({ company, settings }: { company: Company; settings: AppSettings }) {
+  const theme = COMPANY_THEMES[company]
   const { register, control, handleSubmit, formState: { isDirty, errors } } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -129,15 +129,19 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
                 )}
               />
               <Input type="number" step={0.5} min={0} className="w-24" {...register(`exceptionRows.${i}.points`, { valueAsNumber: true })} />
-              <Button type="button" variant="ghost" size="sm" onClick={() => remove(i)}>×</Button>
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">×</button>
               {errors.exceptionRows?.[i]?.points && (
                 <p className="text-xs text-red-600">{errors.exceptionRows[i]?.points?.message}</p>
               )}
             </div>
           ))}
-          <Button type="button" variant="outline" size="sm" onClick={() => append({ dutyType: ALL_DUTY_TYPES[0], dayType: 'PublicHoliday', points: 1 })}>
+          <button
+            type="button"
+            onClick={() => append({ dutyType: ALL_DUTY_TYPES[0], dayType: 'PublicHoliday', points: 1 })}
+            className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+          >
             + Add exception
-          </Button>
+          </button>
           {(errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message) && (
             <p className="text-xs text-red-600">
               {errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message}
@@ -146,9 +150,13 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
         </div>
       </div>
 
-      <Button type="submit" disabled={saveMutation.isPending || !isDirty}>
+      <button
+        type="submit"
+        disabled={saveMutation.isPending || !isDirty}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+      >
         {saveMutation.isPending ? 'Saving…' : 'Save Duty Weights'}
-      </Button>
+      </button>
     </form>
   )
 }

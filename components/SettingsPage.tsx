@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import type { Company } from '@/lib/companies'
+import { COMPANY_THEMES } from '@/lib/companies'
 import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
@@ -10,9 +12,20 @@ import ParadeTimesSection from './settings/ParadeTimesSection'
 import EligibilitySection from './settings/EligibilitySection'
 import AbsenceDefaultsSection from './settings/AbsenceDefaultsSection'
 import PublicHolidaysSection from './settings/PublicHolidaysSection'
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+
+type SettingsTab = 'duty-weights' | 'parade-times' | 'eligibility' | 'absence-defaults' | 'public-holidays'
+
+const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
+  { id: 'duty-weights', label: 'Duty Weights' },
+  { id: 'parade-times', label: 'Parade Times' },
+  { id: 'eligibility', label: 'Duty Eligibility' },
+  { id: 'absence-defaults', label: 'Absence Defaults' },
+  { id: 'public-holidays', label: 'Public Holidays' },
+]
 
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('duty-weights')
+  const theme = COMPANY_THEMES[company]
   const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
   const { data: settings, isLoading: settingsLoading } = useSettingsQuery(company)
   const { data: publicHolidays, isLoading: holidaysLoading } = usePublicHolidaysQuery()
@@ -20,30 +33,38 @@ export default function SettingsPage({ company, label }: { company: Company; lab
   const content = (settingsLoading || holidaysLoading || !settings) ? (
     <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
   ) : (
-    <Accordion defaultValue={['duty-weights']} className="space-y-3">
-      <AccordionItem value="duty-weights" className="bg-white border border-gray-200 rounded-2xl px-4">
-        <AccordionTrigger>Duty Weights</AccordionTrigger>
-        <AccordionContent><DutyWeightsSection company={company} settings={settings} /></AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="parade-times" className="bg-white border border-gray-200 rounded-2xl px-4">
-        <AccordionTrigger>Parade Times</AccordionTrigger>
-        <AccordionContent><ParadeTimesSection company={company} settings={settings} /></AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="eligibility" className="bg-white border border-gray-200 rounded-2xl px-4">
-        <AccordionTrigger>Duty Eligibility Overrides</AccordionTrigger>
-        <AccordionContent><EligibilitySection company={company} settings={settings} /></AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="absence-defaults" className="bg-white border border-gray-200 rounded-2xl px-4">
-        <AccordionTrigger>Absence Scope Defaults</AccordionTrigger>
-        <AccordionContent><AbsenceDefaultsSection company={company} settings={settings} /></AccordionContent>
-      </AccordionItem>
-      <AccordionItem value="public-holidays" className="bg-white border border-gray-200 rounded-2xl px-4">
-        <AccordionTrigger>
-          Public Holidays <span className="ml-2 text-xs font-normal text-gray-400">(shared across all companies)</span>
-        </AccordionTrigger>
-        <AccordionContent><PublicHolidaysSection publicHolidays={publicHolidays ?? []} /></AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <div>
+      <div className="bg-white border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 overflow-x-auto">
+        <div className="flex min-w-max sm:min-w-0">
+          {SETTINGS_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-3 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? `${theme.activeBorder} ${theme.activeText}`
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
+        {activeTab === 'duty-weights' && <DutyWeightsSection company={company} settings={settings} />}
+        {activeTab === 'parade-times' && <ParadeTimesSection company={company} settings={settings} />}
+        {activeTab === 'eligibility' && <EligibilitySection company={company} settings={settings} />}
+        {activeTab === 'absence-defaults' && <AbsenceDefaultsSection company={company} settings={settings} />}
+        {activeTab === 'public-holidays' && (
+          <div>
+            <p className="text-xs text-gray-400 mb-3">Shared across all companies</p>
+            <PublicHolidaysSection publicHolidays={publicHolidays ?? []} />
+          </div>
+        )}
+      </div>
+    </div>
   )
 
   return (

@@ -1,8 +1,10 @@
-1. E2E Test: All timeout at 'date'
 6. Integrate a batallion tracking system
 
-1. Move settings to a global setting tabs
-2. For the search bar, allow searching recruits by 4D.
-3. For MA, Medical Center and Reason can be optional (schema)
-4. For ATT C, date can be optional
-5. Others date can be optionalE
+
+6. Automatically Show All for Exceptions
+7. Beautify the Settings with the same UI layout as the rest of the dashbooard
+
+
+2. For Company Dashboard, add Absence Leaderboard, Status Leaderboard: Ingested from Whatsapp. 
+3. For Batallion Dashboard, also add Absence Leaderboard, Status Leaderboardd: Ingested from Whatsapp.
+

@@ -6,7 +6,6 @@ import { format, compareAsc } from 'date-fns'
 import { toast } from 'sonner'
 import type { PublicHoliday } from '@/lib/settings'
 import { useAddHolidayMutation, useRemoveHolidayMutation } from '@/lib/settings'
-import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -70,14 +69,18 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
             {YEAR_OPTIONS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" onClick={syncSingaporeHolidays}>
+        <button
+          type="button"
+          onClick={syncSingaporeHolidays}
+          className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+        >
           Sync Singapore Holidays
-        </Button>
+        </button>
       </div>
 
       <div className="flex items-center gap-2">
         <Popover>
-          <PopoverTrigger className={buttonVariants({ variant: 'outline' })}>
+          <PopoverTrigger className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
             {pickerDate ? format(pickerDate, 'dd MMM yyyy') : 'Pick a date'}
           </PopoverTrigger>
           <PopoverContent className="p-0 w-auto">
@@ -85,7 +88,14 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
           </PopoverContent>
         </Popover>
         <Input placeholder="Name (optional)" value={manualName} onChange={(e) => setManualName(e.target.value)} className="flex-1" />
-        <Button type="button" onClick={addManual} disabled={!pickerDate}>Add</Button>
+        <button
+          type="button"
+          onClick={addManual}
+          disabled={!pickerDate}
+          className="bg-gray-900 text-white hover:bg-black rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          Add
+        </button>
       </div>
 
       <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">

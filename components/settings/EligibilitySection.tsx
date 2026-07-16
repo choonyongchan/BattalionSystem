@@ -3,13 +3,12 @@
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
-import { ALL_DUTY_TYPES, RANK_ORDER, DEFAULT_RANK_RULES } from '@/lib/companies'
+import { ALL_DUTY_TYPES, RANK_ORDER, DEFAULT_RANK_RULES, COMPANY_THEMES } from '@/lib/companies'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation, useNominalRollQuery } from '@/lib/settings'
 import { isRankRangeInvalid } from '@/lib/duty-rules'
 import SearchDropdown from '@/components/SearchDropdown'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
 
 type FormValues = {
   eligibility_name_overrides: AppSettings['eligibility_name_overrides']
@@ -17,6 +16,7 @@ type FormValues = {
 }
 
 export default function EligibilitySection({ company, settings }: { company: Company; settings: AppSettings }) {
+  const theme = COMPANY_THEMES[company]
   const { data: soldiers = [] } = useNominalRollQuery(company)
   const { watch, setValue, handleSubmit, formState: { isDirty } } = useForm<FormValues>({
     defaultValues: {
@@ -117,9 +117,13 @@ export default function EligibilitySection({ company, settings }: { company: Com
           </div>
         )
       })}
-      <Button type="submit" disabled={saveMutation.isPending || !isDirty || invalidDutyTypes.length > 0}>
+      <button
+        type="submit"
+        disabled={saveMutation.isPending || !isDirty || invalidDutyTypes.length > 0}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+      >
         {saveMutation.isPending ? 'Saving…' : 'Save Eligibility Overrides'}
-      </Button>
+      </button>
     </form>
   )
 }

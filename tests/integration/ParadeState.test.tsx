@@ -285,13 +285,11 @@ describe('ParadeState', () => {
 
   it('date change updates the parade report absent count correctly', async () => {
     // ponytail: 30s — renderOnFixtureDate + setParadeDate both hit real Supabase
-    // On 2026-01-17 with date-filtered mode ("Show all" toggles to date-filtered):
-    // Only CHONG KAH WAI (ends 17th) counts as absence; CHEN MING ZHI (Jun 26) expired
+    // On 2026-01-17: only CHONG KAH WAI (ends 17th) counts as absence;
+    // CHEN MING ZHI (Jun 26) expired
     await renderOnFixtureDate()
 
-    // Toggle to date-filtered mode (the Exceptions tab has "Show all" button)
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Show all' }))
 
     // Change date to 2026-01-17 (setParadeDate navigates to Duties tab internally)
     await setParadeDate('2026-01-17')

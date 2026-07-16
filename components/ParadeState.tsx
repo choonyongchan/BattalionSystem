@@ -106,7 +106,6 @@ export default function ParadeState({
   const [exceptionsSortKey, setExceptionsSortKey] = useState<'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end' | null>(null)
   const [exceptionsSortDir, setExceptionsSortDir] = useState<'asc' | 'desc'>('asc')
   const [search, setSearch] = useState('')
-  const [exceptionShowAll, setExceptionShowAll] = useState(false)
 
 
   // Strength overrides
@@ -207,13 +206,11 @@ export default function ParadeState({
 
     })
 
-
-
-  // If there's a query, use the queried exceptions; otherwise, filter by date and sort
+  // If there's a query, use the queried exceptions; otherwise, show all
   let activeExceptions = (
     query
       ? queriedExceptions
-      : (exceptionShowAll ? sortedExceptions : defaultExceptions)
+      : sortedExceptions
   )
 
   const exceptionsTabRows = activeExceptions.filter((e) => e.scope !== 'Guard Duty')
@@ -551,51 +548,54 @@ export default function ParadeState({
       {activeSection === 'duties' && (
         <div className="space-y-4">
           <div className="flex items-center justify-center gap-2">
-            <button onClick={() => setDate(offsetDate(date, -7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
             <button
               onClick={() => setDate(todayISO())}
               className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 border border-gray-300 rounded-xl transition-colors"
             >
               Today
             </button>
+
+            <button onClick={() => setDate(offsetDate(date, -7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">←</button>
+
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1">
+              {weekDates(date).map((iso) => {
+                const label = dayHeaderLabel(iso)
+                const isToday = iso === todayISO()
+                const isSelected = iso === date
+                const dayDuties = dutyTypesToShow
+                  .map((dt) => ({ dt, entry: duties.find((x) => x.duty_type === dt && x.date === iso) }))
+                  .filter((x) => x.entry)
+                return (
+                  <button
+                    key={iso}
+                    onClick={() => setDate(iso)}
+                    className={`text-left rounded-xl border p-1.5 sm:p-2 transition-colors ${isSelected ? `${theme.buttonBg} border-transparent text-white` : isToday ? `bg-gray-50 border-gray-300` : `bg-white border-gray-200 hover:bg-gray-50`}`}
+                  >
+                    <div className={`text-[10px] sm:text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>{label.weekday}</div>
+                    <div className={`text-xs sm:text-sm font-semibold mb-1 ${isSelected ? 'text-white' : 'text-gray-700'}`}>{label.day}</div>
+                    <div className="space-y-0.5">
+                      {dayDuties.map(({ dt, entry }) => (
+                        <div key={dt} className={`text-[9px] sm:text-[11px] leading-tight truncate ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
+                          <span className="font-medium">{dt}</span> {displayName(entry!.name, soldiers)}
+                        </div>
+                      ))}
+                      {dayDuties.length === 0 && (
+                        <div className={`text-[9px] sm:text-[11px] ${isSelected ? 'text-white/50' : 'text-gray-300'}`}>–</div>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <button onClick={() => setDate(offsetDate(date, 7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
+
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className={`border border-gray-300 rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`}
             />
-            <button onClick={() => setDate(offsetDate(date, 7))} className="px-3 py-2 text-gray-500 hover:text-gray-800 text-lg transition-colors">→</button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
-            {weekDates(date).map((iso) => {
-              const label = dayHeaderLabel(iso)
-              const isToday = iso === todayISO()
-              const isSelected = iso === date
-              const dayDuties = dutyTypesToShow
-                .map((dt) => ({ dt, entry: duties.find((x) => x.duty_type === dt && x.date === iso) }))
-                .filter((x) => x.entry)
-              return (
-                <button
-                  key={iso}
-                  onClick={() => setDate(iso)}
-                  className={`text-left rounded-xl border p-1.5 sm:p-2 transition-colors ${isSelected ? `${theme.buttonBg} border-transparent text-white` : isToday ? `bg-gray-50 border-gray-300` : `bg-white border-gray-200 hover:bg-gray-50`}`}
-                >
-                  <div className={`text-[10px] sm:text-xs font-medium ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>{label.weekday}</div>
-                  <div className={`text-xs sm:text-sm font-semibold mb-1 ${isSelected ? 'text-white' : 'text-gray-700'}`}>{label.day}</div>
-                  <div className="space-y-0.5">
-                    {dayDuties.map(({ dt, entry }) => (
-                      <div key={dt} className={`text-[9px] sm:text-[11px] leading-tight truncate ${isSelected ? 'text-white/90' : 'text-gray-500'}`}>
-                        <span className="font-medium">{dt}</span> {displayName(entry!.name, soldiers)}
-                      </div>
-                    ))}
-                    {dayDuties.length === 0 && (
-                      <div className={`text-[9px] sm:text-[11px] ${isSelected ? 'text-white/50' : 'text-gray-300'}`}>–</div>
-                    )}
-                  </div>
-                </button>
-              )
-            })}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -1050,13 +1050,6 @@ export default function ParadeState({
                   ? 'No exceptions match that query.'
                   : 'No exceptions for this date.'}
               </div>
-              <button
-                type="button"
-                onClick={() => setExceptionShowAll(true)}
-                className="mt-3 inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Show all
-              </button>
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -1298,19 +1291,6 @@ export default function ParadeState({
                       )
                     })}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={6} className="bg-gray-50 px-4 py-3 text-left">
-                        <button
-                          type="button"
-                          onClick={() => setExceptionShowAll((prev) => !prev)}
-                          className="inline-flex items-center rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          {exceptionShowAll ? 'Hide all' : 'Show all'}
-                        </button>
-                      </td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             </div>
