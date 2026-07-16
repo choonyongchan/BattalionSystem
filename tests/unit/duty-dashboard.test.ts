@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
+import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
 import type { WeightSettings } from '@/lib/duty-dashboard'
 import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import { FIXTURE_DUTIES } from '../fixtures/duties'
@@ -81,10 +81,20 @@ describe('computePoints', () => {
   })
 })
 
-describe('computeDutyCounts', () => {
-  it('tallies per-duty-type counts, including a soldier with 2 duty types', () => {
+describe('computePointsByDutyType', () => {
+  it('tallies per-duty-type weighted points, including a soldier with 2 duty types', () => {
     const duties: DutyEntry[] = [...FIXTURE_DUTIES, { duty_type: 'PDS1', date: '2026-01-16', name: 'LEE JUN WEI' }]
-    expect(computeDutyCounts(duties)['LEE JUN WEI']).toEqual({ CDO: 1, PDS1: 1 })
+    const w = weights({ baseWeights: { CDO: 3, PDS1: 2 } })
+    expect(computePointsByDutyType(duties, w, NO_HOLIDAYS)['LEE JUN WEI']).toEqual({ CDO: 3, PDS1: 2 })
+  })
+
+  it('sums multiple duties of the same type for one soldier', () => {
+    const duties: DutyEntry[] = [
+      { duty_type: 'CDO', date: '2026-01-15', name: 'LEE JUN WEI' },
+      { duty_type: 'CDO', date: '2026-01-16', name: 'LEE JUN WEI' },
+    ]
+    const w = weights({ baseWeights: { CDO: 2 } })
+    expect(computePointsByDutyType(duties, w, NO_HOLIDAYS)['LEE JUN WEI']).toEqual({ CDO: 4 })
   })
 })
 

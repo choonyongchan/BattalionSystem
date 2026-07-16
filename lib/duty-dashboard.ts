@@ -32,11 +32,19 @@ export function computePoints(
   return acc
 }
 
-export function computeDutyCounts(duties: DutyEntry[]): Record<string, Record<string, number>> {
+export function computePointsByDutyType(
+  duties: DutyEntry[],
+  weightSettings: WeightSettings,
+  holidays: Set<string>,
+): Record<string, Record<string, number>> {
   const acc: Record<string, Record<string, number>> = {}
   for (const d of duties) {
+    const dt = resolveDayType(d.date, holidays)
+    const key = `${d.duty_type}:${dt}`
+    const points = weightSettings.exceptions[key]
+      ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
     acc[d.name] ??= {}
-    acc[d.name][d.duty_type] = (acc[d.name][d.duty_type] ?? 0) + 1
+    acc[d.name][d.duty_type] = (acc[d.name][d.duty_type] ?? 0) + points
   }
   return acc
 }

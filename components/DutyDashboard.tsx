@@ -7,7 +7,7 @@ import type { Soldier, DutyEntry, Exception } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/lib/duty-rules'
-import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
+import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
 import { useAuth } from '@/lib/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
@@ -62,7 +62,10 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     exceptions: settings?.duty_weight_exceptions ?? {},
   }), [settings])
   const points = useMemo(() => computePoints(duties, weightSettings, holidays), [duties, weightSettings, holidays])
-  const dutyCounts = useMemo(() => computeDutyCounts(duties), [duties])
+  const pointsByDutyType = useMemo(
+    () => computePointsByDutyType(duties, weightSettings, holidays),
+    [duties, weightSettings, holidays],
+  )
   const filterPoints = useMemo(
     () => filter === 'all' ? points : computePoints(duties, weightSettings, holidays, filter),
     [filter, points, duties, weightSettings, holidays],
@@ -156,10 +159,10 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                             {filter === 'all' ? (
                               <>
                                 {dutyTypes.map(dt => {
-                                  const count = dutyCounts[s.name]?.[dt] ?? 0
+                                  const dtPoints = pointsByDutyType[s.name]?.[dt] ?? 0
                                   return (
-                                    <td key={dt} className={`px-3 py-3 text-center ${count === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
-                                      {count === 0 ? '—' : count}
+                                    <td key={dt} className={`px-3 py-3 text-center ${dtPoints === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
+                                      {dtPoints === 0 ? '—' : dtPoints}
                                     </td>
                                   )
                                 })}

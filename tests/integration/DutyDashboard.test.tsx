@@ -38,7 +38,8 @@ async function loaded() {
 
 function pointsFor(name: string) {
   const row = screen.getByText(name).closest('tr')!
-  return row.querySelectorAll('td')[3].textContent
+  const cells = row.querySelectorAll('td')
+  return cells[cells.length - 1].textContent
 }
 
 describe('DutyDashboard', () => {
