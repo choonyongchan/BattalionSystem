@@ -54,6 +54,7 @@ export const DUTY_ELIGIBILITY: Record<string, (rank: string) => boolean> = {
   PDS2: r => getRankType(r) === 'WOSPEC',
   PDS3: r => getRankType(r) === 'WOSPEC',
   PDS4: r => getRankType(r) === 'WOSPEC',
+  'Duty Clerk': r => ['REC', 'PTE', 'LCP', 'CPL', 'CFC'].includes(r),
 }
 
 export const DUTY_ELIGIBILITY_DESC: Record<string, string> = {

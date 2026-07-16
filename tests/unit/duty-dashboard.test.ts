@@ -1,31 +1,83 @@
 import { describe, it, expect } from 'vitest'
 import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
+import type { WeightSettings } from '@/lib/duty-dashboard'
 import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import { FIXTURE_DUTIES } from '../fixtures/duties'
 import type { DutyEntry } from '@/lib/supabase'
 
+const NO_HOLIDAYS = new Set<string>()
+
+function weights(overrides: Partial<WeightSettings> = {}): WeightSettings {
+  return {
+    baseWeights: {},
+    dayMultipliers: {} as Record<'Normal' | 'Friday' | 'PublicHoliday', number>,
+    exceptions: {},
+    ...overrides,
+  }
+}
+
 describe('computePoints', () => {
-  it('defaults each duty to weight 1 when no weights given', () => {
-    expect(computePoints(FIXTURE_DUTIES, {})).toEqual({
+  it('defaults to weight 1 when settings are empty (FIXTURE_DATE is a Thursday → Normal)', () => {
+    expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS)).toEqual({
       'LEE JUN WEI': 1, 'WONG KAH MENG': 1, 'YEO JIA HENG': 1, 'HO KAI XIANG': 1,
     })
   })
 
-  it('applies a custom weight per duty type', () => {
-    expect(computePoints(FIXTURE_DUTIES, { CDO: 3 })['LEE JUN WEI']).toBe(3)
+  it('applies a custom base weight per duty type', () => {
+    const w = weights({ baseWeights: { CDO: 3 } })
+    expect(computePoints(FIXTURE_DUTIES, w, NO_HOLIDAYS)['LEE JUN WEI']).toBe(3)
+  })
+
+  it('applies the Friday multiplier for a duty dated on a Friday', () => {
+    const fridayDuty: DutyEntry[] = [{ duty_type: 'CDO', date: '2026-01-16', name: 'LEE JUN WEI' }]
+    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 } })
+    expect(computePoints(fridayDuty, w, NO_HOLIDAYS)['LEE JUN WEI']).toBe(1) // 2 * 0.5
+  })
+
+  it('applies the PublicHoliday multiplier when the date is in the holiday set', () => {
+    const holidayDuty: DutyEntry[] = [{ duty_type: 'CDO', date: '2026-01-15', name: 'LEE JUN WEI' }]
+    const w = weights({ baseWeights: { CDO: 2 }, dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 } })
+    const holidays = new Set(['2026-01-15'])
+    expect(computePoints(holidayDuty, w, holidays)['LEE JUN WEI']).toBe(4) // 2 * 2
+  })
+
+  it('an exact override wins over the base×multiplier formula', () => {
+    const holidayDuty: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-15', name: 'YEO JIA HENG' }]
+    const w = weights({
+      baseWeights: { COS: 1 },
+      dayMultipliers: { Normal: 1, Friday: 0.5, PublicHoliday: 2 },
+      exceptions: { 'COS:PublicHoliday': 5 },
+    })
+    const holidays = new Set(['2026-01-15'])
+    expect(computePoints(holidayDuty, w, holidays)['YEO JIA HENG']).toBe(5)
+  })
+
+  it('an exception key for a different day type does not apply', () => {
+    const normalDuty: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-15', name: 'YEO JIA HENG' }]
+    const w = weights({
+      baseWeights: { COS: 1 },
+      exceptions: { 'COS:PublicHoliday': 5 },
+    })
+    expect(computePoints(normalDuty, w, NO_HOLIDAYS)['YEO JIA HENG']).toBe(1) // formula, not the override
+  })
+
+  it('unknown duty type falls back to base weight 1', () => {
+    const unknownDuty: DutyEntry[] = [{ duty_type: 'ZZZ', date: '2026-01-15', name: 'GHOST' }]
+    expect(computePoints(unknownDuty, weights(), NO_HOLIDAYS)['GHOST']).toBe(1)
   })
 
   it('sums multiple duties for the same soldier', () => {
     const duties: DutyEntry[] = [...FIXTURE_DUTIES, { duty_type: 'PDS1', date: '2026-01-16', name: 'LEE JUN WEI' }]
-    expect(computePoints(duties, {})['LEE JUN WEI']).toBe(2)
+    // second duty is on a Friday with default (empty→1) multiplier since none was configured
+    expect(computePoints(duties, weights(), NO_HOLIDAYS)['LEE JUN WEI']).toBe(2)
   })
 
   it('filtering by dutyType only totals that duty (used for COS points)', () => {
-    expect(computePoints(FIXTURE_DUTIES, {}, 'COS')).toEqual({ 'YEO JIA HENG': 1 })
+    expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS, 'COS')).toEqual({ 'YEO JIA HENG': 1 })
   })
 
   it('a soldier with no duties is absent from the result', () => {
-    expect(computePoints(FIXTURE_DUTIES, {})['ONG JUN SHENG']).toBeUndefined()
+    expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS)['ONG JUN SHENG']).toBeUndefined()
   })
 })
 

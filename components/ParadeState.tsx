@@ -3,14 +3,16 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
 import { displayName } from '@/lib/supabase'
-import type { Soldier, Exception, DutyEntry, Configuration } from '@/lib/supabase'
+import type { Soldier, Exception, DutyEntry } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, RANK_ORDER, DEFAULT_RANK_RULES, ALL_DUTY_TYPES } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES } from '@/lib/companies'
 import { eligibleSoldiers } from '@/lib/duty-rules'
 import { useConfirmDelete } from '@/lib/hooks'
 import SearchDropdown from '@/components/SearchDropdown'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade-report'
+import { useSettingsQuery } from '@/lib/settings'
+import Link from 'next/link'
 import {
   EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
   isValidTime, buildReason, exceptionSortValue,
@@ -34,8 +36,6 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
   'MA': 'e.g. Skin Appt, IMH Appt',
   'Others': 'e.g. ...',
 }
-
-const ABSENCE_SCOPES: ExceptionScope[] = ['Att C', 'Off/Leave', 'MA']
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
@@ -95,8 +95,8 @@ export default function ParadeState({
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [exceptions, setExceptions] = useState<Exception[]>([])
   const [duties, setDuties] = useState<DutyEntry[]>([])
-  const [configs, setConfigs] = useState<Configuration[]>([])
   const [loading, setLoading] = useState(true)
+  const { data: settings } = useSettingsQuery(company)
   const [error, setError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<Section>('config')
   const [output, setOutput] = useState('')
@@ -120,8 +120,6 @@ export default function ParadeState({
   const [medCenter, setMedCenter] = useState('')
   const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
-  const [paradeTimes, setParadeTimes] = useState<Record<string, string>>({ 'First Parade': '09:30', 'Last Parade': '17:30' })
-  const [savingParade, setSavingParade] = useState<string | null>(null)
 
   // Duties inline edit
   const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
@@ -133,11 +131,6 @@ export default function ParadeState({
   const [gdForm, setGdForm] = useState<{ name: string; reason: string; date: string }>({ name: '', reason: '', date })
   const [editGuardDuty, setEditGuardDuty] = useState<Exception | null>(null)
   const gdConfirm = useConfirmDelete<number>()
-
-  // Duty rank rule editor
-  const [showRankRules, setShowRankRules] = useState(false)
-  const [editRankRules, setEditRankRules] = useState<Record<string, { from: string; to: string }>>({})
-  const [savingRankRules, setSavingRankRules] = useState(false)
 
   // Exceptions inline edit
   const [editEx, setEditEx] = useState<Exception | null>(null)
@@ -154,26 +147,16 @@ export default function ParadeState({
   async function load() {
     setLoading(true)
     setError(null)
-    const [soldiersRes, exceptionsRes, dutiesRes, configsRes, strRes] = await Promise.all([
+    const [soldiersRes, exceptionsRes, dutiesRes, strRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*'),
       supabase.from(tbl(company, 'Exceptions')).select('*'),
       supabase.from(tbl(company, 'Duty')).select('*').gte('date', weekDates(date)[0]).lte('date', weekDates(date)[6]),
-      supabase.from(tbl(company, 'Configuration')).select('*'),
       supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
     setSoldiers((soldiersRes.data ?? []) as unknown as Soldier[])
     setExceptions((exceptionsRes.data ?? []) as unknown as Exception[])
     setDuties((dutiesRes.data ?? []) as unknown as DutyEntry[])
-    const loadedConfigs = (configsRes.data ?? []) as unknown as Configuration[]
-    setConfigs(loadedConfigs)
-    if (loadedConfigs.length > 0) {
-      setParadeTimes((prev) => {
-        const next = { ...prev }
-        loadedConfigs.forEach((c) => { next[c.parade_type] = c.time.substring(0, 5) })
-        return next
-      })
-    }
     const loadedStr: Record<string, Record<string, string>> = {}
       ; (strRes.data as unknown as { platoon: string; rank_type: string; value: number }[] ?? []).forEach((row) => {
         if (!loadedStr[row.platoon]) loadedStr[row.platoon] = {}
@@ -235,23 +218,9 @@ export default function ParadeState({
 
   const exceptionsTabRows = activeExceptions.filter((e) => e.scope !== 'Guard Duty')
 
-  const eligibilityOverrides = useMemo(() => {
-    const ov: Record<string, string[]> = {}
-    for (const c of configs) {
-      if (!c.parade_type.startsWith('eligible_')) continue
-      try { ov[c.parade_type.replace('eligible_', '')] = JSON.parse(c.time) } catch { }
-    }
-    return ov
-  }, [configs])
-
-  const rankRuleOverrides = useMemo(() => {
-    const ov: Record<string, { from: string; to: string }> = {}
-    for (const c of configs) {
-      if (!c.parade_type.startsWith('rank_rule_')) continue
-      try { ov[c.parade_type.replace('rank_rule_', '')] = JSON.parse(c.time) } catch { }
-    }
-    return ov
-  }, [configs])
+  const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
+  const rankRuleOverrides = settings?.eligibility_rank_overrides ?? {}
+  const paradeTimes = settings?.parade_times ?? {}
 
   const computedStrength = useMemo(() => {
     const result: Record<string, Record<string, number>> = {}
@@ -409,26 +378,6 @@ export default function ParadeState({
     setExceptions((prev) => prev.map((e) => e.id === id ? { ...e, counts_as_absence: value } : e))
   }
 
-  async function saveParadeTime(parade_type: string) {
-    setSavingParade(parade_type)
-    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert({ parade_type, time: paradeTimes[parade_type] })
-    if (error) setError(error.message)
-    setSavingParade(null)
-  }
-
-  async function saveRankRules() {
-    setSavingRankRules(true)
-    const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
-    const rows = dutyTypes.map(dt => ({
-      parade_type: `rank_rule_${dt}`,
-      time: JSON.stringify(editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
-    }))
-    const { error } = await supabase.from(tbl(company, 'Configuration')).upsert(rows, { onConflict: 'parade_type' } as any)
-    if (error) setError(error.message)
-    else { await load(); setShowRankRules(false) }
-    setSavingRankRules(false)
-  }
-
   function generate(paradeType: 'First Parade' | 'Last Parade') {
     const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
     for (const [platoon, rtMap] of Object.entries(strOverrides)) {
@@ -437,13 +386,12 @@ export default function ParadeState({
         if (val !== '') strOverridesAsNumbers[platoon][rt] = Number(val)
       }
     }
-    const filteredConfigs = configs.filter((c) => c.parade_type === paradeType)
     const report = generateParadeReport({
       date,
       companyLabel,
       soldiers,
       activeExceptions: defaultExceptions,
-      configs: filteredConfigs,
+      paradeTimeStr: paradeTimes[paradeType] ?? '',
       duties: duties.filter((d) => d.date === date),
       strengthOverrides: strOverridesAsNumbers,
       allExceptions: exceptions,
@@ -533,30 +481,13 @@ export default function ParadeState({
       {/* Configuration section */}
       {activeSection === 'config' && (
         <div className="space-y-3">
-          {PARADE_TYPES.map((pt) => (
-            <div key={pt} className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-700 flex-1">{pt}</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="HH:MM"
-                maxLength={5}
-                value={paradeTimes[pt] ?? ''}
-                onChange={(e) => setParadeTimes((prev) => ({ ...prev, [pt]: e.target.value }))}
-                className={`border rounded-xl px-3 py-2 text-base focus:outline-none focus:ring-2 w-24 ${paradeTimes[pt] && !isValidTime(paradeTimes[pt])
-                    ? 'border-yellow-300 ring-2 ring-yellow-200'
-                    : `border-gray-300 ${theme.focusRing}`
-                  }`}
-              />
-              <button
-                onClick={() => saveParadeTime(pt)}
-                disabled={savingParade === pt}
-                className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
-              >
-                {savingParade === pt ? '...' : 'Save'}
-              </button>
-            </div>
-          ))}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4">
+            <p className="text-sm text-gray-600">
+              {PARADE_TYPES.map((pt) => `${pt} ${paradeTimes[pt] ?? '–'}`).join(' · ')}
+              {' — edit in '}
+              <Link href={`/${company}/settings`} className={`${theme.activeText} underline`}>Settings</Link>
+            </p>
+          </div>
 
           {/* Strength Override accordion */}
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -666,65 +597,6 @@ export default function ParadeState({
               )
             })}
           </div>
-
-          <div className="flex items-center gap-3 justify-end">
-            <button
-              onClick={() => {
-                if (!showRankRules) {
-                  const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
-                  setEditRankRules(Object.fromEntries(dutyTypes.map(dt => [dt, rankRuleOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }])))
-                }
-                setShowRankRules(v => !v)
-              }}
-              title="Edit Duty Rank Rules"
-              className={`shrink-0 p-2.5 rounded-xl transition-colors ${showRankRules ? `${theme.buttonBg} text-white` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Rank rule editor – triggered by gear icon above */}
-          {showRankRules && (() => {
-            const dutyTypes: string[] = ['CDO', 'CDS', 'PDS1', 'PDS2', 'PDS3', 'PDS4', 'COS']
-            return (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
-                <p className="text-xs text-gray-500">Set the eligible rank range for each duty type.</p>
-                {dutyTypes.map(dt => {
-                  const rule = editRankRules[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }
-                  return (
-                    <div key={dt} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-gray-600 uppercase w-10 shrink-0">{dt}</span>
-                      <select
-                        value={rule.from}
-                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, from: e.target.value } }))}
-                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
-                      >
-                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                      <span className="text-xs text-gray-400 shrink-0">–</span>
-                      <select
-                        value={rule.to}
-                        onChange={e => setEditRankRules(p => ({ ...p, [dt]: { ...rule, to: e.target.value } }))}
-                        className={`text-xs border border-gray-300 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 ${theme.focusRing} bg-white text-gray-700 flex-1`}
-                      >
-                        {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
-                  )
-                })}
-                <button
-                  onClick={saveRankRules}
-                  disabled={savingRankRules}
-                  className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
-                >
-                  {savingRankRules ? 'Saving…' : 'Save Rules'}
-                </button>
-              </div>
-            )
-          })()}
 
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
@@ -1013,7 +885,7 @@ export default function ParadeState({
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setExForm({ ...exForm, scope: s, counts_as_absence: exAbsenceTouched ? exForm.counts_as_absence : ABSENCE_SCOPES.includes(s) })}
+                        onClick={() => setExForm({ ...exForm, scope: s, counts_as_absence: exAbsenceTouched ? exForm.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
                         className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${exForm.scope === s
                           ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
                           : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
@@ -1259,7 +1131,7 @@ export default function ParadeState({
                                       <button
                                         key={s}
                                         type="button"
-                                        onClick={() => setEditEx({ ...editEx!, scope: s, counts_as_absence: editAbsenceTouched ? editEx!.counts_as_absence : ABSENCE_SCOPES.includes(s) })}
+                                        onClick={() => setEditEx({ ...editEx!, scope: s, counts_as_absence: editAbsenceTouched ? editEx!.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
                                         className={`px-2 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap ${editEx!.scope === s
                                           ? `${theme.buttonBg} text-white border-transparent`
                                           : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}

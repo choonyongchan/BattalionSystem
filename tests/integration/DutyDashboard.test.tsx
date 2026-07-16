@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import DutyDashboard from '@/components/DutyDashboard'
 import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
-import { FIXTURE_WEIGHT_OVERRIDES } from '../fixtures/config'
+import { DEFAULT_SETTINGS } from '@/lib/settings'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({
@@ -18,9 +19,18 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await supabase.from('Test_Configuration').delete().like('parade_type', 'weight_%')
+  await supabase.from('Test_Settings').update(DEFAULT_SETTINGS).eq('id', 1)
   await supabase.auth.signOut()
 })
+
+function renderDashboard() {
+  const client = new QueryClient()
+  return render(
+    <QueryClientProvider client={client}>
+      <DutyDashboard company="test" label="Test" embedded />
+    </QueryClientProvider>,
+  )
+}
 
 async function loaded() {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
@@ -33,7 +43,7 @@ function pointsFor(name: string) {
 
 describe('DutyDashboard', () => {
   it('leaderboard reflects seeded duty points and excludes soldiers ineligible for every duty', async () => {
-    render(<DutyDashboard company="test" label="Test" embedded />)
+    renderDashboard()
     await loaded()
 
     expect(pointsFor('LEE JUN WEI')).toBe('1')   // CDO duty
@@ -45,7 +55,7 @@ describe('DutyDashboard', () => {
   })
 
   it('filter pill narrows the leaderboard to soldiers eligible for that duty type', async () => {
-    render(<DutyDashboard company="test" label="Test" embedded />)
+    renderDashboard()
     await loaded()
 
     await userEvent.click(screen.getByRole('button', { name: 'CDO' }))
@@ -55,20 +65,16 @@ describe('DutyDashboard', () => {
     expect(screen.queryByText('WONG KAH MENG')).not.toBeInTheDocument()
   })
 
-  it('saving a duty weight persists and is reflected in recomputed points', async () => {
-    render(<DutyDashboard company="test" label="Test" embedded />)
-    await loaded()
+  it('a custom duty_base_weights value from Settings is reflected in the leaderboard', async () => {
+    await supabase.from('Test_Settings').update({
+      duty_base_weights: { ...DEFAULT_SETTINGS.duty_base_weights, CDO: 3 },
+    }).eq('id', 1)
 
-    await userEvent.click(screen.getByTitle('Edit Duty Weights'))
-    const panel = screen.getByText('Points awarded per duty type.').closest('div')!
-    const cdoInput = within(panel).getByText('CDO').nextElementSibling as HTMLInputElement
-    await userEvent.clear(cdoInput)
-    await userEvent.type(cdoInput, '3')
-    await userEvent.click(screen.getByRole('button', { name: 'Save Weights' }))
+    renderDashboard()
+    await loaded()
 
     await waitFor(() => expect(pointsFor('LEE JUN WEI')).toBe('3'))
 
-    const { data } = await supabase.from('Test_Configuration').select('*').eq('parade_type', 'weight_CDO')
-    expect(data![0].time).toBe('3')
+    await supabase.from('Test_Settings').update(DEFAULT_SETTINGS).eq('id', 1)
   })
 })

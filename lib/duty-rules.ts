@@ -8,6 +8,15 @@ function isInRange(rule: { from: string; to: string }, rank: string): boolean {
   return fi !== -1 && ti !== -1 && ri !== -1 && ri >= fi && ri <= ti
 }
 
+// A from-rank that sorts after the to-rank in RANK_ORDER produces a rank range that matches
+// zero soldiers (see isInRange above) — that's a silent footgun rather than a crash, so
+// callers should surface this as a blocking inline error instead of saving it.
+export function isRankRangeInvalid(rule: { from: string; to: string }): boolean {
+  const fi = RANK_ORDER.indexOf(rule.from)
+  const ti = RANK_ORDER.indexOf(rule.to)
+  return fi === -1 || ti === -1 || fi > ti
+}
+
 /**
  * Determines whether a soldier is eligible for a duty type.
  *

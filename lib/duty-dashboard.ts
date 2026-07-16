@@ -1,12 +1,33 @@
 import type { Soldier, DutyEntry } from './supabase'
 import { isEligible } from './duty-rules'
+import { resolveDayType } from './settings'
+import type { DayType } from './settings'
 
-/** Sums duty weights per soldier name; pass dutyType to total only that duty type (e.g. COS points). */
-export function computePoints(duties: DutyEntry[], weights: Record<string, number>, dutyType?: string): Record<string, number> {
+export interface WeightSettings {
+  baseWeights: Record<string, number>
+  dayMultipliers: Record<DayType, number>
+  exceptions: Record<string, number>
+}
+
+/**
+ * Sums duty points per soldier name. Per duty: an exact override for "<DutyType>:<DayType>"
+ * wins if present, otherwise points = baseWeight(dutyType) × dayMultiplier(dayType), both
+ * defaulting to 1 when unset. Pass dutyType to total only that duty type (e.g. COS points).
+ */
+export function computePoints(
+  duties: DutyEntry[],
+  weightSettings: WeightSettings,
+  holidays: Set<string>,
+  dutyType?: string,
+): Record<string, number> {
   const acc: Record<string, number> = {}
   for (const d of duties) {
     if (dutyType && d.duty_type !== dutyType) continue
-    acc[d.name] = (acc[d.name] ?? 0) + (weights[d.duty_type] ?? 1)
+    const dt = resolveDayType(d.date, holidays)
+    const key = `${d.duty_type}:${dt}`
+    const points = weightSettings.exceptions[key]
+      ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
+    acc[d.name] = (acc[d.name] ?? 0) + points
   }
   return acc
 }

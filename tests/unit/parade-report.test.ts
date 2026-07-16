@@ -3,7 +3,7 @@ import { generateParadeReport } from '@/lib/parade-report'
 import { FIXTURE_SOLDIERS } from '../fixtures/soldiers'
 import { FIXTURE_EXCEPTIONS, FIXTURE_DATE } from '../fixtures/exceptions'
 import { FIXTURE_DUTIES } from '../fixtures/duties'
-import { FIXTURE_CONFIG, FIXTURE_PARADE_CONFIG } from '../fixtures/config'
+import { FIXTURE_PARADE_CONFIG } from '../fixtures/config'
 import type { Exception, Soldier } from '@/lib/supabase'
 import { PARADE_CONFIG } from '@/lib/companies'
 
@@ -13,7 +13,7 @@ const BASE_INPUT = {
   date: FIXTURE_DATE,
   companyLabel: 'Test',
   soldiers: FIXTURE_SOLDIERS,
-  configs: FIXTURE_CONFIG,
+  paradeTimeStr: '09:30',
   duties: FIXTURE_DUTIES,
   generatedAt: FIXED_DATE,
 }
@@ -124,19 +124,26 @@ describe('generateParadeReport — standard', () => {
     expect(report).not.toContain('DUTIES:')
   })
 
-  it('includes parade times from config', () => {
+  it('includes the parade time labeled PARADE TIME when paradeType is unset', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('FIRST PARADE — 0930H')
-    expect(report).toContain('LAST PARADE — 1730H')
+    expect(report).toContain('PARADE TIME — 0930H')
   })
 
-  it('no parade time lines when configs array is empty', () => {
+  it('labels the parade time line with the given paradeType', () => {
     const report = generateParadeReport(
-      { ...BASE_INPUT, activeExceptions: [], configs: [] },
+      { ...BASE_INPUT, activeExceptions: [], paradeType: 'First Parade' },
+      FIXTURE_PARADE_CONFIG,
+    )
+    expect(report).toContain('FIRST PARADE — 0930H')
+  })
+
+  it('no parade time line when paradeTimeStr is empty', () => {
+    const report = generateParadeReport(
+      { ...BASE_INPUT, activeExceptions: [], paradeTimeStr: '' },
       FIXTURE_PARADE_CONFIG,
     )
     expect(report).not.toContain('0930H')
-    expect(report).not.toContain('1730H')
+    expect(report).not.toContain('PARADE TIME')
   })
 
   it('includes a Generated timestamp', () => {

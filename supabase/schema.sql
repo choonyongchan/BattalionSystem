@@ -50,6 +50,10 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_Duty" DROP CONSTRAINT IF EXISTS "%s_Duty_duty_type_check"', c, c);
     EXECUTE format('ALTER TABLE public."%s_Duty" ADD CONSTRAINT "%s_Duty_duty_type_check" CHECK (duty_type = ANY (ARRAY[''CDO'',''CDS'',''COS'',''PDS1'',''PDS2'',''PDS3'',''PDS4'',''Duty Clerk'']))', c, c);
 
+    -- Deprecated: superseded by "%s_Settings" below (typed jsonb singleton) and lib/settings.ts.
+    -- New code must NOT write to this table — see the matching @deprecated marker on
+    -- ConfigTable/Configuration in lib/supabase.ts. Left in place — this sync tool has no
+    -- DROP/rollback capability. Safe to drop manually once confidence is high.
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Configuration" (
         parade_type text NOT NULL,
@@ -71,17 +75,39 @@ BEGIN
       )', c);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_StrengthOverride" TO authenticated', c);
 
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_Settings" (
+        id                          smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        duty_base_weights           jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1}'',
+        duty_day_multipliers        jsonb NOT NULL DEFAULT ''{"Normal":1,"Friday":0.5,"PublicHoliday":2}'',
+        duty_weight_exceptions      jsonb NOT NULL DEFAULT ''{}'',
+        eligibility_name_overrides  jsonb NOT NULL DEFAULT ''{}'',
+        eligibility_rank_overrides  jsonb NOT NULL DEFAULT ''{}'',
+        absence_scope_defaults      jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}'',
+        parade_times                jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''
+      )', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_base_weights jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_day_multipliers jsonb NOT NULL DEFAULT ''{"Normal":1,"Friday":0.5,"PublicHoliday":2}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS duty_weight_exceptions jsonb NOT NULL DEFAULT ''{}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS eligibility_name_overrides jsonb NOT NULL DEFAULT ''{}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS eligibility_rank_overrides jsonb NOT NULL DEFAULT ''{}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS absence_scope_defaults jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}''', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS parade_times jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''', c);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Settings" TO authenticated', c);
+
     EXECUTE format('ALTER TABLE public."%s_NominalRoll"       ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions"        ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Duty"              ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Configuration"     ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_StrengthOverride"  ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_Settings"          ENABLE ROW LEVEL SECURITY', c);
 
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_NominalRoll"   ON public."%s_NominalRoll"',   c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Exceptions"    ON public."%s_Exceptions"',    c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Duty"          ON public."%s_Duty"',          c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Configuration"     ON public."%s_Configuration"',     c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"', c, c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Settings" ON public."%s_Settings"', c, c);
 
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_NominalRoll" ON public."%s_NominalRoll"
@@ -118,14 +144,37 @@ BEGIN
        WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
       c, c, c, c);
 
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_Settings" ON public."%s_Settings"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+
     EXECUTE format('
       INSERT INTO public."%s_Configuration" (parade_type, time) VALUES
         (''First Parade'', ''09:30:00''),
         (''Last Parade'',  ''17:30:00'')
       ON CONFLICT (parade_type) DO NOTHING', c);
 
+    EXECUTE format('
+      INSERT INTO public."%s_Settings" (id) VALUES (1)
+      ON CONFLICT (id) DO NOTHING', c);
+
   END LOOP;
 END;
 $$;
+
+CREATE TABLE IF NOT EXISTS public."PublicHolidays" (
+  date date PRIMARY KEY,
+  name text NOT NULL DEFAULT ''
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public."PublicHolidays" TO authenticated;
+ALTER TABLE public."PublicHolidays" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated can manage PublicHolidays" ON public."PublicHolidays";
+CREATE POLICY "authenticated can manage PublicHolidays" ON public."PublicHolidays"
+  FOR ALL TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;

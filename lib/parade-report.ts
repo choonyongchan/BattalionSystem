@@ -1,4 +1,4 @@
-import type { Soldier, Exception, DutyEntry, Configuration } from './supabase'
+import type { Soldier, Exception, DutyEntry } from './supabase'
 import { displayName } from './supabase'
 import type { ParadeStateConfig, Company } from './companies'
 import { getRankType, RANK_TYPES } from './companies'
@@ -29,7 +29,7 @@ export interface ParadeReportInput {
   companyLabel: string
   soldiers: Soldier[]
   activeExceptions: Exception[]
-  configs: Configuration[]
+  paradeTimeStr: string
   duties: DutyEntry[]
   strengthOverrides?: Record<string, Record<string, number>>
   generatedAt?: Date
@@ -109,7 +109,7 @@ function computePlatoonTotals(
 // ── Hercules ──────────────────────────────────────────────────────────────────
 
 function generateHerculesReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs, duties } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
   const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
@@ -123,10 +123,9 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
   const presentByRt = (rt: string) => compTotal[rt] - (absentByRt[rt] ?? 0)
 
   const lines: string[] = [config.header[0], ...config.header.slice(1)]
-  if (configs.length > 0) {
-    const c    = configs[0]
-    const time = c.time.substring(0, 5).replace(':', '')
-    lines.push(`${c.parade_type.toUpperCase()} ${dateCompact}, ${time} HRS`)
+  if (paradeTimeStr) {
+    const time = paradeTimeStr.replace(':', '')
+    lines.push(`${(input.paradeType ?? '').toUpperCase()} ${dateCompact}, ${time} HRS`)
   } else {
     lines.push(dateCompact)
   }
@@ -163,7 +162,7 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
 // ── Stallion ──────────────────────────────────────────────────────────────────
 
 function generateStallionReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs, duties } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
   const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
@@ -175,8 +174,8 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
   lines.push(`PARADE STATE FOR ${dateCompact}`)
   lines.push('')
 
-  if (configs.length > 0) {
-    const time = configs[0].time.substring(0, 5).replace(':', '')
+  if (paradeTimeStr) {
+    const time = paradeTimeStr.replace(':', '')
     lines.push(`${config.header[0]} CAA ${time}`)
   } else {
     lines.push(config.header[0])
@@ -249,7 +248,7 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
 // ── Archer ────────────────────────────────────────────────────────────────────
 
 function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs, duties } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
   const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
@@ -259,8 +258,8 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
 
   const lines: string[] = []
   lines.push(config.header[0])
-  if (configs.length > 0) {
-    const time = configs[0].time.substring(0, 5).replace(':', '')
+  if (paradeTimeStr) {
+    const time = paradeTimeStr.replace(':', '')
     lines.push(`CAA: ${dateCompact} ${time}`)
   } else {
     lines.push(`CAA: ${dateCompact}`)
@@ -329,7 +328,7 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
 // ── Braves ────────────────────────────────────────────────────────────────────
 
 function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
   const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
@@ -350,8 +349,8 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
 
   const lines: string[] = []
   lines.push(config.header[0])
-  if (configs.length > 0) {
-    const time = configs[0].time.substring(0, 5).replace(':', '')
+  if (paradeTimeStr) {
+    const time = paradeTimeStr.replace(':', '')
     lines.push(`${dateCompact} FP ${time}`)
   } else {
     lines.push(`${dateCompact} FP`)
@@ -415,7 +414,7 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
 // ── Cougar ────────────────────────────────────────────────────────────────────
 
 function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
   const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
@@ -424,8 +423,8 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
 
   const lines: string[] = []
   lines.push(...config.header)
-  if (configs.length > 0) {
-    const time = configs[0].time.substring(0, 5).replace(':', '')
+  if (paradeTimeStr) {
+    const time = paradeTimeStr.replace(':', '')
     lines.push(`DATE: ${dateCompact} @ ${time} Hrs`)
   } else {
     lines.push(`DATE: ${dateCompact}`)
@@ -480,7 +479,7 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
 // ── Standard (fallback) ───────────────────────────────────────────────────────
 
 function generateStandardReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, configs, duties } = input
+  const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
   const generatedAt = input.generatedAt ?? new Date()
 
@@ -497,11 +496,10 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
 
   const lines: string[] = [...config.header, `DATE: ${dateStr}`, '']
 
-  if (configs.length > 0) {
-    configs.forEach((c) => {
-      const t = c.time.substring(0, 5).replace(':', '')
-      lines.push(`${c.parade_type.toUpperCase()} — ${t}H`)
-    })
+  if (paradeTimeStr) {
+    const label = input.paradeType ? input.paradeType.toUpperCase() : 'PARADE TIME'
+    const t = paradeTimeStr.replace(':', '')
+    lines.push(`${label} — ${t}H`)
     lines.push('')
   }
 

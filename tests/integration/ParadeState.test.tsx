@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ParadeState from '@/components/ParadeState'
 import { supabase } from '@/lib/supabase'
 import { truncateTestDb, seedTestDb } from '../fixtures/db'
@@ -29,9 +30,18 @@ async function setParadeDate(date: string) {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 
+function renderParadeState() {
+  const client = new QueryClient()
+  return render(
+    <QueryClientProvider client={client}>
+      <ParadeState company="test" companyLabel="Test" />
+    </QueryClientProvider>,
+  )
+}
+
 // Render ParadeState and land on the Duties tab with FIXTURE_DATE selected.
 async function renderOnFixtureDate() {
-  render(<ParadeState company="test" companyLabel="Test" />)
+  renderParadeState()
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
   await setParadeDate(FIXTURE_DATE)
 }
@@ -68,10 +78,12 @@ describe('ParadeState', () => {
     await renderOnFixtureDate()
     // Already on Duties tab after renderOnFixtureDate
     // Duty name is rendered with rank prefix via displayName: "LTA LEE JUN WEI"
+    // Note: "CDO" and the assignee's name also appear in the week-overview grid
+    // above the table, so multiple matches are expected here.
 
     await waitFor(() => {
-      expect(screen.getByText('CDO')).toBeInTheDocument()
-      expect(screen.getByText(/LEE JUN WEI/)).toBeInTheDocument()
+      expect(screen.getAllByText('CDO').length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/LEE JUN WEI/).length).toBeGreaterThan(0)
     }, { timeout: 10000 })
   })
 

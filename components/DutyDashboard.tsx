@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { supabase, tbl } from '@/lib/supabase'
-import type { Soldier, DutyEntry, Configuration } from '@/lib/supabase'
+import type { Soldier, DutyEntry } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
 import { isEligible as checkEligible } from '@/lib/duty-rules'
 import { computePoints, computeDutyCounts, getEligibleForDuty, sortByPoints } from '@/lib/duty-dashboard'
 import { useAuth } from '@/lib/useAuth'
+import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
 import CommanderLoginForm from './CommanderLoginForm'
 
 export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
@@ -22,52 +23,39 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [duties, setDuties] = useState<DutyEntry[]>([])
-  const [weights, setWeights] = useState<Record<string, number>>({})
-  const [eligibilityOverrides, setEligibilityOverrides] = useState<Record<string, string[]>>({})
-  const [rankRuleOverrides, setRankRuleOverrides] = useState<Record<string, { from: string; to: string }>>({})
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'total' | 'cos'>('total')
-  const [showWeights, setShowWeights] = useState(false)
-  const [editWeights, setEditWeights] = useState<Record<string, string>>({})
-  const [savingWeights, setSavingWeights] = useState(false)
+
+  const { data: settings } = useSettingsQuery(company)
+  const { data: publicHolidays } = usePublicHolidaysQuery()
+  const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
+  const rankRuleOverrides = settings?.eligibility_rank_overrides ?? {}
+  const holidays = useMemo(() => new Set((publicHolidays ?? []).map(h => h.date)), [publicHolidays])
 
   useEffect(() => { if (isCommander || embedded) load() }, [company, isCommander, embedded])
 
   async function load() {
     setLoading(true)
     const sb = supabase
-    const [{ data: sol }, { data: dut }, { data: cfg }, { data: elig }, { data: rules }] = await Promise.all([
+    const [{ data: sol }, { data: dut }] = await Promise.all([
       sb.from(tbl(company, 'NominalRoll')).select('*'),
       sb.from(tbl(company, 'Duty')).select('*'),
-      sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'weight_%'),
-      sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'eligible_%'),
-      sb.from(tbl(company, 'Configuration')).select('*').like('parade_type', 'rank_rule_%'),
     ])
     setSoldiers((sol ?? []) as unknown as Soldier[])
     setDuties((dut ?? []) as unknown as DutyEntry[])
-    const w: Record<string, number> = {}
-    for (const row of (cfg ?? []) as unknown as Configuration[]) {
-      w[row.parade_type.replace('weight_', '')] = parseFloat(row.time) || 1
-    }
-    setWeights(w)
-    const ov: Record<string, string[]> = {}
-    for (const row of (elig ?? []) as unknown as Configuration[]) {
-      try { ov[row.parade_type.replace('eligible_', '')] = JSON.parse(row.time) } catch {}
-    }
-    setEligibilityOverrides(ov)
-    const rr: Record<string, { from: string; to: string }> = {}
-    for (const row of (rules ?? []) as unknown as Configuration[]) {
-      try { rr[row.parade_type.replace('rank_rule_', '')] = JSON.parse(row.time) } catch {}
-    }
-    setRankRuleOverrides(rr)
     setLoading(false)
   }
 
   // ponytail: O(n) scan — battalion data is small; upgrade to RPC if duties > 10k rows
-  const points = useMemo(() => computePoints(duties, weights), [duties, weights])
+  const weightSettings = useMemo(() => ({
+    baseWeights: settings?.duty_base_weights ?? {},
+    dayMultipliers: settings?.duty_day_multipliers ?? { Normal: 1, Friday: 1, PublicHoliday: 1 },
+    exceptions: settings?.duty_weight_exceptions ?? {},
+  }), [settings])
+  const points = useMemo(() => computePoints(duties, weightSettings, holidays), [duties, weightSettings, holidays])
   const dutyCounts = useMemo(() => computeDutyCounts(duties), [duties])
-  const cosPoints = useMemo(() => computePoints(duties, weights, 'COS'), [duties, weights])
+  const cosPoints = useMemo(() => computePoints(duties, weightSettings, holidays, 'COS'), [duties, weightSettings, holidays])
 
   const today = new Date().toISOString().slice(0, 10)
   const backToBack = useMemo(
@@ -92,87 +80,27 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   )
   const maxPts = Math.max(...sorted.map(s => points[s.name] ?? 0), 1)
 
-  async function saveWeights() {
-    setSavingWeights(true)
-    const sb = supabase
-    const rows = dutyTypes.map(dt => ({
-      parade_type: `weight_${dt}`,
-      time: String(parseFloat(editWeights[dt] ?? '1') || 1),
-    }))
-    await sb.from(tbl(company, 'Configuration')).upsert(rows, { onConflict: 'parade_type' } as any)
-    const newW: Record<string, number> = {}
-    for (const dt of dutyTypes) newW[dt] = parseFloat(editWeights[dt] ?? '1') || 1
-    setWeights(newW)
-    setSavingWeights(false)
-    setShowWeights(false)
-  }
-
-
   const dashboardContent = loading ? (
     <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
   ) : (
     <div className="space-y-6">
 
-            {/* Filter pills + settings gear */}
-            <div className="flex items-center gap-2">
-              <div className="flex gap-2 flex-wrap flex-1">
-                {['all', ...dutyTypes].map(f => (
-                  <button
-                    key={f}
-                    onClick={() => { setFilter(f); if (f !== 'COS') setSortBy('total') }}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      filter === f
-                        ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white`
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {f === 'all' ? 'All' : f}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => {
-                  if (!showWeights) setEditWeights(Object.fromEntries(dutyTypes.map(dt => [dt, String(weights[dt] ?? 1)])))
-                  setShowWeights(v => !v)
-                }}
-                title="Edit Duty Weights"
-                className={`shrink-0 p-2 rounded-xl transition-colors ${showWeights ? `${theme.buttonBg} text-white` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Weights panel — appears inline below filter row */}
-            {showWeights && (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
-                <p className="text-xs text-gray-500">Points awarded per duty type.</p>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {dutyTypes.map(dt => (
-                    <div key={dt}>
-                      <label className="block text-xs text-gray-500 mb-1">{dt}</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        value={editWeights[dt] ?? '1'}
-                        onChange={e => setEditWeights(w => ({ ...w, [dt]: e.target.value }))}
-                        className={`w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`}
-                      />
-                    </div>
-                  ))}
-                </div>
+            {/* Filter pills — duty-weight editing now lives on the Settings page */}
+            <div className="flex gap-2 flex-wrap">
+              {['all', ...dutyTypes].map(f => (
                 <button
-                  onClick={saveWeights}
-                  disabled={savingWeights}
-                  className={`px-4 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-colors`}
+                  key={f}
+                  onClick={() => { setFilter(f); if (f !== 'COS') setSortBy('total') }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    filter === f
+                      ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white`
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  {savingWeights ? 'Saving…' : 'Save Weights'}
+                  {f === 'all' ? 'All' : f}
                 </button>
-              </div>
-            )}
+              ))}
+            </div>
 
             {/* Leaderboard */}
             <div>
@@ -328,8 +256,16 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
         </Link>
         <span className="text-yellow-500 relative z-10">|</span>
         <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">Dashboard</h1>
+        {/* NOTE: this nav header is duplicated between DutyDashboard.tsx and CompanyContent.tsx —
+            known follow-up, not addressed here. */}
         {!authLoading && isCommander && (
-          <div className="ml-auto relative z-10">
+          <div className="ml-auto flex items-center gap-3 relative z-10">
+            <Link href={`/${company}/settings`} title="Settings" className="text-yellow-700 hover:text-yellow-900 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </Link>
             <button onClick={signOut} className="text-xs text-yellow-700 hover:text-yellow-900 font-medium transition-colors">
               Sign Out
             </button>
