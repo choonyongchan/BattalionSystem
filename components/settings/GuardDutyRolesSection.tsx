@@ -6,7 +6,7 @@ import type { Company } from '@/lib/companies'
 import { GUARD_DUTY_ROLES, RANK_ORDER, DEFAULT_GUARD_DUTY_RANK_RULES, COMPANY_THEMES } from '@/lib/companies'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
-import { isRankRangeInvalid } from '@/lib/duty-rules'
+import { isRankRangeInvalid } from '@/lib/duty/duty-rules'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type FormValues = {

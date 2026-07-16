@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { useAuth } from '@/lib/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 
 const unsubscribe = vi.fn()
 let authChangeCallback: (event: string, session: unknown) => void = () => {}

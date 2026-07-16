@@ -6,8 +6,8 @@ import type { Company } from '@/lib/companies'
 import { ALL_DUTY_TYPES, RANK_ORDER, DEFAULT_RANK_RULES, COMPANY_THEMES } from '@/lib/companies'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation, useNominalRollQuery } from '@/lib/settings'
-import { isRankRangeInvalid } from '@/lib/duty-rules'
-import SearchDropdown from '@/components/SearchDropdown'
+import { isRankRangeInvalid } from '@/lib/duty/duty-rules'
+import SearchDropdown from '@/components/shared/SearchDropdown'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type FormValues = {

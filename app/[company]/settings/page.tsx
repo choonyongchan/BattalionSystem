@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { COMPANIES, DISABLED_COMPANIES, companyLabel } from '@/lib/companies'
-import SettingsPage from '@/components/SettingsPage'
-import ComingSoon from '@/components/ComingSoon'
+import SettingsPage from '@/components/settings/SettingsPage'
+import ComingSoon from '@/components/shared/ComingSoon'
 
 export function generateStaticParams() {
   return COMPANIES.map((company) => ({ company }))

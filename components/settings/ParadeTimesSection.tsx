@@ -8,7 +8,7 @@ import { COMPANY_THEMES } from '@/lib/companies'
 import { AppSettingsSchema } from '@/lib/settings'
 import type { AppSettings } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
-import { isValidTime } from '@/lib/exception-validation'
+import { isValidTime } from '@/lib/exceptions/exception-validation'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
