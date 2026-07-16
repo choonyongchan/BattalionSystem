@@ -92,10 +92,10 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],
   )
 
-  const sorted = useMemo(
-    () => sortByPoints(visible, filterPoints),
-    [visible, filterPoints],
-  )
+  const sorted = useMemo(() => {
+    const s = sortByPoints(visible, filterPoints)
+    return filter === 'all' ? s.reverse() : s
+  }, [visible, filterPoints, filter])
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
   const dashboardContent = loading ? (
@@ -139,7 +139,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                             <th className="text-center px-3 py-3 font-medium text-gray-500 w-14">Total</th>
                           </>
                         ) : (
-                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-20">{filter} Pts</th>
+                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-20">Points</th>
                         )}
                       </tr>
                     </thead>
