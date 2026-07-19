@@ -1,20 +1,24 @@
 ﻿import type { Soldier, Exception, DutyEntry } from '../supabase'
 import { displayName } from '../supabase'
 import type { ParadeStateConfig, Company } from '../companies'
-import { getRankType, RANK_TYPES } from '../companies'
+import { getRankType, RANK_TYPES, RANK_ORDER } from '../companies'
 
-const PLATOON_ORDER: Record<string, number> = { HQ: 0, '1': 1, '2': 2, '3': 3, '4': 4 }
-const RANK_TYPE_ORDER: Record<string, number> = { Officer: 0, WOSPEC: 1, Enlistee: 2 }
+function compareOptionalDate(a: string | null, b: string | null): number {
+  if (!a && !b) return 0
+  if (!a) return -1
+  if (!b) return 1
+  return new Date(a).getTime() - new Date(b).getTime()
+}
 
 function sortExceptions(exceptions: Exception[], soldiers: Soldier[]): Exception[] {
   return [...exceptions].sort((a, b) => {
-    const pltA = soldierPlatoon(soldiers, a.name)
-    const pltB = soldierPlatoon(soldiers, b.name)
-    const pltDiff = (PLATOON_ORDER[pltA] ?? 99) - (PLATOON_ORDER[pltB] ?? 99)
-    if (pltDiff !== 0) return pltDiff
+    const endDiff = compareOptionalDate(a.end, b.end)
+    if (endDiff !== 0) return endDiff
+    const startDiff = compareOptionalDate(a.start, b.start)
+    if (startDiff !== 0) return startDiff
     const rankA = soldiers.find((s) => s.name === a.name)?.rank ?? ''
     const rankB = soldiers.find((s) => s.name === b.name)?.rank ?? ''
-    const rankDiff = RANK_TYPE_ORDER[getRankType(rankA)] - RANK_TYPE_ORDER[getRankType(rankB)]
+    const rankDiff = RANK_ORDER.indexOf(rankB) - RANK_ORDER.indexOf(rankA)
     if (rankDiff !== 0) return rankDiff
     return a.name.localeCompare(b.name)
   })
@@ -37,7 +41,7 @@ export interface ParadeReportInput {
   paradeType?: 'First Parade' | 'Last Parade'
 }
 
-const SEP = 'â”€â”€â”€'
+const SEP = '---'
 const sep = (n: number) => '-'.repeat(n)
 
 function toDDMMYY(iso: string) {
