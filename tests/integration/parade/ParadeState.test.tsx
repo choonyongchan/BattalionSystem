@@ -53,7 +53,7 @@ async function renderOnFixtureDate() {
 }
 
 describe('ParadeState', () => {
-  // â”€â”€ Exceptions tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Exceptions tab ─────────────────────────────────────────────────────
 
   it('shows fixture exceptions in the Exceptions tab', async () => {
     await renderOnFixtureDate()
@@ -78,7 +78,7 @@ describe('ParadeState', () => {
     })
   })
 
-  // â”€â”€ Duties tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Duties tab ─────────────────────────────────────────────────────────
 
   it('shows fixture duty in the Duties tab', async () => {
     await renderOnFixtureDate()
@@ -93,7 +93,7 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
   })
 
-  // â”€â”€ Report generation â€” strength counts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Report generation — strength counts ───────────────────────────────
 
   it('generates report with correct strength: 13 total, 9 present, 4 absent', async () => {
     await renderOnFixtureDate()
@@ -108,7 +108,7 @@ describe('ParadeState', () => {
   })
 
   it('Status exception (counts_as_absence=false) does not reduce present count', async () => {
-    // GOH RONG HAO has Status, counts_as_absence: false â€” still 9 present, 4 absent
+    // GOH RONG HAO has Status, counts_as_absence: false — still 9 present, 4 absent
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
 
@@ -125,7 +125,7 @@ describe('ParadeState', () => {
     })
   })
 
-  // â”€â”€ Absent? checkbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Absent? checkbox ───────────────────────────────────────────────────
 
   it('Absent? checkbox defaults per scope in the add-exception form', async () => {
     await renderOnFixtureDate()
@@ -156,7 +156,7 @@ describe('ParadeState', () => {
     await userEvent.click(checkbox) // manually uncheck
     expect(checkbox.checked).toBe(false)
 
-    // Att C would normally default to true â€” manual toggle should stick
+    // Att C would normally default to true — manual toggle should stick
     await userEvent.click(screen.getByRole('button', { name: 'Att C' }))
     expect(checkbox.checked).toBe(false)
   })
@@ -180,10 +180,10 @@ describe('ParadeState', () => {
     await userEvent.type(soldierInput, 'NG BOON')
     await userEvent.click(await screen.findByText('NG BOON SENG', {}, { timeout: 5000 }))
 
-    // Off/Leave defaults Absent? to checked â€” uncheck it
+    // Off/Leave defaults Absent? to checked — uncheck it
     await userEvent.click(screen.getByRole('checkbox', { name: 'Absent?' }))
     await userEvent.type(screen.getByPlaceholderText('e.g. Annual Leave, Off'), 'Off')
-    // Add form's date fields default to today (not FIXTURE_DATE) â€” set them explicitly so the
+    // Add form's date fields default to today (not FIXTURE_DATE) — set them explicitly so the
     // new exception is active on the date this test is viewing.
     const dateInputs = document.querySelectorAll('input[type="date"]')
     fireEvent.change(dateInputs[0], { target: { value: FIXTURE_DATE } })
@@ -212,7 +212,7 @@ describe('ParadeState', () => {
     }, { timeout: 5000 })
   })
 
-  // â”€â”€ Exception CRUD workflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Exception CRUD workflow ────────────────────────────────────────────
 
   it('adds an exception for a soldier and present count decreases by 1', async () => {
     await renderOnFixtureDate()
@@ -221,7 +221,7 @@ describe('ParadeState', () => {
     // Open the add-exception form
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
 
-    // Select soldier via SearchDropdown: type â†’ click suggestion
+    // Select soldier via SearchDropdown: type → click suggestion
     const soldierInput = screen.getByPlaceholderText('Search soldier...')
     await userEvent.type(soldierInput, 'CHEN')
     const suggestion = await screen.findByText('CHEN MING ZHI', {}, { timeout: 5000 })
@@ -239,7 +239,7 @@ describe('ParadeState', () => {
       expect(screen.getByText(/CHEN MING ZHI/)).toBeInTheDocument()
     }, { timeout: 10000 })
 
-    // Generate report â€” present drops from 9 to 8
+    // Generate report — present drops from 9 to 8
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
@@ -279,7 +279,7 @@ describe('ParadeState', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'MA' }))
 
-    // Soldier + Scope are the only compulsory fields â€” Medical Center, Reason,
+    // Soldier + Scope are the only compulsory fields — Medical Center, Reason,
     // and Date are all left blank here.
     await waitFor(() => expect(addButton).not.toBeDisabled())
     await userEvent.click(addButton)
@@ -290,7 +290,7 @@ describe('ParadeState', () => {
   })
 
   it('navigating the duty date does not change the generated parade report (always uses today)', async () => {
-    // ponytail: 30s â€” renderOnFixtureDate + setParadeDate both hit real Supabase
+    // ponytail: 30s — renderOnFixtureDate + setParadeDate both hit real Supabase
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     const reportBeforeNav = await waitFor(() => {
@@ -300,7 +300,7 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
 
     // Change the duty date picker to a different date (setParadeDate navigates to
-    // Duties tab internally) â€” this must have no effect on the generated report,
+    // Duties tab internally) — this must have no effect on the generated report,
     // since Parade State is always generated for today regardless of duty date.
     await setParadeDate('2026-01-17')
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))

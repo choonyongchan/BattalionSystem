@@ -9,7 +9,7 @@ export function companyLabel(company: Company) {
 }
 
 export const RANKS_BY_TYPE = {
-  Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
+  Officer: ['2LT', 'LTA', 'CPT', 'CPT(DR)', 'MAJ', 'LTC', 'SLTC', 'COL', 'BG', 'MG', 'LG', 'ME4', 'ME5', 'ME6', 'ME7', 'ME8'],
   WOSPEC: ['3SG', '2SG', '1SG', 'SSG', 'MSG', 'ME1', 'ME2', 'ME3', '3WO', '2WO', '1WO', 'MWO', 'SWO', 'CWO'],
   Enlistee: ['REC', 'PTE', 'LCP', 'CPL', 'CFC'],
 }
@@ -23,7 +23,7 @@ export const ALL_RANKS = Object.entries(RANKS_BY_TYPE).flatMap(([type, ranks]) =
 export const RANK_ORDER = [
   'REC','PTE','LCP','CPL','CFC',
   '3SG','2SG','1SG','SSG','MSG','3WO','2WO','1WO','MWO','SWO','CWO',
-  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL',
+  '2LT','LTA','CPT','MAJ','LTC','SLTC','COL','BG','MG','LG',
 ]
 
 export const DEFAULT_RANK_RULES: Record<string, { from: string; to: string }> = {

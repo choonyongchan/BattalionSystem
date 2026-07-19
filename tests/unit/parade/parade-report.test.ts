@@ -18,9 +18,9 @@ const BASE_INPUT = {
   generatedAt: FIXED_DATE,
 }
 
-// â”€â”€ Standard (default) formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Standard (default) formatter ─────────────────────────────────────────
 
-describe('generateParadeReport â€” standard', () => {
+describe('generateParadeReport — standard', () => {
   it('includes company name and date in header', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('STALLION COY PARADE STATE')
@@ -87,7 +87,7 @@ describe('generateParadeReport â€” standard', () => {
     expect(report).toContain('ABSENT         : 0')
   })
 
-  it('all exceptions non-absence â†’ present equals total, absent 0', () => {
+  it('all exceptions non-absence → present equals total, absent 0', () => {
     const exceptions: Exception[] = FIXTURE_EXCEPTIONS.map((e, i) => ({
       id: i + 1, ...e, counts_as_absence: false,
     }))
@@ -126,7 +126,7 @@ describe('generateParadeReport â€” standard', () => {
 
   it('includes the parade time labeled PARADE TIME when paradeType is unset', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('PARADE TIME â€” 0930H')
+    expect(report).toContain('PARADE TIME — 0930H')
   })
 
   it('labels the parade time line with the given paradeType', () => {
@@ -134,7 +134,7 @@ describe('generateParadeReport â€” standard', () => {
       { ...BASE_INPUT, activeExceptions: [], paradeType: 'First Parade' },
       FIXTURE_PARADE_CONFIG,
     )
-    expect(report).toContain('FIRST PARADE â€” 0930H')
+    expect(report).toContain('FIRST PARADE — 0930H')
   })
 
   it('no parade time line when paradeTimeStr is empty', () => {
@@ -161,7 +161,7 @@ describe('generateParadeReport â€” standard', () => {
     expect(report).not.toContain('FIRST PARADE STATE')
   })
 
-  it('zero soldiers â†’ all strength values are 0', () => {
+  it('zero soldiers → all strength values are 0', () => {
     const report = generateParadeReport(
       { ...BASE_INPUT, soldiers: [], activeExceptions: [], duties: [] },
       FIXTURE_PARADE_CONFIG,
@@ -185,21 +185,21 @@ describe('generateParadeReport â€” standard', () => {
     expect(report).toContain('OFFICER  : 5')
   })
 
-  it('soldier in exception but not in nominal roll â€” displayName falls back to bare name', () => {
+  it('soldier in exception but not in nominal roll — displayName falls back to bare name', () => {
     const exceptions: Exception[] = [{
       id: 99, name: 'GHOST SOLDIER', scope: 'Off/Leave', reason: 'Unknown',
       start: FIXTURE_DATE, end: FIXTURE_DATE, counts_as_absence: true,
     }]
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
-    // No rank prefix â€” just the bare name
+    // No rank prefix — just the bare name
     expect(report).toContain('GHOST SOLDIER')
     expect(report).not.toContain('undefined GHOST SOLDIER')
   })
 })
 
-// â”€â”€ Stallion formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Stallion formatter ────────────────────────────────────────────────────
 
-describe('generateParadeReport â€” stallion', () => {
+describe('generateParadeReport — stallion', () => {
   const stallionConfig = PARADE_CONFIG.stallion
 
   it('includes PARADE STATE FOR DDMMYY header', () => {
@@ -265,7 +265,7 @@ describe('generateParadeReport â€” stallion', () => {
     expect(report).not.toContain('HRS')
   })
 
-  it('Last Parade replaces FIRSTâ†’LAST in Stallion header', () => {
+  it('Last Parade replaces FIRST→LAST in Stallion header', () => {
     const report = generateParadeReport(
       { ...BASE_INPUT, activeExceptions: [], paradeType: 'Last Parade' },
       stallionConfig,
@@ -276,9 +276,9 @@ describe('generateParadeReport â€” stallion', () => {
   })
 })
 
-// â”€â”€ Hercules formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Hercules formatter ────────────────────────────────────────────────────
 
-describe('generateParadeReport â€” hercules', () => {
+describe('generateParadeReport — hercules', () => {
   const herculesConfig = PARADE_CONFIG.hercules
 
   it('uses compact Total Str / Current Str labels', () => {
@@ -306,14 +306,14 @@ describe('generateParadeReport â€” hercules', () => {
   it('shows exception as bullet with end date', () => {
     const exceptions: Exception[] = [{ id: 1, ...FIXTURE_EXCEPTIONS[0] }] // TAN WEI LIANG Off/Leave end:2026-01-16
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, herculesConfig, 'hercules')
-    expect(report).toContain('â€¢ CPT TAN WEI LIANG')
+    expect(report).toContain('• CPT TAN WEI LIANG')
     expect(report).toContain('Annual Leave')
     expect(report).toContain('160126') // end date formatted DDMMYY
   })
 
   it('no bullet lines when no exceptions', () => {
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: [] }, herculesConfig, 'hercules')
-    expect(report).not.toContain('â€¢')
+    expect(report).not.toContain('•')
   })
 
   it('present count correct with no exceptions (total 13)', () => {
@@ -323,9 +323,9 @@ describe('generateParadeReport â€” hercules', () => {
   })
 })
 
-// â”€â”€ Archer formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Archer formatter ──────────────────────────────────────────────────────
 
-describe('generateParadeReport â€” archer', () => {
+describe('generateParadeReport — archer', () => {
   const archerConfig = PARADE_CONFIG.archer
 
   it('lists CDO/CDS/COS duty lines and correct company strength', () => {
@@ -336,9 +336,9 @@ describe('generateParadeReport â€” archer', () => {
   })
 })
 
-// â”€â”€ Braves formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Braves formatter ──────────────────────────────────────────────────────
 
-describe('generateParadeReport â€” braves', () => {
+describe('generateParadeReport — braves', () => {
   const bravesConfig = PARADE_CONFIG.braves
 
   it('uses bracketed OFFICER/WOSPEC/ENLISTEE strength format', () => {
@@ -349,9 +349,9 @@ describe('generateParadeReport â€” braves', () => {
   })
 })
 
-// â”€â”€ Cougar formatter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Cougar formatter ──────────────────────────────────────────────────────
 
-describe('generateParadeReport â€” cougar', () => {
+describe('generateParadeReport — cougar', () => {
   const cougarConfig = PARADE_CONFIG.cougar
 
   it('only reports PLATOON 1, PLATOON 4, and COMMANDERS (platoons 2/3 excluded by design)', () => {

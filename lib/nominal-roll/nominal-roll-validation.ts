@@ -1,7 +1,7 @@
 ﻿import type { Soldier } from '../supabase'
-import { ALL_RANKS, RANKS_BY_TYPE } from '../companies'
+import { ALL_RANKS, RANK_ORDER as CANONICAL_RANK_ORDER } from '../companies'
 
-export const RANK_ORDER = Object.fromEntries(Object.values(RANKS_BY_TYPE).flat().map((r, i) => [r, i]))
+export const RANK_ORDER = Object.fromEntries(CANONICAL_RANK_ORDER.map((r, i) => [r, i]))
 
 export interface EditRow {
   originalName: string

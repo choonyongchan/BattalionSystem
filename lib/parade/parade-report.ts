@@ -110,7 +110,7 @@ function computePlatoonTotals(
   return { pltTotal, pltPresent }
 }
 
-// â”€â”€ Hercules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Hercules ──────────────────────────────────────────────────────────────
 
 function generateHerculesReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
@@ -153,7 +153,7 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
     lines.push(SEP)
     lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
     for (const e of group) {
-      let line = `â€¢ ${displayName(e.name, soldiers)}`
+      let line = `• ${displayName(e.name, soldiers)}`
       if (e.reason) line += `: ${e.reason}`
       if (e.end) line += ` until ${toDDMMYY(e.end)}`
       lines.push(line)
@@ -163,7 +163,7 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
   return lines.join('\n')
 }
 
-// â”€â”€ Stallion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Stallion ──────────────────────────────────────────────────────────────
 
 function generateStallionReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
@@ -249,7 +249,7 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
   return lines.join('\n')
 }
 
-// â”€â”€ Archer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Archer ────────────────────────────────────────────────────────────────
 
 function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
@@ -329,7 +329,7 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
   return lines.join('\n')
 }
 
-// â”€â”€ Braves â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Braves ────────────────────────────────────────────────────────────────
 
 function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr } = input
@@ -415,7 +415,7 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
   return lines.join('\n')
 }
 
-// â”€â”€ Cougar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Cougar ──────────────────────────────────────────────────────────────
 
 function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr } = input
@@ -480,7 +480,7 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
   return lines.join('\n')
 }
 
-// â”€â”€ Standard (fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Standard (fallback) ──────────────────────────────────────────────────
 
 function generateStandardReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
@@ -503,7 +503,7 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
   if (paradeTimeStr) {
     const label = input.paradeType ? input.paradeType.toUpperCase() : 'PARADE TIME'
     const t = paradeTimeStr.replace(':', '')
-    lines.push(`${label} â€” ${t}H`)
+    lines.push(`${label} — ${t}H`)
     lines.push('')
   }
 
@@ -540,7 +540,7 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
       group.forEach((e) => {
         let line = `    - ${displayName(e.name, soldiers)}`
         if (e.start && e.end) line += ` (${toSGDate(e.start)} - ${toSGDate(e.end)})`
-        if (e.reason) line += ` â€” ${e.reason}`
+        if (e.reason) line += ` — ${e.reason}`
         lines.push(line)
       })
     }
@@ -549,7 +549,7 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
       lines.push('  OTHERS:')
       other.forEach((e) => {
         let line = `    - ${displayName(e.name, soldiers)}`
-        if (e.reason) line += ` â€” ${e.reason}`
+        if (e.reason) line += ` — ${e.reason}`
         lines.push(line)
       })
     }
@@ -576,14 +576,14 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
   return lines.join('\n')
 }
 
-// â”€â”€ Dispatch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Dispatch ──────────────────────────────────────────────────────────────
 
 /**
  * Renders the parade-state text report for a company.
  *
  * Note: when `input.paradeType` is 'Last Parade', every occurrence of the
  * literal string 'FIRST' in `config.header` is replaced with 'LAST' before
- * rendering â€” this mutates the effective header text, not just a label field.
+ * rendering — this mutates the effective header text, not just a label field.
  *
  * @param input - Report data (soldiers, exceptions, duties, strength overrides).
  * @param config - Per-company parade-state config (headers, scopes, duty types).
