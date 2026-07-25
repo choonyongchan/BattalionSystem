@@ -27,6 +27,17 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const [duties, setDuties] = useState<DutyEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [sortCol, setSortCol] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  function handleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
 
   const { data: settings } = useSettingsQuery(company)
   const { data: publicHolidays } = usePublicHolidaysQuery()
@@ -93,9 +104,14 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   )
 
   const sorted = useMemo(() => {
+    if (sortCol) {
+      const getValue = (s: Soldier) =>
+        sortCol === 'Total' || sortCol === 'Points' ? (filterPoints[s.name] ?? 0) : (pointsByDutyType[s.name]?.[sortCol] ?? 0)
+      return [...visible].sort((a, b) => sortDir === 'asc' ? getValue(a) - getValue(b) : getValue(b) - getValue(a))
+    }
     const s = sortByPoints(visible, filterPoints)
     return filter === 'all' ? s.reverse() : s
-  }, [visible, filterPoints, filter])
+  }, [visible, filterPoints, filter, sortCol, sortDir, pointsByDutyType])
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
   const dashboardContent = loading ? (
@@ -108,7 +124,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
               {['all', ...dutyTypes].map(f => (
                 <button
                   key={f}
-                  onClick={() => setFilter(f)}
+                  onClick={() => { setFilter(f); setSortCol(null) }}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     filter === f
                       ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white`
@@ -134,12 +150,28 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                         {filter === 'all' ? (
                           <>
                             {dutyTypes.map(dt => (
-                              <th key={dt} className="text-center px-3 py-3 font-medium text-gray-500 w-14">{dt}</th>
+                              <th
+                                key={dt}
+                                onClick={() => handleSort(dt)}
+                                className="text-center px-3 py-3 font-medium text-gray-500 w-14 cursor-pointer select-none hover:text-gray-700"
+                              >
+                                {dt}{sortCol === dt ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                              </th>
                             ))}
-                            <th className="text-center px-3 py-3 font-medium text-gray-500 w-14">Total</th>
+                            <th
+                              onClick={() => handleSort('Total')}
+                              className="text-center px-3 py-3 font-medium text-gray-500 w-14 cursor-pointer select-none hover:text-gray-700"
+                            >
+                              Total{sortCol === 'Total' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                            </th>
                           </>
                         ) : (
-                          <th className="text-center px-3 py-3 font-medium text-gray-500 w-20">Points</th>
+                          <th
+                            onClick={() => handleSort('Points')}
+                            className="text-center px-3 py-3 font-medium text-gray-500 w-20 cursor-pointer select-none hover:text-gray-700"
+                          >
+                            Points{sortCol === 'Points' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                          </th>
                         )}
                       </tr>
                     </thead>
