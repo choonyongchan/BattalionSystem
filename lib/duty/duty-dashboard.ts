@@ -1,4 +1,5 @@
 ﻿import type { Soldier, DutyEntry } from '../supabase'
+import { splitDutyNames } from '../supabase'
 import { isEligible, isEligibleForGuardDuty } from './duty-rules'
 import { resolveDayType } from '../settings'
 import type { DayType } from '../settings'
@@ -27,7 +28,9 @@ export function computePoints(
     const key = `${d.duty_type}:${dt}`
     const points = weightSettings.exceptions[key]
       ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
-    acc[d.name] = (acc[d.name] ?? 0) + points
+    const names = splitDutyNames(d.name)
+    const share = points / names.length
+    for (const name of names) acc[name] = (acc[name] ?? 0) + share
   }
   return acc
 }
@@ -43,8 +46,12 @@ export function computePointsByDutyType(
     const key = `${d.duty_type}:${dt}`
     const points = weightSettings.exceptions[key]
       ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
-    acc[d.name] ??= {}
-    acc[d.name][d.duty_type] = (acc[d.name][d.duty_type] ?? 0) + points
+    const names = splitDutyNames(d.name)
+    const share = points / names.length
+    for (const name of names) {
+      acc[name] ??= {}
+      acc[name][d.duty_type] = (acc[name][d.duty_type] ?? 0) + share
+    }
   }
   return acc
 }

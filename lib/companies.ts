@@ -90,6 +90,9 @@ export interface ParadeStateConfig {
 
 export const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
 
+// Duty types that allow two names to be assigned, splitting points and joining names with a slash.
+export const MULTI_NAME_DUTY_TYPES = ['COS', 'Duty Clerk']
+
 const STD_SCOPES: ScopeConfig[] = [
   { key: 'Att C',       label: 'ATT C' },
   { key: 'Status',      label: 'STATUS' },

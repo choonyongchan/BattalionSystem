@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
-import { displayName } from '@/lib/supabase'
+import { displayName, splitDutyNames, DUTY_NAME_SEP } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES, MULTI_NAME_DUTY_TYPES } from '@/lib/companies'
 import { eligibleSoldiers, isInRange } from '@/lib/duty/duty-rules'
 import { useConfirmDelete } from '@/hooks/hooks'
 import SearchDropdown from '@/components/shared/SearchDropdown'
@@ -121,7 +121,7 @@ export default function ParadeState({
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
 
   // Duties inline edit
-  const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string } | null>(null)
+  const [editDuty, setEditDuty] = useState<{ duty_type: string; name: string; name2: string } | null>(null)
   const [savingDuty, setSavingDuty] = useState(false)
   const dutyConfirm = useConfirmDelete<string>()
 
@@ -334,9 +334,13 @@ export default function ParadeState({
   async function updateDuty() {
     if (!editDuty) return
     setSavingDuty(true)
+    const combinedName = [editDuty.name, editDuty.name2]
+      .filter((n) => n.trim() !== '')
+      .join(DUTY_NAME_SEP)
+      .toUpperCase()
     const { error } = await supabase
       .from(tbl(company, 'Duty'))
-      .upsert({ duty_type: editDuty.duty_type, date, name: editDuty.name.toUpperCase() })
+      .upsert({ duty_type: editDuty.duty_type, date, name: combinedName })
     if (error) { setError(error.message) }
     else { setEditDuty(null); await load() }
     setSavingDuty(false)
@@ -635,7 +639,7 @@ export default function ParadeState({
                         <td className="px-4 py-3 font-medium">{dt}</td>
                         {isEditing ? (
                           <>
-                            <td className="px-2 py-2">
+                            <td className="px-2 py-2 space-y-1">
                               <SearchDropdown
                                 {...soldierDropdownProps}
                                 items={eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
@@ -643,6 +647,16 @@ export default function ParadeState({
                                 onChange={name => setEditDuty({ ...editDuty, name })}
                                 inputClass={dutyEditInputClass}
                               />
+                              {MULTI_NAME_DUTY_TYPES.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
+                                <SearchDropdown
+                                  {...soldierDropdownProps}
+                                  items={eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
+                                  value={editDuty.name2}
+                                  onChange={name => setEditDuty({ ...editDuty, name2: name })}
+                                  inputClass={dutyEditInputClass}
+                                  placeholder="Second Duty Personnel?"
+                                />
+                              )}
                             </td>
                             <td className="px-2 py-2">
                               <div className="flex gap-1 justify-end">
@@ -668,7 +682,10 @@ export default function ParadeState({
                             <td className="px-4 py-3">
                               <div className="flex gap-1 justify-end items-center">
                                 <button
-                                  onClick={() => setEditDuty({ duty_type: dt, name: d?.name ?? '' })}
+                                  onClick={() => {
+                                    const [n1, n2] = splitDutyNames(d?.name ?? '')
+                                    setEditDuty({ duty_type: dt, name: n1 ?? '', name2: n2 ?? '' })
+                                  }}
                                   className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
                                   title="Edit"
                                 >

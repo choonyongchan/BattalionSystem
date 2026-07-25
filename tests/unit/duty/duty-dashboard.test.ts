@@ -79,6 +79,18 @@ describe('computePoints', () => {
   it('a soldier with no duties is absent from the result', () => {
     expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS)['ONG JUN SHENG']).toBeUndefined()
   })
+
+  it('splits points evenly between two names joined by " / "', () => {
+    const duty: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-15', name: 'YEO JIA HENG / WONG KAH MENG' }]
+    const w = weights({ baseWeights: { COS: 1 } })
+    expect(computePoints(duty, w, NO_HOLIDAYS)).toEqual({ 'YEO JIA HENG': 0.5, 'WONG KAH MENG': 0.5 })
+  })
+
+  it('splits Saturday-multiplied points evenly between two names', () => {
+    const duty: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-17', name: 'YEO JIA HENG / WONG KAH MENG' }] // Saturday
+    const w = weights({ baseWeights: { COS: 2 }, dayMultipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 } })
+    expect(computePoints(duty, w, NO_HOLIDAYS)).toEqual({ 'YEO JIA HENG': 2, 'WONG KAH MENG': 2 })
+  })
 })
 
 describe('computePointsByDutyType', () => {
@@ -95,6 +107,14 @@ describe('computePointsByDutyType', () => {
     ]
     const w = weights({ baseWeights: { CDO: 2 } })
     expect(computePointsByDutyType(duties, w, NO_HOLIDAYS)['LEE JUN WEI']).toEqual({ CDO: 4 })
+  })
+
+  it('splits points evenly between two names joined by " / "', () => {
+    const duties: DutyEntry[] = [{ duty_type: 'COS', date: '2026-01-15', name: 'YEO JIA HENG / WONG KAH MENG' }]
+    const w = weights({ baseWeights: { COS: 1 } })
+    const result = computePointsByDutyType(duties, w, NO_HOLIDAYS)
+    expect(result['YEO JIA HENG']).toEqual({ COS: 0.5 })
+    expect(result['WONG KAH MENG']).toEqual({ COS: 0.5 })
   })
 })
 

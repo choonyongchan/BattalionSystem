@@ -130,7 +130,18 @@ export interface Configuration {
   time: string
 }
 
-export function displayName(name: string, soldiers: Soldier[]): string {
+// Duties that allow two names (e.g. "JOSHUA / CHOONYONG") store them joined by this separator.
+export const DUTY_NAME_SEP = ' / '
+
+export function splitDutyNames(name: string): string[] {
+  return name.split(DUTY_NAME_SEP).map((n) => n.trim()).filter((n) => n !== '')
+}
+
+function displayOneName(name: string, soldiers: Soldier[]): string {
   const rank = soldiers.find(s => s.name === name)?.rank
   return rank ? `${rank} ${name}` : name
+}
+
+export function displayName(name: string, soldiers: Soldier[]): string {
+  return splitDutyNames(name).map((n) => displayOneName(n, soldiers)).join(DUTY_NAME_SEP)
 }
