@@ -109,8 +109,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
         sortCol === 'Total' || sortCol === 'Points' ? (filterPoints[s.name] ?? 0) : (pointsByDutyType[s.name]?.[sortCol] ?? 0)
       return [...visible].sort((a, b) => sortDir === 'asc' ? getValue(a) - getValue(b) : getValue(b) - getValue(a))
     }
-    const s = sortByPoints(visible, filterPoints)
-    return filter === 'all' ? s.reverse() : s
+    return sortByPoints(visible, filterPoints)
   }, [visible, filterPoints, filter, sortCol, sortDir, pointsByDutyType])
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
