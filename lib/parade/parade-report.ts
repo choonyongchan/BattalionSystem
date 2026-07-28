@@ -2,6 +2,7 @@
 import { displayName } from '../supabase'
 import type { ParadeStateConfig, Company } from '../companies'
 import { getRankType, RANK_TYPES, RANK_ORDER } from '../companies'
+import { groupExceptionsByPerson } from '../exceptions/exception-validation'
 
 function compareOptionalDate(a: string | null, b: string | null): number {
   if (!a && !b) return 0
@@ -152,10 +153,12 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
     const group = activeExceptions.filter((e) => e.scope === key)
     lines.push(SEP)
     lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
-    for (const e of group) {
-      let line = `• ${displayName(e.name, soldiers)}`
-      if (e.reason) line += `: ${e.reason}`
-      if (e.end) line += ` until ${toDDMMYY(e.end)}`
+    for (const person of groupExceptionsByPerson(group)) {
+      const frags = person
+        .map((e) => (e.reason ?? '') + (e.end ? `${e.reason ? ' ' : ''}until ${toDDMMYY(e.end)}` : ''))
+        .filter(Boolean)
+      let line = `• ${displayName(person[0].name, soldiers)}`
+      if (frags.length) line += `: ${frags.join('; ')}`
       lines.push(line)
     }
   }
@@ -217,14 +220,18 @@ function generateStallionReport(input: ParadeReportInput, config: ParadeStateCon
     for (const { key, label } of scopes) {
       const group = (exByPlt[plt] ?? []).filter((e) => e.scope === key)
       lines.push(`${label}:`)
-      for (const e of group) {
-        const dn    = displayName(e.name, soldiers)
-        const dates = e.start && e.end ? ` (${toDDMMYY(e.start)} - ${toDDMMYY(e.end)})` : ''
-        if (key === 'Att C' || key === 'Status') {
-          lines.push(`${e.reason ? `[${e.reason}] ` : ''}${dn}${dates}`)
-        } else {
-          lines.push(`${dn}${dates}`)
-        }
+      for (const person of groupExceptionsByPerson(group)) {
+        const dn = displayName(person[0].name, soldiers)
+        const frags = person
+          .map((e) => {
+            const dates = e.start && e.end ? `(${toDDMMYY(e.start)} - ${toDDMMYY(e.end)})` : ''
+            if (key === 'Att C' || key === 'Status') {
+              return [e.reason ? `[${e.reason}]` : '', dates].filter(Boolean).join(' ')
+            }
+            return dates
+          })
+          .filter(Boolean)
+        lines.push(frags.length ? `${dn} ${frags.join('; ')}` : dn)
       }
     }
   }
@@ -304,21 +311,21 @@ function generateArcherReport(input: ParadeReportInput, config: ParadeStateConfi
     for (const { key, label } of scopes) {
       const group = (exByPlt[plt] ?? []).filter((e) => e.scope === key)
       lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
-      group.forEach((e, idx) => {
-        const dn    = displayName(e.name, soldiers)
-        const fourD = soldierFourD(soldiers, e.name)
+      groupExceptionsByPerson(group).forEach((person, idx) => {
+        const dn    = displayName(person[0].name, soldiers)
+        const fourD = soldierFourD(soldiers, person[0].name)
         lines.push(`S/N: ${(idx + 1).toString().padStart(2, '0')}`)
         lines.push(`R&N: ${dn}`)
         if (fourD) lines.push(`4D: ${fourD}`)
         if (key === 'Att C' || key === 'Status') {
-          if (e.reason) lines.push(`STATUS: ${e.reason}`)
-          if (e.start && e.end) lines.push(`DATE: (${toDDMMYY(e.start)} - ${toDDMMYY(e.end)})`)
+          const frags = person.map((e) => [e.reason ?? '', e.start && e.end ? `(${toDDMMYY(e.start)} - ${toDDMMYY(e.end)})` : ''].filter(Boolean).join(' ')).filter(Boolean)
+          if (frags.length) lines.push(`STATUS: ${frags.join('; ')}`)
         } else if (key === 'Guard Duty') {
-          if (e.reason) lines.push(`REASON: ${e.reason}`)
-          if (e.start && e.end) lines.push(`DATE & TIME: ${toDDMMYY(e.start)} - ${toDDMMYY(e.end)}`)
+          const frags = person.map((e) => [e.reason ?? '', e.start && e.end ? `${toDDMMYY(e.start)} - ${toDDMMYY(e.end)}` : ''].filter(Boolean).join(' ')).filter(Boolean)
+          if (frags.length) lines.push(`REASON & DATE & TIME: ${frags.join('; ')}`)
         } else {
-          if (e.reason) lines.push(`REASON: ${e.reason}`)
-          if (e.end) lines.push(`DATE: ${toDDMMYY(e.end)}`)
+          const frags = person.map((e) => [e.reason ?? '', e.end ? toDDMMYY(e.end) : ''].filter(Boolean).join(' ')).filter(Boolean)
+          if (frags.length) lines.push(`REASON: ${frags.join('; ')}`)
         }
       })
     }
@@ -341,12 +348,14 @@ function generateBravesReport(input: ParadeReportInput, config: ParadeStateConfi
   const datedScopes = new Set(['Att C', 'Status', 'Off/Leave'])
 
   function renderEntries(group: Exception[]): string[] {
-    return group.map((e, idx) => {
-      const dn    = displayName(e.name, soldiers)
-      const fourD = soldierFourD(soldiers, e.name)
-      let line    = `${idx + 1}. ${dn}${fourD ? ' ' + fourD : ''}`
-      if (e.reason) line += ` - ${e.reason}`
-      if (datedScopes.has(e.scope) && e.start && e.end) line += ` (${toDDMMYY(e.start)}-${toDDMMYY(e.end)})`
+    return groupExceptionsByPerson(group).map((person, idx) => {
+      const dn    = displayName(person[0].name, soldiers)
+      const fourD = soldierFourD(soldiers, person[0].name)
+      const frags = person
+        .map((e) => (e.reason ?? '') + (datedScopes.has(e.scope) && e.start && e.end ? ` (${toDDMMYY(e.start)}-${toDDMMYY(e.end)})` : ''))
+        .filter(Boolean)
+      let line = `${idx + 1}. ${dn}${fourD ? ' ' + fourD : ''}`
+      if (frags.length) line += ` - ${frags.join('; ')}`
       return line
     })
   }
@@ -457,20 +466,17 @@ function generateCougarReport(input: ParadeReportInput, config: ParadeStateConfi
     const group = activeExceptions.filter((e) => e.scope === key)
     lines.push(`${label}: ${group.length.toString().padStart(2, '0')}`)
 
-    group.forEach((e, idx) => {
-      const dn    = displayName(e.name, soldiers)
-      const fourD = soldierFourD(soldiers, e.name)
+    groupExceptionsByPerson(group).forEach((person, idx) => {
+      const dn    = displayName(person[0].name, soldiers)
+      const fourD = soldierFourD(soldiers, person[0].name)
       lines.push('')
       lines.push(`S/N: ${(idx + 1).toString().padStart(2, '0')}`)
       lines.push(`R/N: ${dn}${fourD ? ' ' + fourD : ''}`)
-      if (e.reason) lines.push(`Reason: ${e.reason}`)
-      if (key === 'Att C' || key === 'Status') {
-        if (e.start && e.end) lines.push(`Duration: ${toDDMMYY(e.start)} - ${toDDMMYY(e.end)}`)
-      } else if (key === 'MA') {
-        if (e.end) lines.push(`Date: ${toDDMMYY(e.end)}`)
-      } else {
-        if (e.start && e.end) lines.push(`Duration: ${toDDMMYY(e.start)} - ${toDDMMYY(e.end)}`)
-      }
+      const dateFrag = (e: Exception) => key === 'MA'
+        ? (e.end ? toDDMMYY(e.end) : '')
+        : (e.start && e.end ? `${toDDMMYY(e.start)} - ${toDDMMYY(e.end)}` : '')
+      const frags = person.map((e) => [e.reason ?? '', dateFrag(e)].filter(Boolean).join(', ')).filter(Boolean)
+      if (frags.length) lines.push(`Reason / Duration: ${frags.join('; ')}`)
     })
   }
 
@@ -537,19 +543,25 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
       const group = activeExceptions.filter((e) => e.scope === key)
       if (group.length === 0) continue
       lines.push(`  ${label}:`)
-      group.forEach((e) => {
-        let line = `    - ${displayName(e.name, soldiers)}`
-        if (e.start && e.end) line += ` (${toSGDate(e.start)} - ${toSGDate(e.end)})`
-        if (e.reason) line += ` — ${e.reason}`
+      groupExceptionsByPerson(group).forEach((person) => {
+        const frags = person
+          .map((e) => {
+            const dates = e.start && e.end ? `(${toSGDate(e.start)} - ${toSGDate(e.end)})` : ''
+            return [dates, e.reason ? `— ${e.reason}` : ''].filter(Boolean).join(' ')
+          })
+          .filter(Boolean)
+        let line = `    - ${displayName(person[0].name, soldiers)}`
+        if (frags.length) line += ` ${frags.join('; ')}`
         lines.push(line)
       })
     }
     const other = activeExceptions.filter((e) => !knownKeys.has(e.scope))
     if (other.length > 0) {
       lines.push('  OTHERS:')
-      other.forEach((e) => {
-        let line = `    - ${displayName(e.name, soldiers)}`
-        if (e.reason) line += ` — ${e.reason}`
+      groupExceptionsByPerson(other).forEach((person) => {
+        const frags = person.map((e) => e.reason ?? '').filter(Boolean)
+        let line = `    - ${displayName(person[0].name, soldiers)}`
+        if (frags.length) line += ` — ${frags.join('; ')}`
         lines.push(line)
       })
     }

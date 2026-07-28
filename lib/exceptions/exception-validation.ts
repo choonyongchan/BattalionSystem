@@ -66,6 +66,23 @@ export function exceptionSortValue(
   }
 }
 
+export function compareExceptionOrder(a: Exception, b: Exception): number {
+  if (!a.end && !b.end) return 0
+  if (!a.end) return -1
+  if (!b.end) return 1
+  return new Date(a.end).getTime() - new Date(b.end).getTime()
+}
+
+export function groupExceptionsByPerson(entries: Exception[]): Exception[][] {
+  const order: string[] = []
+  const byName = new Map<string, Exception[]>()
+  for (const e of entries) {
+    if (!byName.has(e.name)) { byName.set(e.name, []); order.push(e.name) }
+    byName.get(e.name)!.push(e)
+  }
+  return order.map((name) => [...byName.get(name)!].sort(compareExceptionOrder))
+}
+
 export function strWarn(
   platoon: string, rt: string,
   strOverrides: Record<string, Record<string, string>>,

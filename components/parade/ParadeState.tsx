@@ -15,10 +15,11 @@ import { useSettingsQuery } from '@/lib/settings'
 import Link from 'next/link'
 import {
   EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
-  isValidTime, buildReason, exceptionSortValue,
+  isValidTime, buildReason,
   strWarn as checkStrWarn, anyMismatch as checkAnyMismatch,
   isExceptionValid as checkExceptionValid, validateAddEx as computeAddExErrors,
   isEditExceptionValid as checkEditExceptionValid, validateEditEx as computeEditExErrors,
+  compareExceptionOrder, groupExceptionsByPerson,
 } from '@/lib/exceptions/exception-validation'
 import type { ExceptionScope, ExForm } from '@/lib/exceptions/exception-validation'
 
@@ -103,8 +104,6 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
-  const [exceptionsSortKey, setExceptionsSortKey] = useState<'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end' | null>(null)
-  const [exceptionsSortDir, setExceptionsSortDir] = useState<'asc' | 'desc'>('asc')
   const [search, setSearch] = useState('')
 
 
@@ -165,22 +164,12 @@ export default function ParadeState({
     setLoading(false)
   }
 
-  function toggleExceptionsSort(key: 'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end') {
-    if (exceptionsSortKey !== key) { setExceptionsSortKey(key); setExceptionsSortDir('asc') }
-    else if (exceptionsSortDir === 'asc') setExceptionsSortDir('desc')
-    else { setExceptionsSortKey(null); setExceptionsSortDir('asc') }
-  }
-
   const sortedExceptions = [...exceptions].sort((a, b) => {
-    if (!exceptionsSortKey) {
-      const dateA = new Date(a.start ?? 0).getTime()
-      const dateB = new Date(b.start ?? 0).getTime()
-      return dateA - dateB || a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-    }
-    const va = exceptionSortValue(a, exceptionsSortKey, soldiers)
-    const vb = exceptionSortValue(b, exceptionsSortKey, soldiers)
-    const cmp = typeof va === 'number' ? va - (vb as number) : va.localeCompare(vb as string)
-    return exceptionsSortDir === 'asc' ? cmp : -cmp
+    const scopeCmp = (a.scope ?? '').toLowerCase().localeCompare((b.scope ?? '').toLowerCase())
+    if (scopeCmp !== 0) return scopeCmp
+    const nameCmp = a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    if (nameCmp !== 0) return nameCmp
+    return compareExceptionOrder(a, b)
   })
 
   const query = search.trim().toLowerCase()
@@ -217,6 +206,21 @@ export default function ParadeState({
   )
 
   const exceptionsTabRows = activeExceptions.filter((e) => e.scope !== 'Guard Duty')
+
+  // exceptionsTabRows is sorted by scope then name (see sortedExceptions), so entries for the
+  // same scope are always contiguous — group each scope's entries by person for the merged table display.
+  const exceptionGroups: Exception[][] = []
+  {
+    let scopeChunk: Exception[] = []
+    for (const e of exceptionsTabRows) {
+      if (scopeChunk.length && scopeChunk[0].scope !== e.scope) {
+        exceptionGroups.push(...groupExceptionsByPerson(scopeChunk))
+        scopeChunk = []
+      }
+      scopeChunk.push(e)
+    }
+    if (scopeChunk.length) exceptionGroups.push(...groupExceptionsByPerson(scopeChunk))
+  }
 
   const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
   const rankRuleOverrides = settings?.eligibility_rank_overrides ?? {}
@@ -1097,59 +1101,41 @@ export default function ParadeState({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('four_d')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          4D
-                          {exceptionsSortKey === 'four_d' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('name')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          Name
-                          {exceptionsSortKey === 'name' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('scope')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          Scope
-                          {exceptionsSortKey === 'scope' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('reason')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          Reason
-                          {exceptionsSortKey === 'reason' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('start')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          Start
-                          {exceptionsSortKey === 'start' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
-                        <button onClick={() => toggleExceptionsSort('end')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                          End
-                          {exceptionsSortKey === 'end' && <span className="text-xs">{exceptionsSortDir === 'asc' ? '↑' : '↓'}</span>}
-                        </button>
-                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">4D</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">Start</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">End</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Absent?</th>
                       <th className="w-24" />
                     </tr>
                   </thead>
                   <tbody>
-                    {exceptionsTabRows.map((e, i) => {
-                      const isEditing = editEx?.id === e.id
-                      const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
-                      return (
+                    {(() => {
+                      let rowIdx = -1
+                      return exceptionGroups.map((exGroup, gi) => {
+                        const isGroupEditing = exGroup.some((entry) => editEx?.id === entry.id)
+                        return (
+                          <React.Fragment key={`${exGroup[0].scope}-${exGroup[0].name}-${gi}`}>
+                            {exGroup.map((e, ei) => {
+                              rowIdx++
+                              const i = rowIdx
+                              const isEditing = editEx?.id === e.id
+                              const editSingleDate = isEditing && SINGLE_DATE_SCOPES.includes(editEx!.scope as ExceptionScope)
+                              const showGroupCells = ei === 0 || isGroupEditing
+                              const groupRowSpan = ei === 0 && !isGroupEditing ? exGroup.length : undefined
+                              return (
                         <React.Fragment key={e.id}>
                           <tr className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
                             {isEditing ? (
                               <>
-                                <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                                {showGroupCells && (
+                                  <>
+                                <td className="px-4 py-3 text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === editEx!.name)?.four_d ?? '–'}
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-2" rowSpan={groupRowSpan}>
                                   <SearchDropdown
                                     {...soldierDropdownProps}
                                     items={soldiers}
@@ -1158,7 +1144,7 @@ export default function ParadeState({
                                     inputClass={exClass('name')}
                                   />
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-2" rowSpan={groupRowSpan}>
                                   <div className="flex flex-wrap gap-1">
                                     {guardDutyScopes.map((s) => (
                                       <button
@@ -1174,6 +1160,8 @@ export default function ParadeState({
                                     ))}
                                   </div>
                                 </td>
+                                  </>
+                                )}
                                 <td className="px-2 py-2">
                                   {editEx!.scope === 'MA' ? (
                                     <div className="space-y-1">
@@ -1272,17 +1260,21 @@ export default function ParadeState({
                               </>
                             ) : (
                               <>
-                                <td className="px-4 py-3 text-gray-400 font-mono text-xs">
+                                {showGroupCells && (
+                                  <>
+                                <td className="px-4 py-3 text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === e.name)?.four_d ?? '–'}
                                 </td>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap">
+                                <td className="px-4 py-3 font-medium whitespace-nowrap" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === e.name)?.rank ? `${soldiers.find((s) => s.name === e.name)?.rank} ${e.name}` : e.name}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3" rowSpan={groupRowSpan}>
                                   <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
                                     {e.scope ?? '–'}
                                   </span>
                                 </td>
+                                  </>
+                                )}
                                 <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.start ? toSGDate(e.start) : '–'}</td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.end ? toSGDate(e.end) : '–'}</td>
@@ -1328,8 +1320,12 @@ export default function ParadeState({
                             )}
                           </tr>
                         </React.Fragment>
-                      )
-                    })}
+                              )
+                            })}
+                          </React.Fragment>
+                        )
+                      })
+                    })()}
                   </tbody>
                 </table>
               </div>

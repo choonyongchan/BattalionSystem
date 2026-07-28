@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   isValidTime, buildReason, isExceptionValid, validateAddEx,
   isEditExceptionValid, validateEditEx, exceptionSortValue, strWarn, anyMismatch,
+  compareExceptionOrder, groupExceptionsByPerson,
 } from '@/lib/exceptions/exception-validation'
 import type { ExForm } from '@/lib/exceptions/exception-validation'
 import type { Exception, Soldier } from '@/lib/supabase'
@@ -101,6 +102,48 @@ describe('exceptionSortValue', () => {
     const e = { ...baseException, start: '2026-01-01', end: '2026-01-02' }
     expect(exceptionSortValue(e, 'start', soldiers)).toBe(new Date('2026-01-01').getTime())
     expect(exceptionSortValue(e, 'end', soldiers)).toBe(new Date('2026-01-02').getTime())
+  })
+})
+
+describe('compareExceptionOrder', () => {
+  it('treats two no-end-date exceptions as equal', () => {
+    expect(compareExceptionOrder({ ...baseException, end: null }, { ...baseException, end: null })).toBe(0)
+  })
+  it('sorts no-end-date before dated', () => {
+    expect(compareExceptionOrder({ ...baseException, end: null }, { ...baseException, end: '2026-01-01' })).toBeLessThan(0)
+    expect(compareExceptionOrder({ ...baseException, end: '2026-01-01' }, { ...baseException, end: null })).toBeGreaterThan(0)
+  })
+  it('sorts dated exceptions by end date ascending', () => {
+    expect(compareExceptionOrder({ ...baseException, end: '2026-01-01' }, { ...baseException, end: '2026-03-01' })).toBeLessThan(0)
+    expect(compareExceptionOrder({ ...baseException, end: '2026-03-01' }, { ...baseException, end: '2026-01-01' })).toBeGreaterThan(0)
+  })
+})
+
+describe('groupExceptionsByPerson', () => {
+  it('consolidates multiple entries for the same person into one group', () => {
+    const entries: Exception[] = [
+      { ...baseException, id: 1, name: 'BRIAN TAN', reason: 'Excuse RMJ', end: '2026-01-12' },
+      { ...baseException, id: 2, name: 'BRIAN TAN', reason: 'Excuse Live Firing', end: '2026-03-12' },
+      { ...baseException, id: 3, name: 'BRIAN TAN', reason: 'Perm Excuse Flags', end: null },
+    ]
+    const groups = groupExceptionsByPerson(entries)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].map((e) => e.reason)).toEqual(['Perm Excuse Flags', 'Excuse RMJ', 'Excuse Live Firing'])
+  })
+  it('keeps different people in separate groups, ordered by first appearance', () => {
+    const entries: Exception[] = [
+      { ...baseException, id: 1, name: 'BRIAN TAN' },
+      { ...baseException, id: 2, name: 'AMOS LEE' },
+      { ...baseException, id: 3, name: 'BRIAN TAN' },
+    ]
+    const groups = groupExceptionsByPerson(entries)
+    expect(groups.map((g) => g[0].name)).toEqual(['BRIAN TAN', 'AMOS LEE'])
+    expect(groups[0]).toHaveLength(2)
+    expect(groups[1]).toHaveLength(1)
+  })
+  it('single-entry groups are unaffected', () => {
+    const entries: Exception[] = [{ ...baseException, id: 1, name: 'AMOS LEE' }]
+    expect(groupExceptionsByPerson(entries)).toEqual([entries])
   })
 })
 
