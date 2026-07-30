@@ -1,5 +1,5 @@
 ﻿import type { Soldier, Exception, DutyEntry } from '../supabase'
-import { displayName } from '../supabase'
+import { displayName, displayDutyName } from '../supabase'
 import type { ParadeStateConfig, Company } from '../companies'
 import { getRankType, RANK_TYPES, RANK_ORDER } from '../companies'
 import { groupExceptionsByPerson } from '../exceptions/exception-validation'
@@ -139,7 +139,7 @@ function generateHerculesReport(input: ParadeReportInput, config: ParadeStateCon
   config.visibleDutyTypes
     .map((type) => duties.find((du) => du.duty_type === type))
     .filter((du): du is DutyEntry => du !== undefined)
-    .forEach((du) => lines.push(`${du.duty_type}: ${du.name ? displayName(du.name, soldiers) : 'TBC'}`))
+    .forEach((du) => lines.push(`${du.duty_type}: ${du.name ? displayDutyName(du.name, soldiers) : 'TBC'}`))
 
   lines.push(SEP)
   lines.push(`Total Str: ${total}`)
@@ -573,7 +573,7 @@ function generateStandardReport(input: ParadeReportInput, config: ParadeStateCon
   if (visibleDuties.length > 0) {
     lines.push('')
     lines.push('DUTIES:')
-    visibleDuties.forEach((du) => lines.push(`  ${du.duty_type}: ${du.name ? displayName(du.name, soldiers) : 'TBC'}`))
+    visibleDuties.forEach((du) => lines.push(`  ${du.duty_type}: ${du.name ? displayDutyName(du.name, soldiers) : 'TBC'}`))
   }
 
   lines.push('')

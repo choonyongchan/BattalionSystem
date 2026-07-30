@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 export default function SearchDropdown<T>({
   items,
@@ -32,6 +33,7 @@ export default function SearchDropdown<T>({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [openUpward, setOpenUpward] = useState(false)
+  const [menuRect, setMenuRect] = useState<{ left: number; width: number; top: number; bottom: number } | null>(null)
 
   const filtered = query.trim() ? items.filter(i => matches(i, query)) : items
 
@@ -46,9 +48,22 @@ export default function SearchDropdown<T>({
   useEffect(() => {
     if (!open || !ref.current) return
     const DROPDOWN_MAX_HEIGHT = 208 // matches max-h-52
-    const { bottom } = ref.current.getBoundingClientRect()
-    const spaceBelow = window.innerHeight - bottom
-    setOpenUpward(spaceBelow < DROPDOWN_MAX_HEIGHT)
+
+    function updateRect() {
+      if (!ref.current) return
+      const { left, width, top, bottom } = ref.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - bottom
+      setOpenUpward(spaceBelow < DROPDOWN_MAX_HEIGHT)
+      setMenuRect({ left, width, top, bottom })
+    }
+
+    updateRect()
+    window.addEventListener('resize', updateRect)
+    window.addEventListener('scroll', updateRect, true)
+    return () => {
+      window.removeEventListener('resize', updateRect)
+      window.removeEventListener('scroll', updateRect, true)
+    }
   }, [open])
 
   useEffect(() => {
@@ -72,8 +87,15 @@ export default function SearchDropdown<T>({
         autoComplete="off"
         disabled={disabled}
       />
-      {!disabled && open && filtered.length > 0 && (
-        <ul className={`absolute z-30 left-0 right-0 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg ${openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
+      {!disabled && open && filtered.length > 0 && menuRect && createPortal(
+        <ul
+          className="fixed z-30 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg"
+          style={{
+            left: menuRect.left,
+            width: menuRect.width,
+            ...(openUpward ? { bottom: window.innerHeight - menuRect.top + 4 } : { top: menuRect.bottom + 4 }),
+          }}
+        >
           {filtered.map(item => (
             <li key={getKey(item)}>
               <button
@@ -90,7 +112,8 @@ export default function SearchDropdown<T>({
               </button>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   )

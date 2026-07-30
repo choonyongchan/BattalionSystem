@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
-import { displayName, splitDutyNames, DUTY_NAME_SEP } from '@/lib/supabase'
+import { displayName, splitDutyNames, DUTY_NAME_SEP, EXTERNAL_DUTY_PERSON } from '@/lib/supabase'
 import type { Soldier, Exception, DutyEntry } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANK_TYPES, ALL_DUTY_TYPES, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES, MULTI_NAME_DUTY_TYPES } from '@/lib/companies'
@@ -19,7 +19,7 @@ import {
   strWarn as checkStrWarn, anyMismatch as checkAnyMismatch,
   isExceptionValid as checkExceptionValid, validateAddEx as computeAddExErrors,
   isEditExceptionValid as checkEditExceptionValid, validateEditEx as computeEditExErrors,
-  compareExceptionOrder, groupExceptionsByPerson,
+  compareExceptionOrder, groupExceptionsByPerson, exceptionSortValue,
 } from '@/lib/exceptions/exception-validation'
 import type { ExceptionScope, ExForm } from '@/lib/exceptions/exception-validation'
 
@@ -137,6 +137,15 @@ export default function ParadeState({
   const [addExErrors, setAddExErrors] = useState<Record<string, boolean>>({})
   const [savingEx, setSavingEx] = useState(false)
   const exConfirm = useConfirmDelete<number>()
+  const [exSort, setExSort] = useState<{ column: 'start' | 'end'; dir: 'asc' | 'desc' } | null>(null)
+
+  function cycleExSort(column: 'start' | 'end') {
+    setExSort((prev) => {
+      if (!prev || prev.column !== column) return { column, dir: 'asc' }
+      if (prev.dir === 'asc') return { column, dir: 'desc' }
+      return null
+    })
+  }
 
   useEffect(() => {
     load()
@@ -220,6 +229,16 @@ export default function ParadeState({
       scopeChunk.push(e)
     }
     if (scopeChunk.length) exceptionGroups.push(...groupExceptionsByPerson(scopeChunk))
+  }
+
+  // Column sort reorders groups only (each group's own row order is untouched); the
+  // first entry in a group is its "first applicable" status for tie-breaking purposes.
+  if (exSort) {
+    exceptionGroups.sort((a, b) => {
+      const av = exceptionSortValue(a[0], exSort.column, soldiers) as number
+      const bv = exceptionSortValue(b[0], exSort.column, soldiers) as number
+      return exSort.dir === 'asc' ? av - bv : bv - av
+    })
   }
 
   const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
@@ -436,7 +455,7 @@ export default function ParadeState({
 
   const soldierDropdownProps = {
     getKey: (s: Soldier) => s.name,
-    getLabel: (s: Soldier) => `${s.rank} ${s.name}`,
+    getLabel: (s: Soldier) => `${s.rank} ${s.name}`.trim(),
     matches: (s: Soldier, q: string) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase()),
     renderOption: (s: Soldier) => (
       <div className="flex gap-2">
@@ -445,6 +464,14 @@ export default function ParadeState({
       </div>
     ),
     placeholder: 'Search soldier...',
+  }
+
+  const EXTERNAL_PERSONNEL: Soldier = { rank: '', name: EXTERNAL_DUTY_PERSON, platoon: '', four_d: '' }
+
+  function dutyPersonnelItems(dutyType: string, excludeExternal: boolean) {
+    const items = eligibleSoldiers(dutyType, soldiers, eligibilityOverrides, rankRuleOverrides)
+    if (dutyType !== 'Duty Clerk' || excludeExternal) return items
+    return [...items, EXTERNAL_PERSONNEL]
   }
 
   const guardDutyRankOverrides = settings?.guard_duty_rank_overrides ?? {}
@@ -646,7 +673,7 @@ export default function ParadeState({
                             <td className="px-2 py-2 space-y-1">
                               <SearchDropdown
                                 {...soldierDropdownProps}
-                                items={eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
+                                items={dutyPersonnelItems(editDuty.duty_type, editDuty.name2 === EXTERNAL_PERSONNEL.name)}
                                 value={editDuty.name}
                                 onChange={name => setEditDuty({ ...editDuty, name })}
                                 inputClass={dutyEditInputClass}
@@ -654,7 +681,7 @@ export default function ParadeState({
                               {MULTI_NAME_DUTY_TYPES.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
                                 <SearchDropdown
                                   {...soldierDropdownProps}
-                                  items={eligibleSoldiers(editDuty.duty_type, soldiers, eligibilityOverrides, rankRuleOverrides)}
+                                  items={dutyPersonnelItems(editDuty.duty_type, editDuty.name === EXTERNAL_PERSONNEL.name)}
                                   value={editDuty.name2}
                                   onChange={name => setEditDuty({ ...editDuty, name2: name })}
                                   inputClass={dutyEditInputClass}
@@ -1105,8 +1132,30 @@ export default function ParadeState({
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Start</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">End</th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => cycleExSort('start')}
+                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        >
+                          Start
+                          <span className="text-gray-300 text-[10px]">
+                            {exSort?.column === 'start' ? (exSort.dir === 'asc' ? '▲' : '▼') : '⇅'}
+                          </span>
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                        <button
+                          type="button"
+                          onClick={() => cycleExSort('end')}
+                          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        >
+                          End
+                          <span className="text-gray-300 text-[10px]">
+                            {exSort?.column === 'end' ? (exSort.dir === 'asc' ? '▲' : '▼') : '⇅'}
+                          </span>
+                        </button>
+                      </th>
                       <th className="text-left px-4 py-3 font-medium text-gray-500">Absent?</th>
                       <th className="w-24" />
                     </tr>
