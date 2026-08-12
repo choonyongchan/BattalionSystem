@@ -9,7 +9,7 @@ import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/lib/duty/duty-rules'
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty/duty-dashboard'
 import { useAuth } from '@/hooks/useAuth'
-import { useSettingsQuery, usePublicHolidaysQuery } from '@/lib/settings'
+import { useSettingsQuery, usePublicHolidaysQuery, resolveDayType } from '@/lib/settings'
 import CommanderLoginForm from '../auth/CommanderLoginForm'
 
 export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
@@ -27,6 +27,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const [duties, setDuties] = useState<DutyEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [dayFilter, setDayFilter] = useState<'all' | 'weekday' | 'weekend'>('all')
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -72,14 +73,21 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     dayMultipliers: settings?.duty_day_multipliers ?? { MonThurs: 1, Friday: 1, Saturday: 1, Sunday: 1, PublicHoliday: 1 },
     exceptions: settings?.duty_weight_exceptions ?? {},
   }), [settings])
-  const points = useMemo(() => computePoints(duties, weightSettings, holidays), [duties, weightSettings, holidays])
+  const dayFilteredDuties = useMemo(() => {
+    if (dayFilter === 'all') return duties
+    return duties.filter(d => {
+      const isWeekday = resolveDayType(d.date, holidays) === 'MonThurs'
+      return dayFilter === 'weekday' ? isWeekday : !isWeekday
+    })
+  }, [duties, dayFilter, holidays])
+  const points = useMemo(() => computePoints(dayFilteredDuties, weightSettings, holidays), [dayFilteredDuties, weightSettings, holidays])
   const pointsByDutyType = useMemo(
-    () => computePointsByDutyType(duties, weightSettings, holidays),
-    [duties, weightSettings, holidays],
+    () => computePointsByDutyType(dayFilteredDuties, weightSettings, holidays),
+    [dayFilteredDuties, weightSettings, holidays],
   )
   const filterPoints = useMemo(
-    () => filter === 'all' ? points : computePoints(duties, weightSettings, holidays, filter),
-    [filter, points, duties, weightSettings, holidays],
+    () => filter === 'all' ? points : computePoints(dayFilteredDuties, weightSettings, holidays, filter),
+    [filter, points, dayFilteredDuties, weightSettings, holidays],
   )
 
   const today = new Date().toISOString().slice(0, 10)
@@ -117,6 +125,21 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
   ) : (
     <div className="space-y-6">
+
+            {/* Day-type tabs */}
+            <div className="flex border-b border-gray-200">
+              {(['all', 'weekday', 'weekend'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setDayFilter(f)}
+                  className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
+                    dayFilter === f ? `${theme.activeBorder} ${theme.activeText}` : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : f === 'weekday' ? 'M-T' : 'F-S/PH'}
+                </button>
+              ))}
+            </div>
 
             {/* Filter pills — duty-weight editing now lives on the Settings page */}
             <div className="flex gap-2 flex-wrap">
