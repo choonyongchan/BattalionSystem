@@ -1,5 +1,6 @@
 -- Unified schema for all companies in one Supabase project.
--- Each company gets 4 prefixed tables: {Company}_NominalRoll, _Exceptions, _Duty, _Configuration.
+-- Each company gets prefixed tables: {Company}_NominalRoll, _Exceptions, _Duty, _Configuration,
+-- _StrengthOverride, _Settings, _OffLeave.
 -- Run scripts/sync-schema.ts to apply to the hercules project.
 -- Safe to re-run (IF NOT EXISTS, ON CONFLICT DO NOTHING).
 
@@ -76,6 +77,14 @@ BEGIN
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_StrengthOverride" TO authenticated', c);
 
     EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_OffLeave" (
+        name  text PRIMARY KEY,
+        off   numeric(5,1) NOT NULL DEFAULT 0 CHECK (off   >= 0 AND off   * 2 = floor(off   * 2)),
+        leave numeric(5,1) NOT NULL DEFAULT 0 CHECK (leave >= 0 AND leave * 2 = floor(leave * 2))
+      )', c);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_OffLeave" TO authenticated', c);
+
+    EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Settings" (
         id                          smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
         duty_base_weights           jsonb NOT NULL DEFAULT ''{"CDO":1,"CDS":1,"COS":1,"PDS1":1,"PDS2":1,"PDS3":1,"PDS4":1,"Guard Duty":1}'',
@@ -103,6 +112,7 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_Configuration"     ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_StrengthOverride"  ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Settings"          ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_OffLeave"          ENABLE ROW LEVEL SECURITY', c);
 
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_NominalRoll"   ON public."%s_NominalRoll"',   c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Exceptions"    ON public."%s_Exceptions"',    c, c);
@@ -110,6 +120,7 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Configuration"     ON public."%s_Configuration"',     c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"', c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Settings" ON public."%s_Settings"', c, c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_OffLeave" ON public."%s_OffLeave"', c, c);
 
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_NominalRoll" ON public."%s_NominalRoll"
@@ -148,6 +159,13 @@ BEGIN
 
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_Settings" ON public."%s_Settings"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_OffLeave" ON public."%s_OffLeave"
        FOR ALL TO authenticated
        USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
        WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',

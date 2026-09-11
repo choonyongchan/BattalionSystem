@@ -67,6 +67,13 @@ type SettingsTable = {
   Relationships: []
 }
 
+type OffLeaveTable = {
+  Row:           { name: string; off: number; leave: number }
+  Insert:        { name: string; off?: number; leave?: number }
+  Update:        { name?: string; off?: number; leave?: number }
+  Relationships: []
+}
+
 type PublicHolidaysTable = {
   Row:           { date: string; name: string }
   Insert:        { date: string; name?: string }
@@ -79,7 +86,8 @@ type CompanyTables =
   { [C in Company as `${Capitalize<C>}_Exceptions`]:    ExceptionsTable  } &
   { [C in Company as `${Capitalize<C>}_Duty`]:          DutyTable        } &
   { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      } &
-  { [C in Company as `${Capitalize<C>}_Settings`]:      SettingsTable    }
+  { [C in Company as `${Capitalize<C>}_Settings`]:      SettingsTable    } &
+  { [C in Company as `${Capitalize<C>}_OffLeave`]:      OffLeaveTable    }
 
 type Database = {
   public: {
@@ -114,6 +122,12 @@ export interface Exception {
   end: string | null
   counts_as_absence: boolean
   time?: string | null
+}
+
+export interface OffLeave {
+  name: string
+  off: number
+  leave: number
 }
 
 export interface DutyEntry {
