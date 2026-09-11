@@ -10,6 +10,7 @@ import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/lib/duty/
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty/duty-dashboard'
 import { useAuth } from '@/hooks/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery, resolveDayType } from '@/lib/settings'
+import { todaySGDate } from '@/lib/utils'
 import CommanderLoginForm from '../auth/CommanderLoginForm'
 
 export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
@@ -90,7 +91,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     [filter, points, dayFilteredDuties, weightSettings, holidays],
   )
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todaySGDate()
   const backToBack = useMemo(
     () => new Set(duties.filter(d => d.date === today).map(d => d.name)),
     [duties, today],

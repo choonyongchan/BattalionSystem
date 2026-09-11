@@ -12,6 +12,7 @@ import SearchDropdown from '@/components/shared/SearchDropdown'
 import { track } from '@vercel/analytics'
 import { generateParadeReport } from '@/lib/parade/parade-report'
 import { useSettingsQuery } from '@/lib/settings'
+import { todaySGDate } from '@/lib/utils'
 import Link from 'next/link'
 import {
   EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
@@ -53,7 +54,7 @@ function toSGDate(iso: string) {
 }
 
 function todayISO() {
-  return new Date().toISOString().split('T')[0]
+  return todaySGDate()
 }
 
 function offsetDate(iso: string, days: number) {

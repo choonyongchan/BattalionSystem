@@ -4,3 +4,7 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+export function todaySGDate(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' })
+}
