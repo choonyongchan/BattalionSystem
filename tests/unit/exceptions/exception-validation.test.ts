@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isValidTime, buildReason, isExceptionValid, validateAddEx,
+  isValidTime, isExceptionValid, validateAddEx,
   isEditExceptionValid, validateEditEx, exceptionSortValue, strWarn, anyMismatch,
   compareExceptionOrder, groupExceptionsByPerson,
 } from '@/lib/exceptions/exception-validation'
@@ -15,24 +15,7 @@ describe('isValidTime', () => {
   it('rejects malformed input', () => expect(isValidTime('noon')).toBe(false))
 })
 
-describe('buildReason', () => {
-  it('non-MA scope returns trimmed reason or null', () => {
-    expect(buildReason('  Flu  ', '', 'Att C')).toBe('Flu')
-    expect(buildReason('  ', '', 'Att C')).toBeNull()
-  })
-  it('MA scope with both med center and reason joins them', () => {
-    expect(buildReason('Skin Appt', 'IMH', 'MA')).toBe('IMH: Skin Appt')
-  })
-  it('MA scope with only med center or only reason returns whichever is set', () => {
-    expect(buildReason('', 'IMH', 'MA')).toBe('IMH')
-    expect(buildReason('Skin Appt', '', 'MA')).toBe('Skin Appt')
-  })
-  it('MA scope with neither returns null', () => {
-    expect(buildReason('', '', 'MA')).toBeNull()
-  })
-})
-
-const baseExForm: ExForm = { name: 'TAN AH KOW', scope: 'Off/Leave', reason: '', start: '2026-01-01', end: '2026-01-01', counts_as_absence: true, time: '' }
+const baseExForm: ExForm = { name: 'TAN AH KOW', scope: 'Off/Leave', reason: '', start: '2026-01-01', end: '2026-01-01', counts_as_absence: true, time: '', location: '', in_out: '' }
 
 describe('isExceptionValid', () => {
   it('false when name is empty', () => {

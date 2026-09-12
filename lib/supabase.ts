@@ -9,9 +9,9 @@ type NominalRollTable = {
   Relationships: []
 }
 type ExceptionsTable = {
-  Row:           { id: number; name: string; scope: string; reason: string | null; start: string | null; end: string | null; counts_as_absence: boolean; time?: string | null }
-  Insert:        { id?: number; name: string; scope: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null }
-  Update:        { id?: number; name?: string; scope?: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null }
+  Row:           { id: number; name: string; scope: string; reason: string | null; start: string | null; end: string | null; counts_as_absence: boolean; time?: string | null; location?: string | null; in_out?: string | null }
+  Insert:        { id?: number; name: string; scope: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null; location?: string | null; in_out?: string | null }
+  Update:        { id?: number; name?: string; scope?: string; reason?: string | null; start?: string | null; end?: string | null; counts_as_absence?: boolean; time?: string | null; location?: string | null; in_out?: string | null }
   Relationships: []
 }
 type DutyTable = {
@@ -122,6 +122,8 @@ export interface Exception {
   end: string | null
   counts_as_absence: boolean
   time?: string | null
+  location?: string | null
+  in_out?: 'IN' | 'OUT' | null
 }
 
 export interface OffLeave {

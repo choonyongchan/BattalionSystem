@@ -101,9 +101,7 @@ describe('ParadeState', () => {
 
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(textarea.value).toContain('TOTAL STRENGTH : 13')
-      expect(textarea.value).toContain('PRESENT        : 9')
-      expect(textarea.value).toContain('ABSENT         : 4')
+      expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
   })
 
@@ -114,8 +112,7 @@ describe('ParadeState', () => {
 
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(textarea.value).toContain('PRESENT        : 9')
-      expect(textarea.value).toContain('ABSENT         : 4')
+      expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
 
     // GOH RONG HAO should still appear in exceptions list (report textarea also contains this text)
@@ -197,8 +194,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(textarea.value).toContain('PRESENT        : 9')
-      expect(textarea.value).toContain('ABSENT         : 4')
+      expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
   })
 
@@ -243,8 +239,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(textarea.value).toContain('PRESENT        : 8')
-      expect(textarea.value).toContain('ABSENT         : 5')
+      expect(textarea.value).toContain('COMPANY: 8/13')
     }, { timeout: 5000 })
   })
 
@@ -265,7 +260,7 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
   })
 
-  it('Add Exception button stays disabled until a soldier is picked, then MA can be saved with Medical Center/Reason/Date left blank', async () => {
+  it('Add Exception button stays disabled until a soldier is picked, then MA can be saved with Location/Reason/Date left blank', async () => {
     await renderOnFixtureDate()
     await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
@@ -279,7 +274,7 @@ describe('ParadeState', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'MA' }))
 
-    // Soldier + Scope are the only compulsory fields — Medical Center, Reason,
+    // Soldier + Scope are the only compulsory fields — Location, Reason,
     // and Date are all left blank here.
     await waitFor(() => expect(addButton).not.toBeDisabled())
     await userEvent.click(addButton)
@@ -295,7 +290,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
     const reportBeforeNav = await waitFor(() => {
       const ta = document.querySelector('textarea') as HTMLTextAreaElement
-      expect(ta.value).toContain('TOTAL STRENGTH')
+      expect(ta.value).toContain('COMPANY:')
       return ta.value
     }, { timeout: 10000 })
 

@@ -35,6 +35,8 @@ BEGIN
       )', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS counts_as_absence boolean NOT NULL DEFAULT true', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS time text', c);
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS location text', c);
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS in_out text CHECK (in_out IS NULL OR in_out = ANY(ARRAY[''IN'',''OUT'']))', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN reason DROP NOT NULL', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN start DROP NOT NULL', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN "end" DROP NOT NULL', c);

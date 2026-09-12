@@ -42,9 +42,7 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
-    await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
-    await expect(output).toContainText('PRESENT        : 9')
-    await expect(output).toContainText('ABSENT         : 4')
+    await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })
   })
 
   test('generated report includes exception details', async ({ page }) => {
@@ -79,8 +77,7 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
-    await expect(output).toContainText('PRESENT        : 9', { timeout: 10000 })
-    await expect(output).toContainText('ABSENT         : 4')
+    await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })
   })
 
   test('editing an existing exception saves successfully (regression: "time" column must exist)', async ({ page }) => {
@@ -99,7 +96,7 @@ test.describe('Parade State workflow', () => {
     await expect(page.getByText('Medical Leave')).toBeVisible({ timeout: 10000 })
   })
 
-  test('Add Exception button is disabled until Soldier is picked; MA can be saved with Medical Center/Reason/Date blank', async ({ page }) => {
+  test('Add Exception button is disabled until Soldier is picked; MA can be saved with Location/Reason/Date blank', async ({ page }) => {
     await page.getByRole('button', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
@@ -113,7 +110,7 @@ test.describe('Parade State workflow', () => {
     await page.getByText('HO KAI XIANG').first().click()
     await page.getByRole('button', { name: 'MA' }).click()
 
-    // Soldier + Scope are the only compulsory fields — Medical Center, Reason,
+    // Soldier + Scope are the only compulsory fields — Location, Reason,
     // and Date are all left blank here, and the button should still be enabled.
     await expect(addBtn).toBeEnabled()
     await addBtn.click()
@@ -130,8 +127,6 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'First Parade' }).click()
 
     const output = page.locator('textarea')
-    await expect(output).toContainText('TOTAL STRENGTH : 13', { timeout: 10000 })
-    await expect(output).toContainText('PRESENT        : 9')
-    await expect(output).toContainText('ABSENT         : 4')
+    await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })
   })
 })

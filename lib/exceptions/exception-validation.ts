@@ -5,21 +5,19 @@ export type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
 export const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
-export type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string }
+// Scopes that carry an optional IN/OUT (of camp) marker in the new parade-state format.
+export const IN_OUT_SCOPES: ExceptionScope[] = ['Att C', 'Report Sick', 'MA', 'Others']
+
+// Scopes that print an optional "@ <location>" suffix in the new parade-state format.
+export const LOCATION_PRINT_SCOPES: ExceptionScope[] = ['MA', 'Others']
+
+export type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string; location: string; in_out: '' | 'IN' | 'OUT' }
 export type StatusRow = { start: string; end: string; reason: string }
 
 export function isValidTime(t: string): boolean {
   if (!t) return true
   const m = t.match(/^(\d{2}):(\d{2})$/)
   return !!m && +m[1] <= 23 && +m[2] <= 59
-}
-
-export function buildReason(mainReason: string, medCenterVal: string, scope: ExceptionScope): string | null {
-  const r = mainReason.trim()
-  if (scope !== 'MA') return r || null
-  const mc = medCenterVal.trim()
-  if (mc && r) return `${mc}: ${r}`
-  return mc || r || null
 }
 
 export function isExceptionValid(exForm: ExForm, statusRows: StatusRow[]): boolean {

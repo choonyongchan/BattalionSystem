@@ -15,8 +15,8 @@ import { useSettingsQuery } from '@/lib/settings'
 import { todaySGDate } from '@/lib/utils'
 import Link from 'next/link'
 import {
-  EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
-  isValidTime, buildReason,
+  EXCEPTION_SCOPES, SINGLE_DATE_SCOPES, IN_OUT_SCOPES,
+  isValidTime,
   strWarn as checkStrWarn, anyMismatch as checkAnyMismatch,
   isExceptionValid as checkExceptionValid, validateAddEx as computeAddExErrors,
   isEditExceptionValid as checkEditExceptionValid, validateEditEx as computeEditExErrors,
@@ -113,11 +113,9 @@ export default function ParadeState({
   const [showStrOverride, setShowStrOverride] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
-  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+  const [exForm, setExForm] = useState<ExForm>({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '', in_out: '' })
   const [exAbsenceTouched, setExAbsenceTouched] = useState(false)
   const [editAbsenceTouched, setEditAbsenceTouched] = useState(false)
-  const [medCenter, setMedCenter] = useState('')
-  const [editMedCenter, setEditMedCenter] = useState('')
   const [statusRows, setStatusRows] = useState<{ start: string; end: string; reason: string }[]>([{ start: date, end: date, reason: '' }])
 
   // Duties inline edit
@@ -299,19 +297,20 @@ export default function ParadeState({
         ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert({
           name: exForm.name,
           scope: exForm.scope,
-          reason: buildReason(exForm.reason, medCenter, exForm.scope),
+          reason: exForm.reason.trim() || null,
           start: (singleDate ? exForm.end : exForm.start) || null,
           end: exForm.end || null,
           counts_as_absence: exForm.counts_as_absence,
+          location: exForm.location.trim() || null,
+          in_out: IN_OUT_SCOPES.includes(exForm.scope) && exForm.in_out ? exForm.in_out : null,
           ...(exForm.scope === 'MA' && exForm.time ? { time: exForm.time } : {}),
         }))
     }
     if (error) { setError(error.message); return }
     setShowForm(false)
-    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '', in_out: '' })
     setExAbsenceTouched(false)
     setStatusRows([{ start: date, end: date, reason: '' }])
-    setMedCenter('')
     setAddExErrors({})
     await load()
   }
@@ -389,15 +388,17 @@ export default function ParadeState({
       .update({
         name: editEx.name,
         scope: editEx.scope,
-        reason: buildReason(editEx.reason ?? '', editMedCenter, editEx.scope as ExceptionScope),
+        reason: (editEx.reason ?? '').trim() || null,
         start: (singleDate ? editEx.end : editEx.start) || null,
         end: editEx.end || null,
         counts_as_absence: editEx.counts_as_absence,
         time: editEx.scope === 'MA' ? (editEx.time || null) : null,
+        location: (editEx.location ?? '').trim() || null,
+        in_out: IN_OUT_SCOPES.includes(editEx.scope as ExceptionScope) && editEx.in_out ? editEx.in_out : null,
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
-    else { setEditEx(null); setEditExErrors({}); setEditMedCenter(''); await load() }
+    else { setEditEx(null); setEditExErrors({}); await load() }
     setSavingEx(false)
   }
 
@@ -920,10 +921,9 @@ export default function ParadeState({
                 onClick={() => {
                   if (!showForm) {
                     // Reset using the currently-viewed parade date, not a stale snapshot from last close
-                    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '' })
+                    setExForm({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '', in_out: '' })
                     setExAbsenceTouched(false)
                     setStatusRows([{ start: date, end: date, reason: '' }])
-                    setMedCenter('')
                     setAddExErrors({})
                   }
                   setShowForm(!showForm)
@@ -1061,25 +1061,14 @@ export default function ParadeState({
                 )}
 
                 {exForm.scope === 'MA' && (
-                  <>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Medical Center</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. CGH, NUH, Raffles"
-                        value={medCenter}
-                        onChange={(e) => setMedCenter(e.target.value)}
-                        className={addExClass('medCenter')} />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Appointment Time (optional)</label>
-                      <input
-                        type="time"
-                        value={exForm.time}
-                        onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
-                        className={addExClass('time')} />
-                    </div>
-                  </>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Appointment Time (optional)</label>
+                    <input
+                      type="time"
+                      value={exForm.time}
+                      onChange={(e) => setExForm({ ...exForm, time: e.target.value })}
+                      className={addExClass('time')} />
+                  </div>
                 )}
 
                 {exForm.scope !== 'Status' && (
@@ -1091,6 +1080,36 @@ export default function ParadeState({
                       value={exForm.reason}
                       onChange={(e) => setExForm({ ...exForm, reason: e.target.value })}
                       className={addExClass('reason')} />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Location (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. CGH, NUH, Raffles"
+                    value={exForm.location}
+                    onChange={(e) => setExForm({ ...exForm, location: e.target.value })}
+                    className={addExClass('location')} />
+                </div>
+
+                {IN_OUT_SCOPES.includes(exForm.scope) && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">In/Out (optional)</label>
+                    <div className="flex gap-2">
+                      {(['', 'IN', 'OUT'] as const).map((v) => (
+                        <button
+                          key={v || 'blank'}
+                          type="button"
+                          onClick={() => setExForm({ ...exForm, in_out: v })}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${exForm.in_out === v
+                            ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                        >
+                          {v || '—'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1213,26 +1232,7 @@ export default function ParadeState({
                                   </>
                                 )}
                                 <td className="px-2 py-2">
-                                  {editEx!.scope === 'MA' ? (
-                                    <div className="space-y-1">
-                                      <input
-                                        type="text"
-                                        value={editMedCenter}
-                                        onChange={(e2) => setEditMedCenter(e2.target.value)}
-                                        placeholder="Medical Center"
-                                        className={exClass('reason')} />
-                                      <input
-                                        type="text"
-                                        value={editEx!.reason ?? ''}
-                                        onChange={(e2) => setEditEx({ ...editEx!, reason: e2.target.value })}
-                                        onKeyDown={(e2) => {
-                                          if (e2.key === 'Enter') updateException()
-                                          if (e2.key === 'Escape') { setEditEx(null); setEditExErrors({}) }
-                                        }}
-                                        placeholder={REASON_HINTS['MA']}
-                                        className={exClass('reason')} />
-                                    </div>
-                                  ) : (
+                                  <div className="space-y-1">
                                     <input
                                       type="text"
                                       value={editEx!.reason ?? ''}
@@ -1243,7 +1243,29 @@ export default function ParadeState({
                                       }}
                                       placeholder={REASON_HINTS[editEx!.scope as ExceptionScope]}
                                       className={exClass('reason')} />
-                                  )}
+                                    <input
+                                      type="text"
+                                      value={editEx!.location ?? ''}
+                                      onChange={(e2) => setEditEx({ ...editEx!, location: e2.target.value })}
+                                      placeholder="Location (optional)"
+                                      className={exClass('location')} />
+                                    {IN_OUT_SCOPES.includes(editEx!.scope as ExceptionScope) && (
+                                      <div className="flex gap-1">
+                                        {(['', 'IN', 'OUT'] as const).map((v) => (
+                                          <button
+                                            key={v || 'blank'}
+                                            type="button"
+                                            onClick={() => setEditEx({ ...editEx!, in_out: v || null })}
+                                            className={`px-2 py-0.5 rounded-lg text-xs font-medium border transition-colors ${(editEx!.in_out ?? '') === v
+                                              ? `${theme.buttonBg} text-white border-transparent`
+                                              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                                          >
+                                            {v || '—'}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-2 py-2">
                                   {editSingleDate ? (
@@ -1337,14 +1359,7 @@ export default function ParadeState({
                                       onClick={() => exConfirm.isConfirming(e.id)
                                         ? exConfirm.resolve(e.id, () => deleteException(e.id))
                                         : (() => {
-                                          if (e.scope === 'MA') {
-                                            const colonIdx = (e.reason ?? '').indexOf(': ')
-                                            setEditMedCenter(colonIdx !== -1 ? e.reason!.slice(0, colonIdx) : '')
-                                            setEditEx({ ...e, reason: colonIdx !== -1 ? e.reason!.slice(colonIdx + 2) : (e.reason ?? '') })
-                                          } else {
-                                            setEditMedCenter('')
-                                            setEditEx({ ...e })
-                                          }
+                                          setEditEx({ ...e })
                                           setEditAbsenceTouched(false)
                                           setEditExErrors({})
                                         })()}

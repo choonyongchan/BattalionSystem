@@ -8,15 +8,11 @@ export const FIXTURE_SETTINGS: AppSettings = {
 }
 
 export const FIXTURE_PARADE_CONFIG: ParadeStateConfig = {
-  header: ['STALLION COY PARADE STATE'],
-  visibleDutyTypes: ['CDO'],
-  scopeConfigs: [
-    { key: 'Att C',       label: 'ATT C' },
-    { key: 'Status',      label: 'STATUS' },
-    { key: 'Off/Leave',   label: 'OFF/LEAVE' },
-    { key: 'Guard Duty',  label: 'GUARD DUTY' },
-    { key: 'Report Sick', label: 'REPORT SICK' },
-    { key: 'MA',          label: 'MA' },
-    { key: 'Others',      label: 'OTHERS' },
+  companyName: 'STALLION',
+  visibleDutyTypes: ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3'],
+  platoons: [
+    { key: '1', label: 'PL 1', pdsLabel: 'PDS 1' },
+    { key: '2', label: 'PL 2', pdsLabel: 'PDS 2' },
+    { key: '3', label: 'PL 3', pdsLabel: 'PDS 3' },
   ],
 }

@@ -82,10 +82,26 @@ export interface ScopeConfig {
   label: string
 }
 
+// The six parade-state exception sections, fixed order, never renamed/merged/split.
+export const STD_SCOPES: ScopeConfig[] = [
+  { key: 'Att C',       label: 'ATT C' },
+  { key: 'Status',      label: 'STATUS' },
+  { key: 'Report Sick', label: 'REPORT SICK' },
+  { key: 'MA',          label: 'MA' },
+  { key: 'Off/Leave',   label: 'OFF/LEAVE' },
+  { key: 'Others',      label: 'OTHERS' },
+]
+
+export interface PlatoonBlock {
+  key: string
+  label: string
+  pdsLabel: string
+}
+
 export interface ParadeStateConfig {
-  header: string[]
+  companyName: string
   visibleDutyTypes: string[]
-  scopeConfigs: ScopeConfig[]
+  platoons: PlatoonBlock[]
 }
 
 export const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4']
@@ -93,82 +109,26 @@ export const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS
 // Duty types that allow two names to be assigned, splitting points and joining names with a slash.
 export const MULTI_NAME_DUTY_TYPES = ['COS', 'Duty Clerk']
 
-const STD_SCOPES: ScopeConfig[] = [
-  { key: 'Att C',       label: 'ATT C' },
-  { key: 'Status',      label: 'STATUS' },
-  { key: 'Off/Leave',   label: 'OFF/LEAVE' },
-  { key: 'Guard Duty',  label: 'GUARD DUTY' },
-  { key: 'Report Sick', label: 'REPORT SICK' },
-  { key: 'MA',          label: 'MA' },
-  { key: 'Others',      label: 'OTHERS' },
-]
-
-export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = {
-  archer: {
-    header: ['40 SAR ARCHER COMPANY FIRST PARADE STATE'],
-    visibleDutyTypes: ALL_DUTY_TYPES,
-    scopeConfigs: [
-      { key: 'Att C',       label: 'ATTC' },
-      { key: 'Status',      label: 'STATUS' },
-      { key: 'Report Sick', label: 'REPORT SICK/MEDICAL REVIEW' },
-      { key: 'Off/Leave',   label: 'LEAVE/MA/OFF/COURSE' },
-      { key: 'Guard Duty',  label: 'DUTY' },
-      { key: 'Others',      label: 'OTHERS' },
-    ],
-  },
-  braves: {
-    header: ['40 SAR BRAVES COMPANY PARADE STATE'],
-    visibleDutyTypes: [],
-    scopeConfigs: [
-      { key: 'Off/Leave',   label: 'AL/OIL' },
-      { key: 'MA',          label: 'MR' },
-      { key: 'Report Sick', label: 'REPORTING SICK' },
-      { key: 'Att C',       label: 'ATT C' },
-      { key: 'Status',      label: 'STATUS' },
-      { key: 'Others',      label: 'OTHERS' },
-    ],
-  },
-  cougar: {
-    header: ['COUGAR COMPANY', 'FIRST PARADE STATE'],
-    visibleDutyTypes: [],
-    scopeConfigs: [
-      { key: 'Att C',       label: 'ATTC' },
-      { key: 'Report Sick', label: 'REPORT SICK' },
-      { key: 'Status',      label: 'MEDICAL STATUS' },
-      { key: 'MA',          label: 'MEDICAL APPT' },
-      { key: 'Others',      label: 'OTHERS' },
-    ],
-  },
-  stallion: {
-    header: ['STALLION COY FIRST PARADE'],
-    visibleDutyTypes: ALL_DUTY_TYPES,
-    scopeConfigs: [
-      { key: 'Att C',      label: 'ATTC' },
-      { key: 'Status',     label: 'STATUS' },
-      { key: 'Off/Leave',  label: 'OFF/LEAVE' },
-      { key: 'Guard Duty', label: 'GUARD DUTY' },
-      { key: 'Others',     label: 'OTHERS' },
-    ],
-  },
-  hercules: {
-    header: ['FIRST PARADE STATE', 'HQ Company'],
-    visibleDutyTypes: ['COS', 'Duty Clerk'],
-    scopeConfigs: [
-      { key: 'Off/Leave',   label: 'Off/Leave' },
-      { key: 'MA',          label: 'MA' },
-      { key: 'Report Sick', label: 'Reporting sick' },
-      { key: 'Att C',       label: 'Att C' },
-      { key: 'Status',      label: 'Status' },
-      { key: 'Others',      label: 'Others' },
-      { key: 'Guard Duty',  label: 'Guard Duty' },
-    ],
-  },
-  test: {
-    header: ['TEST COY PARADE STATE'],
-    visibleDutyTypes: ALL_DUTY_TYPES,
-    scopeConfigs: STD_SCOPES,
-  },
+function platoons(labels: string[]): PlatoonBlock[] {
+  return labels.map((label, i) => ({ key: (i + 1).toString(), label, pdsLabel: `PDS ${i + 1}` }))
 }
+
+const COMPANY_PLATOONS: Record<Company, PlatoonBlock[]> = {
+  archer:   platoons(['PL 1', 'PL 2', 'PL 3']),
+  braves:   platoons(['PL 4', 'PL 5', 'PL 6']),
+  cougar:   platoons(['PL 7', 'PL 8', 'PL 9']),
+  stallion: platoons(['PNR', 'SCT', 'MTR', 'SIG']),
+  hercules: platoons(['OPR+ASA', 'SIG', 'MED']),
+  test:     platoons(['PL 1', 'PL 2', 'PL 3']),
+}
+
+export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = Object.fromEntries(
+  COMPANIES.map((c) => [c, {
+    companyName: c.toUpperCase(),
+    visibleDutyTypes: ['CDO', 'CDS', 'COS', ...COMPANY_PLATOONS[c].map((_, i) => `PDS${i + 1}`)],
+    platoons: COMPANY_PLATOONS[c],
+  }]),
+) as Record<Company, ParadeStateConfig>
 
 export const COMPANY_THEMES: Record<Company, {
   cardBorder: string
