@@ -41,8 +41,6 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
-const STR_PLATOONS = ['Total', 'HQ', '1', '2', '3', '4'] as const
-
 type Section = 'config' | 'duties' | 'exceptions'
 
 function toSGDate(iso: string) {
@@ -92,6 +90,7 @@ export default function ParadeState({
   companyLabel: string
 }) {
   const theme = COMPANY_THEMES[company]
+  const STR_PLATOONS = ['Total', 'HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
 
   const [date, setDate] = useState(todayISO())
   const [soldiers, setSoldiers] = useState<Soldier[]>([])

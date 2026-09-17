@@ -1,8 +1,14 @@
 ﻿import Papa from 'papaparse'
 import type { Soldier } from '../supabase'
-import { VALID_RANKS } from '../companies'
+import type { Company } from '../companies'
+import { VALID_RANKS, PARADE_CONFIG } from '../companies'
 
-const VALID_PLATOONS = new Set(['HQ', '1', '2', '3', '4'])
+const DEFAULT_VALID_PLATOONS = new Set(['HQ', '1', '2', '3', '4'])
+
+function validPlatoonsFor(company?: Company): Set<string> {
+  if (!company) return DEFAULT_VALID_PLATOONS
+  return new Set(['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)])
+}
 
 export interface ParsedRow {
   rank: string
@@ -33,7 +39,8 @@ export function parseCSV(text: string): string[][] {
   return data
 }
 
-export function validateAndTransform(rows: string[][], existing: Soldier[]): ParseResult {
+export function validateAndTransform(rows: string[][], existing: Soldier[], company?: Company): ParseResult {
+  const validPlatoons = validPlatoonsFor(company)
   // Row 0 is the description/hint row from the Google Sheets template; row 1 is the header
   if (rows.length < 2) return { valid: [], errors: [{ row: 0, message: 'CSV is empty' }] }
 
@@ -73,7 +80,7 @@ export function validateAndTransform(rows: string[][], existing: Soldier[]): Par
     const rowErrors: string[] = []
     if (!name) rowErrors.push('Name is empty')
     if (!VALID_RANKS.has(rank)) rowErrors.push(`"${rank}" is not a valid rank`)
-    if (!VALID_PLATOONS.has(platoon)) rowErrors.push(`"${platoon}" is not a valid platoon`)
+    if (!validPlatoons.has(platoon)) rowErrors.push(`"${platoon}" is not a valid platoon`)
     if (fourDRaw && !/^\d{4}$/.test(fourDRaw)) rowErrors.push(`4D "${fourDRaw}" must be exactly 4 digits`)
 
     if (rowErrors.length > 0) {

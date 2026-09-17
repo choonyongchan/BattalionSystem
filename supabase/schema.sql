@@ -17,11 +17,13 @@ BEGIN
       CREATE TABLE IF NOT EXISTS public."%s_NominalRoll" (
         rank    text NOT NULL,
         name    text NOT NULL,
-        platoon text NOT NULL CHECK (platoon = ANY (ARRAY[''HQ'',''1'',''2'',''3'',''4''])),
+        platoon text NOT NULL CHECK (platoon = ANY (ARRAY[''HQ'',''1'',''2'',''3'',''4'',''SIG'',''OPR+ASA'',''MED''])),
         four_d  text,
         PRIMARY KEY (name)
       )', c);
     EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS four_d text', c);
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" DROP CONSTRAINT IF EXISTS "%s_NominalRoll_platoon_check"', c, c);
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD CONSTRAINT "%s_NominalRoll_platoon_check" CHECK (platoon = ANY (ARRAY[''HQ'',''1'',''2'',''3'',''4'',''SIG'',''OPR+ASA'',''MED'']))', c, c);
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Exceptions" (

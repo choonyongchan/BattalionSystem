@@ -81,9 +81,9 @@ Replace `<FIRST PLATOON>` and the rest with your own designations. Every company
 | BRAVES | COY HQ, PL 4, PL 5, PL 6 |
 | COUGAR | COY HQ, PL 7, PL 8, PL 9 |
 | STALLION | COY HQ, PNR, SCR, MTR, SIG |
-| HERCULES | COY HQ, OPR+ASA, SIG, MED |
+| HERCULES | COY HQ, SIG, OPR+ASA, MED |
 
-Each `PDS` line carries its own platoon's number, so Archer writes `PDS 1` to `PDS 3` and Braves writes `PDS 4` to `PDS 6`. Stallion and Hercules have no numbered platoons, so they number their `PDS` lines from 1 in the platoon order above. Stallion has a fourth platoon, so it repeats the platoon shape once more and adds `PDS 4`. Cougar counts its commanders in COY HQ until they are issued 4D numbers, so its COY HQ carries the whole command body rather than company staff alone.
+Each `PDS` line names its own platoon, so Archer writes `PDS 1` to `PDS 3`, Braves writes `PDS 4` to `PDS 6`, and Stallion/Hercules write `PDS PNR`, `PDS SCR`, `PDS MTR`, `PDS SIG` and `PDS SIG`, `PDS OPR+ASA`, `PDS MED` respectively. Stallion has a fourth platoon, so it repeats the platoon shape once more and adds `PDS MTR`. Cougar counts its commanders in COY HQ until they are issued 4D numbers, so its COY HQ carries the whole command body rather than company staff alone.
 
 ## 3. How to use it
 
@@ -178,7 +178,7 @@ e.g.
 | BRAVES | Platoon blocks only. On 2 Sep every record was typed twice, once in the company list and once in the platoon block, so 85 records filled 170 lines. Here each record is one line. AL/OIL becomes OFF/LEAVE, REPORTING SICK becomes REPORT SICK, and MR folds into REPORT SICK. Add an MA section. Move the 4D in front of the rank, so `1111 REC BEVEN TAN PEH WEN`. Add the CDO/CDS/COS/PDS block. HQ becomes COY HQ, and PLATOON 1 to PLATOON 3 become PL 4 to PL 6. |
 | COUGAR | One line per entry instead of a 5 to 6 line S/N block, about 65% less typing. Group people under PL 7 to PL 9 instead of one company list; the 4D already says which platoon, so 2114 sits in PL 8. Add officer, wospec and enlistee lines per platoon. MEDICAL STATUS becomes STATUS, MEDICAL APPT becomes MA, RSI becomes REPORT SICK. Add OFF/LEAVE. Add the command team. COMMANDERS becomes the COY HQ block. |
 | STALLION | One consistent line shape. Add a REPORT SICK section. Write `0` instead of leaving OFF/LEAVE, GUARD DUTY and OTHERS blank. Use one 4D style throughout, not `1214` in one platoon and `S4407` in another. Make the company strength agree with its blocks: on 2 Sep the company read 271 while the blocks added to 275. Guard duty moves into OTHERS and upcoming MA moves into MA. HQ becomes COY HQ, and PL 1 to PL 4 become PNR, SCR, MTR and SIG. |
-| HERCULES | Add 4D numbers to every line. Spell out `40 SAR HERCULES COMPANY` on line 1. Make each section count match the lines under it: on 2 Sep `Status: 12` sat above 9 lines. Split multi-date entries so each authorisation gets its own line. Split the single HQ block into COY HQ, OPR+ASA, SIG and MED. |
+| HERCULES | Add 4D numbers to every line. Spell out `40 SAR HERCULES COMPANY` on line 1. Make each section count match the lines under it: on 2 Sep `Status: 12` sat above 9 lines. Split multi-date entries so each authorisation gets its own line. Split the single HQ block into COY HQ, SIG, OPR+ASA and MED. |
 
 Nothing is lost. Every detail any company records today has a place here, including medical review, Pending, Warded, in and out of camp, upcoming appointments, and overnight duties.
 
@@ -1612,10 +1612,10 @@ DATE: 020926 TIME: 0445
 CDO: 2LT TERENCE
 CDS: 2SG KAI JIE
 COS: 3SG KAI JUN
-PDS 1: 3SG JUN HAO
-PDS 2: 3SG NG JIE
-PDS 3: 3SG RASUL
-PDS 4: -
+PDS PNR: 3SG JUN HAO
+PDS SCR: 3SG NG JIE
+PDS MTR: 3SG RASUL
+PDS SIG: -
 ================================
 COMPANY: 271/284
 OFFICER: 5/5
@@ -1658,7 +1658,7 @@ MA: 1
 OFF/LEAVE: 0
 OTHERS: 0
 --------------------------------
-SCT: 68/70
+SCR: 68/70
 OFFICER: 1/1
 WOSPEC: 5/5
 ENLISTEE: 62/64
@@ -1779,9 +1779,9 @@ DATE: 020926 TIME: 0930
 CDO: 2LT LIM YU XIAN
 CDS: 2SG CHAN CHOON YONG
 COS: PTE JOSHUA HO
-PDS 1: 3SG FITRI
-PDS 2: 3SG SIVA
-PDS 3: -
+PDS SIG: 3SG FITRI
+PDS OPR+ASA: 3SG SIVA
+PDS MED: -
 ================================
 COMPANY: 18/25
 OFFICER: 6/7
@@ -1820,7 +1820,7 @@ OTHERS: 5
 4. CPT(DR) CHEONG NIGEL - ATTACHED (BN Medical Support) (020926-070926) @ Pulau Tekong Medical Centre
 5. ME2 GOH CHENG JUN, IAN - ATTACHED (BN Medical Support) (020926-070926) @ Pulau Tekong Medical Centre
 --------------------------------
-OPR+ASA: <P>/<S>
+SIG: <P>/<S>
 OFFICER: <P>/<S>
 WOSPEC: <P>/<S>
 ENLISTEE: <P>/<S>
@@ -1831,7 +1831,7 @@ MA: 0
 OFF/LEAVE: 0
 OTHERS: 0
 --------------------------------
-SIG: <P>/<S>
+OPR+ASA: <P>/<S>
 OFFICER: <P>/<S>
 WOSPEC: <P>/<S>
 ENLISTEE: <P>/<S>

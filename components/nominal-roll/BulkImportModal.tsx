@@ -35,7 +35,7 @@ export default function BulkImportModal({
     reader.onload = (ev) => {
       const text = ev.target?.result as string
       const rows = parseCSV(text)
-      const result = validateAndTransform(rows, soldiers)
+      const result = validateAndTransform(rows, soldiers, company)
       setValid(result.valid)
       setErrors(result.errors)
       setImportResult(null)

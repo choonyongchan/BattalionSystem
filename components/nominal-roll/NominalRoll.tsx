@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
 import type { Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
+import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
 import { useConfirmDelete } from '@/hooks/hooks'
 import SearchDropdown from '@/components/shared/SearchDropdown'
 import BulkImportModal from '@/components/nominal-roll/BulkImportModal'
@@ -15,12 +15,11 @@ function fieldInputClass(hasError: boolean, focusRing: string) {
   return hasError ? `${base} border-red-500 ring-2 ring-red-500` : `${base} border-gray-300 ${focusRing}`
 }
 
-const PLATOONS = ['HQ', '1', '2', '3', '4'] as const
-
 const SECTION_ORDER = Object.keys(RANKS_BY_TYPE) as ('Officer' | 'WOSPEC' | 'Enlistee')[]
 
 export default function NominalRoll({ company }: { company: Company }) {
   const theme = COMPANY_THEMES[company]
+  const PLATOONS = ['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [loading, setLoading] = useState(true)

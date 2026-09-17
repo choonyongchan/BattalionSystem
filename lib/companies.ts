@@ -109,17 +109,17 @@ export const ALL_DUTY_TYPES = ['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS
 // Duty types that allow two names to be assigned, splitting points and joining names with a slash.
 export const MULTI_NAME_DUTY_TYPES = ['COS', 'Duty Clerk']
 
-function platoons(labels: string[]): PlatoonBlock[] {
-  return labels.map((label, i) => ({ key: (i + 1).toString(), label, pdsLabel: `PDS ${i + 1}` }))
+function platoons(entries: [label: string, pdsLabel: string, key?: string][]): PlatoonBlock[] {
+  return entries.map(([label, pdsLabel, key], i) => ({ key: key ?? (i + 1).toString(), label, pdsLabel: `PDS ${pdsLabel}` }))
 }
 
 const COMPANY_PLATOONS: Record<Company, PlatoonBlock[]> = {
-  archer:   platoons(['PL 1', 'PL 2', 'PL 3']),
-  braves:   platoons(['PL 4', 'PL 5', 'PL 6']),
-  cougar:   platoons(['PL 7', 'PL 8', 'PL 9']),
-  stallion: platoons(['PNR', 'SCT', 'MTR', 'SIG']),
-  hercules: platoons(['OPR+ASA', 'SIG', 'MED']),
-  test:     platoons(['PL 1', 'PL 2', 'PL 3']),
+  archer:   platoons([['PL 1', '1'], ['PL 2', '2'], ['PL 3', '3']]),
+  braves:   platoons([['PL 4', '4'], ['PL 5', '5'], ['PL 6', '6']]),
+  cougar:   platoons([['PL 7', '7'], ['PL 8', '8'], ['PL 9', '9']]),
+  stallion: platoons([['PNR', 'PNR'], ['SCR', 'SCR'], ['MTR', 'MTR'], ['SIG', 'SIG']]),
+  hercules: platoons([['SIG', 'SIG', 'SIG'], ['OPR+ASA', 'OPR+ASA', 'OPR+ASA'], ['MED', 'MED', 'MED']]),
+  test:     platoons([['PL 1', '1'], ['PL 2', '2'], ['PL 3', '3']]),
 }
 
 export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = Object.fromEntries(
