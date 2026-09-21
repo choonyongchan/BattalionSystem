@@ -19,6 +19,8 @@ export async function truncateTestDb() {
   const db = getClient()
   const ops = [
     db.from('Test_Duty').delete().gte('date', '2000-01-01'),
+    // Decisions go with their conduct (ON DELETE CASCADE)
+    db.from('Test_Conducts').delete().gte('date', '2000-01-01'),
     db.from('Test_Exceptions').delete().gte('id', 0),
     db.from('Test_NominalRoll').delete().neq('name', ''),
     db.from('Test_OffLeave').delete().neq('name', ''),

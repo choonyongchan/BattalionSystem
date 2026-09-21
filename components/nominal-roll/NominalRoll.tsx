@@ -2,13 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { supabase, tbl } from '@/lib/supabase'
-import type { Soldier } from '@/lib/supabase'
+import type { Exception, Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { COMPANY_THEMES, PARADE_CONFIG, getRankType, RANKS_BY_TYPE, ALL_RANKS } from '@/lib/companies'
 import { useConfirmDelete } from '@/hooks/hooks'
 import SearchDropdown from '@/components/shared/SearchDropdown'
 import BulkImportModal from '@/components/nominal-roll/BulkImportModal'
 import { validateEdit as computeEditErrors, sortValue, RANK_ORDER } from '@/lib/nominal-roll/nominal-roll-validation'
+import { exceptionSoldierKey, isActiveOn, isOnStrength, soldierIndex, soldierKeyOf } from '@/lib/exceptions/active'
+import { todaySGDate } from '@/lib/utils'
+import SoldierSheet from '@/components/soldier/SoldierSheet'
+
+/** Left border at a glance: out of strength today, on an exception but present, or clear. */
+function whereaboutsBorder(active: Exception[]): string {
+  if (active.some((e) => e.counts_as_absence)) return 'border-l-4 border-l-red-400'
+  if (active.length) return 'border-l-4 border-l-amber-400'
+  return 'border-l-4 border-l-green-400'
+}
 
 function fieldInputClass(hasError: boolean, focusRing: string) {
   const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
@@ -21,7 +31,11 @@ export default function NominalRoll({ company }: { company: Company }) {
   const theme = COMPANY_THEMES[company]
   const PLATOONS = ['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
 
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
+  // Everyone on the roll, posted-out included; `soldiers` below is who's on strength
+  const [allSoldiers, setAllSoldiers] = useState<Soldier[]>([])
+  const [exceptions, setExceptions] = useState<Exception[]>([])
+  const [showPostedOut, setShowPostedOut] = useState(false)
+  const [openKey, setOpenKey] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -53,15 +67,17 @@ export default function NominalRoll({ company }: { company: Company }) {
     load()
   }, [company])
 
-  async function load() {
-    setLoading(true)
+  /** quiet: refresh in place — a full "Loading..." swap would unmount an open SoldierSheet mid-edit. */
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true)
     setError(null)
-    const { data, error } = await supabase
-      .from(tbl(company, 'NominalRoll'))
-      .select('*')
-      .order('platoon')
-    if (error) setError(error.message)
-    else setSoldiers((data ?? []) as unknown as Soldier[])
+    const [rollRes, exRes] = await Promise.all([
+      supabase.from(tbl(company, 'NominalRoll')).select('*').order('platoon'),
+      supabase.from(tbl(company, 'Exceptions')).select('*'),
+    ])
+    if (rollRes.error) setError(rollRes.error.message)
+    else setAllSoldiers((rollRes.data ?? []) as unknown as Soldier[])
+    setExceptions((exRes.data ?? []) as unknown as Exception[])
     setLoading(false)
   }
 
@@ -118,15 +134,21 @@ export default function NominalRoll({ company }: { company: Company }) {
   async function updateSoldier() {
     if (!editRow || !validateEdit()) return
     setSavingEdit(true)
-    const { error } = await supabase
+    const newName = editRow.name.trim().toUpperCase()
+    let { error } = await supabase
       .from(tbl(company, 'NominalRoll'))
       .update({
         rank: editRow.rank,
-        name: editRow.name.trim().toUpperCase(),
+        name: newName,
         platoon: editRow.platoon,
         four_d: editRow.four_d.trim() || null,
       })
       .eq('name', editRow.originalName)
+    // Exceptions are linked by soldier_id now, but they also carry the name as text —
+    // keep it in step so every screen (and rows written before the link) reads the new name
+    if (!error && newName !== editRow.originalName) {
+      ;({ error } = await supabase.from(tbl(company, 'Exceptions')).update({ name: newName }).eq('name', editRow.originalName))
+    }
     if (error) {
       setError(error.message)
     } else {
@@ -136,6 +158,19 @@ export default function NominalRoll({ company }: { company: Company }) {
     }
     setSavingEdit(false)
   }
+
+  const soldiers = showPostedOut ? allSoldiers : allSoldiers.filter(isOnStrength)
+  const postedOutCount = allSoldiers.length - allSoldiers.filter(isOnStrength).length
+
+  const today = todaySGDate()
+  const idx = soldierIndex(allSoldiers)
+  const exceptionsByKey = new Map<string, Exception[]>()
+  for (const e of exceptions) {
+    const key = exceptionSoldierKey(e, idx)
+    exceptionsByKey.set(key, [...(exceptionsByKey.get(key) ?? []), e])
+  }
+  const activeFor = (s: Soldier) => (exceptionsByKey.get(soldierKeyOf(s)) ?? []).filter((e) => isActiveOn(e, today))
+  const openSoldier = openKey ? allSoldiers.find((s) => soldierKeyOf(s) === openKey) : undefined
 
   const query = search.toLowerCase()
   const filtered = query
@@ -184,7 +219,7 @@ export default function NominalRoll({ company }: { company: Company }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
-          <p className="text-xs text-gray-500">{soldiers.length} personnel</p>
+          <p className="text-xs text-gray-500">{allSoldiers.filter(isOnStrength).length} personnel</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -210,7 +245,7 @@ export default function NominalRoll({ company }: { company: Company }) {
 
       {deleteAllState !== 'idle' && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-3">
-          <p className="text-sm text-red-700 font-medium">This will permanently delete all {soldiers.length} personnel. Enter your commander password to confirm.</p>
+          <p className="text-sm text-red-700 font-medium">This will permanently delete all {allSoldiers.length} personnel. Enter your commander password to confirm.</p>
           <div className="flex gap-2">
             <input
               type="password"
@@ -248,6 +283,17 @@ export default function NominalRoll({ company }: { company: Company }) {
           className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
         />
       </div>
+
+      {postedOutCount > 0 && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowPostedOut(!showPostedOut)}
+            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 text-gray-600'}`}
+          >
+            {showPostedOut ? 'Hide' : 'Show'} posted out ({postedOutCount})
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
@@ -439,10 +485,15 @@ export default function NominalRoll({ company }: { company: Company }) {
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-3 text-gray-400 font-mono text-xs">{s.four_d ?? '–'}</td>
+                              <td className={`px-4 py-3 text-gray-400 font-mono text-xs ${whereaboutsBorder(activeFor(s))}`}>{s.four_d ?? '–'}</td>
                               <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
                               <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
-                              <td className="px-4 py-3 font-medium">{s.name}</td>
+                              <td className="px-4 py-3 font-medium">
+                                <button onClick={() => setOpenKey(soldierKeyOf(s))} className="text-left hover:underline">
+                                  {s.name}
+                                </button>
+                                {!isOnStrength(s) && <span className="ml-2 text-xs text-red-600">posted out</span>}
+                              </td>
                               <td className="px-4 py-3">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
@@ -494,10 +545,20 @@ export default function NominalRoll({ company }: { company: Company }) {
         </div>
       )}
 
+      {openSoldier && (
+        <SoldierSheet
+          company={company}
+          soldier={openSoldier}
+          exceptions={exceptionsByKey.get(soldierKeyOf(openSoldier)) ?? []}
+          onClose={() => setOpenKey(null)}
+          onChanged={() => load(true)}
+        />
+      )}
+
       {showImport && (
         <BulkImportModal
           company={company}
-          soldiers={soldiers}
+          soldiers={allSoldiers}
           onClose={() => setShowImport(false)}
           onImported={async () => { await load(); setShowImport(false) }}
         />

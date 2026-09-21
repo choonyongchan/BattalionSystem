@@ -23,6 +23,7 @@ import {
   compareExceptionOrder, groupExceptionsByPerson, exceptionSortValue,
 } from '@/lib/exceptions/exception-validation'
 import type { ExceptionScope, ExForm } from '@/lib/exceptions/exception-validation'
+import { SCOPE_TYPES, exceptionSoldierKey, exceptionType, isActiveOn, isOnStrength, isRevoked, soldierIndex, soldierKeyOf } from '@/lib/exceptions/active'
 
 function fieldInputClass(hasError: boolean, focusRing: string) {
   const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
@@ -93,7 +94,9 @@ export default function ParadeState({
   const STR_PLATOONS = ['Total', 'HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
 
   const [date, setDate] = useState(todayISO())
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
+  // Everyone, posted-out included: the report needs them to drop their exceptions (see generateParadeReport)
+  const [allSoldiers, setAllSoldiers] = useState<Soldier[]>([])
+  const soldiers = useMemo(() => allSoldiers.filter(isOnStrength), [allSoldiers])
   const [exceptions, setExceptions] = useState<Exception[]>([])
   const [duties, setDuties] = useState<DutyEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -159,8 +162,9 @@ export default function ParadeState({
       supabase.from(tbl(company, 'StrengthOverride')).select('*'),
     ])
     if (soldiersRes.error) setError(soldiersRes.error.message)
-    setSoldiers((soldiersRes.data ?? []) as unknown as Soldier[])
-    setExceptions((exceptionsRes.data ?? []) as unknown as Exception[])
+    setAllSoldiers((soldiersRes.data ?? []) as unknown as Soldier[])
+    // Revoked rows count nowhere here — they live on in the soldier's history (SoldierSheet)
+    setExceptions(((exceptionsRes.data ?? []) as unknown as Exception[]).filter((e) => !isRevoked(e)))
     setDuties((dutiesRes.data ?? []) as unknown as DutyEntry[])
     const loadedStr: Record<string, Record<string, string>> = {}
       ; (strRes.data as unknown as { platoon: string; rank_type: string; value: number }[] ?? []).forEach((row) => {
@@ -191,19 +195,25 @@ export default function ParadeState({
   )
 
   function exceptionsActiveOn(targetDateIso: string) {
-    return sortedExceptions.filter((e) => {
-      const d = new Date(targetDateIso)
-      const start = e.start ? new Date(e.start) : null
-      const end = e.end ? new Date(e.end) : null
-      if (start && d < start) return false
-      if (end && d > end) return false
+    return sortedExceptions.filter((e) => isActiveOn(e, targetDateIso))
+  }
 
-      return true
-
-    })
+  /** The link and the fine-grained type every write carries, so rows stay tied to the soldier through a rename. */
+  function linkFields(name: string, scope: string, reason: string | null, currentType?: string | null) {
+    const soldier = allSoldiers.find((s) => s.name === name)
+    const keepType = currentType && SCOPE_TYPES[scope as ExceptionScope]?.includes(currentType)
+    return {
+      soldier_id: soldier?.id ?? null,
+      type: keepType ? currentType : exceptionType({ scope, reason } as Exception),
+    }
   }
 
   const defaultExceptions = exceptionsActiveOn(date)
+  const presentAbsentCount = useMemo(() => {
+    const idx = soldierIndex(soldiers)
+    const absent = new Set(defaultExceptions.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
+    return soldiers.filter((s) => absent.has(soldierKeyOf(s))).length
+  }, [soldiers, defaultExceptions])
 
   // If there's a query, use the queried exceptions; otherwise, show all
   let activeExceptions = (
@@ -289,7 +299,7 @@ export default function ParadeState({
     if (!validateAddEx() || !isExceptionValid()) return
     let error: { message: string } | null = null
     if (exForm.scope === 'Status') {
-      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim() || null, start: r.start || null, end: r.end || null, counts_as_absence: exForm.counts_as_absence }))
+      const rows = statusRows.map((r) => ({ name: exForm.name, scope: exForm.scope, reason: r.reason.trim() || null, start: r.start || null, end: r.end || null, counts_as_absence: exForm.counts_as_absence, ...linkFields(exForm.name, exForm.scope, r.reason.trim() || null) }))
         ; ({ error } = await supabase.from(tbl(company, 'Exceptions')).insert(rows))
     } else {
       const singleDate = SINGLE_DATE_SCOPES.includes(exForm.scope)
@@ -303,6 +313,7 @@ export default function ParadeState({
           location: exForm.location.trim() || null,
           in_out: IN_OUT_SCOPES.includes(exForm.scope) && exForm.in_out ? exForm.in_out : null,
           ...(exForm.scope === 'MA' && exForm.time ? { time: exForm.time } : {}),
+          ...linkFields(exForm.name, exForm.scope, exForm.reason.trim() || null),
         }))
     }
     if (error) { setError(error.message); return }
@@ -323,6 +334,7 @@ export default function ParadeState({
       start: date || null,
       end: date || null,
       counts_as_absence: false,
+      ...linkFields(gdForm.name, 'Guard Duty', null),
     })
     if (error) { setError(error.message); return }
     setShowGuardDutyForm(false)
@@ -337,6 +349,7 @@ export default function ParadeState({
       reason: editGuardDuty.reason ?? null,
       start: editGuardDuty.end || null,
       end: editGuardDuty.end || null,
+      ...linkFields(editGuardDuty.name, 'Guard Duty', null),
     }).eq('id', editGuardDuty.id)
     if (error) { setError(error.message); return }
     setEditGuardDuty(null)
@@ -394,6 +407,7 @@ export default function ParadeState({
         time: editEx.scope === 'MA' ? (editEx.time || null) : null,
         location: (editEx.location ?? '').trim() || null,
         in_out: IN_OUT_SCOPES.includes(editEx.scope as ExceptionScope) && editEx.in_out ? editEx.in_out : null,
+        ...linkFields(editEx.name, editEx.scope, (editEx.reason ?? '').trim() || null, editEx.type),
       })
       .eq('id', editEx.id)
     if (error) { setError(error.message) }
@@ -421,7 +435,7 @@ export default function ParadeState({
     const report = generateParadeReport({
       date: today,
       companyLabel,
-      soldiers,
+      soldiers: allSoldiers,
       activeExceptions: exceptionsActiveOn(today),
       paradeTimeStr: paradeTimes[paradeType] ?? '',
       duties: todaysDuties,
@@ -499,7 +513,7 @@ export default function ParadeState({
       <div>
         <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
         <p className="text-xs text-gray-500">
-          {soldiers.length - new Set(defaultExceptions.filter((e) => e.counts_as_absence).map((e) => e.name)).size} / {soldiers.length} present
+          {soldiers.length - presentAbsentCount} / {soldiers.length} present
           {defaultExceptions.length > 0 && ` · ${defaultExceptions.length} exception${defaultExceptions.length !== 1 ? 's' : ''}`}
         </p>
       </div>
