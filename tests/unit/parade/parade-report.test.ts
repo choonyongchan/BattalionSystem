@@ -215,3 +215,52 @@ describe('generateParadeReport — record line details', () => {
     expect(report).toContain('GHOST SOLDIER - Unknown')
   })
 })
+
+describe('generateParadeReport — person-centric exceptions', () => {
+  const withIds: Soldier[] = FIXTURE_SOLDIERS.map((s, i) => ({ ...s, id: `u-${i}` }))
+  const goh = withIds.find((s) => s.name === 'GOH RONG HAO')!
+  const chong = withIds.find((s) => s.name === 'CHONG KAH WAI')!
+  const input = { ...BASE_INPUT, soldiers: withIds }
+
+  it('a revoked exception is left out of the lines and the strength', () => {
+    const exceptions: Exception[] = [{
+      id: 1, name: chong.name, soldier_id: chong.id, scope: 'Att C', reason: 'Fever',
+      start: '2026-01-13', end: '2026-01-17', counts_as_absence: true, revoked_at: '2026-01-14T00:00:00Z',
+    }]
+    const report = generateParadeReport({ ...input, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).not.toContain('Fever')
+    expect(report).toContain(`COMPANY: ${withIds.length}/${withIds.length}`)
+  })
+
+  it('an exception linked by soldier_id prints the current name after a rename', () => {
+    const renamed = withIds.map((s) => (s.id === goh.id ? { ...s, name: 'GOH RONG HAO JUNIOR' } : s))
+    const exceptions: Exception[] = [{
+      id: 1, name: 'GOH RONG HAO', soldier_id: goh.id, scope: 'Status', reason: 'Excuse RMJ',
+      start: '2026-01-10', end: '2026-01-20', counts_as_absence: false,
+    }]
+    const report = generateParadeReport({ ...input, soldiers: renamed, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('PTE GOH RONG HAO JUNIOR - Excuse RMJ')
+  })
+
+  it('a posted-out soldier leaves the strength and takes his exceptions with him', () => {
+    const postedOut = withIds.map((s) => (s.id === chong.id ? { ...s, on_strength: false } : s))
+    const exceptions: Exception[] = [{
+      id: 1, name: chong.name, soldier_id: chong.id, scope: 'Att C', reason: 'Fever',
+      start: '2026-01-13', end: '2026-01-17', counts_as_absence: true,
+    }]
+    const report = generateParadeReport({ ...input, soldiers: postedOut, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).not.toContain('Fever')
+    expect(report).toContain(`COMPANY: ${withIds.length - 1}/${withIds.length - 1}`)
+  })
+
+  it('back-to-back MCs print once over the whole stretch', () => {
+    const mc = { name: chong.name, soldier_id: chong.id, scope: 'Att C', type: 'MC', counts_as_absence: true }
+    const exceptions: Exception[] = [
+      { id: 1, ...mc, reason: '3D MC', start: '2026-01-13', end: '2026-01-15' },
+      { id: 2, ...mc, reason: '2D MC', start: '2026-01-16', end: '2026-01-17' },
+    ]
+    const report = generateParadeReport({ ...input, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('ATT C: 1')
+    expect(report).toContain('5D MC (130126-170126)')
+  })
+})

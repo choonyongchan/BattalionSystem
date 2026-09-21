@@ -1,8 +1,9 @@
 import type { Soldier, Exception, DutyEntry } from '../supabase'
-import { displayName, displayDutyName } from '../supabase'
+import { displayDutyName } from '../supabase'
 import type { ParadeStateConfig, Company } from '../companies'
 import { getRankType, RANK_TYPES, RANK_ORDER, STD_SCOPES } from '../companies'
 import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES } from '../exceptions/exception-validation'
+import { exceptionSoldierKey, isOnStrength, isRevoked, mergeRuns, soldierIndex, soldierKeyOf, soldierOf, type SoldierIndex } from '../exceptions/active'
 
 function compareOptionalDate(a: string | null, b: string | null): number {
   if (!a && !b) return 0
@@ -11,14 +12,14 @@ function compareOptionalDate(a: string | null, b: string | null): number {
   return new Date(a).getTime() - new Date(b).getTime()
 }
 
-function sortExceptions(exceptions: Exception[], soldiers: Soldier[]): Exception[] {
+function sortExceptions(exceptions: Exception[], idx: SoldierIndex): Exception[] {
   return [...exceptions].sort((a, b) => {
     const endDiff = compareOptionalDate(a.end, b.end)
     if (endDiff !== 0) return endDiff
     const startDiff = compareOptionalDate(a.start, b.start)
     if (startDiff !== 0) return startDiff
-    const rankA = soldiers.find((s) => s.name === a.name)?.rank ?? ''
-    const rankB = soldiers.find((s) => s.name === b.name)?.rank ?? ''
+    const rankA = soldierOf(a, idx)?.rank ?? ''
+    const rankB = soldierOf(b, idx)?.rank ?? ''
     const rankDiff = RANK_ORDER.indexOf(rankB) - RANK_ORDER.indexOf(rankA)
     if (rankDiff !== 0) return rankDiff
     return a.name.localeCompare(b.name)
@@ -52,13 +53,6 @@ function toDDMMYY(iso: string) {
   )
 }
 
-function soldierFourD(soldiers: Soldier[], name: string) {
-  return soldiers.find((s) => s.name === name)?.four_d ?? ''
-}
-
-function soldierPlatoon(soldiers: Soldier[], name: string) {
-  return soldiers.find((s) => s.name === name)?.platoon ?? 'HQ'
-}
 
 function platTotal(soldiers: Soldier[], plt: string, rt: string, overrides: Record<string, Record<string, number>>) {
   return overrides[plt]?.[rt] ?? soldiers.filter((s) => s.platoon === plt && getRankType(s.rank) === rt).length
@@ -66,19 +60,19 @@ function platTotal(soldiers: Soldier[], plt: string, rt: string, overrides: Reco
 
 function platPresent(
   soldiers: Soldier[], plt: string, rt: string,
-  absentNames: Set<string>, overrides: Record<string, Record<string, number>>,
+  absentKeys: Set<string>, overrides: Record<string, Record<string, number>>,
 ) {
   const total  = platTotal(soldiers, plt, rt, overrides)
-  const absent = soldiers.filter((s) => s.platoon === plt && getRankType(s.rank) === rt && absentNames.has(s.name)).length
+  const absent = soldiers.filter((s) => s.platoon === plt && getRankType(s.rank) === rt && absentKeys.has(soldierKeyOf(s))).length
   return total - absent
 }
 
-function computeStrength(soldiers: Soldier[], absentNames: Set<string>, overrides: Record<string, Record<string, number>>) {
+function computeStrength(soldiers: Soldier[], absentKeys: Set<string>, overrides: Record<string, Record<string, number>>) {
   const compTotal: Record<string, number> = {}
   const compPresent: Record<string, number> = {}
   for (const rt of RANK_TYPES) {
     compTotal[rt]   = overrides['Total']?.[rt] ?? soldiers.filter((s) => getRankType(s.rank) === rt).length
-    const absent    = soldiers.filter((s) => absentNames.has(s.name) && getRankType(s.rank) === rt).length
+    const absent    = soldiers.filter((s) => absentKeys.has(soldierKeyOf(s)) && getRankType(s.rank) === rt).length
     compPresent[rt] = compTotal[rt] - absent
   }
   const total   = RANK_TYPES.reduce((s, rt) => s + compTotal[rt], 0)
@@ -86,10 +80,11 @@ function computeStrength(soldiers: Soldier[], absentNames: Set<string>, override
   return { compTotal, compPresent, total, present }
 }
 
-function groupByPlatoon(exceptions: Exception[], soldiers: Soldier[]): Record<string, Exception[]> {
+function groupByPlatoon(exceptions: Exception[], idx: SoldierIndex): Record<string, Exception[]> {
   const result: Record<string, Exception[]> = { HQ: [], '1': [], '2': [], '3': [], '4': [] }
   for (const e of exceptions) {
-    const plt = soldierPlatoon(soldiers, e.name)
+    // An exception whose soldier can't be found still prints, under COY HQ
+    const plt = soldierOf(e, idx)?.platoon ?? 'HQ'
     ;(result[plt] ?? (result[plt] = [])).push(e)
   }
   return result
@@ -125,11 +120,13 @@ function formatDescription(e: Exception): string {
   return reason
 }
 
-function formatExceptionLine(e: Exception, idx: number, soldiers: Soldier[]): string {
-  const fourD = soldierFourD(soldiers, e.name)
-  const identity = displayName(e.name, soldiers)
+function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex): string {
+  // The soldier's current name and rank, so a rename on the roll shows through
+  const soldier = soldierOf(e, idx)
+  const fourD = soldier?.four_d ?? ''
+  const identity = soldier ? `${soldier.rank} ${soldier.name}` : e.name
   const parts = [formatDescription(e), formatDates(e)].filter(Boolean).join(' ')
-  let line = `${idx + 1}. ${fourD ? `${fourD} ` : ''}${identity} - ${parts}`
+  let line = `${n + 1}. ${fourD ? `${fourD} ` : ''}${identity} - ${parts}`
   if (IN_OUT_SCOPES.includes(e.scope as (typeof IN_OUT_SCOPES)[number]) && e.in_out) line += ` ${e.in_out}`
   if (LOCATION_PRINT_SCOPES.includes(e.scope as (typeof LOCATION_PRINT_SCOPES)[number]) && e.location) line += ` @ ${e.location}`
   return line
@@ -141,10 +138,11 @@ function generateReport(input: ParadeReportInput, config: ParadeStateConfig): st
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
   const dateCompact = toDDMMYY(date)
-  const absentNames = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => e.name))
-  const { compTotal, compPresent, total, present } = computeStrength(soldiers, absentNames, overrides)
+  const idx         = soldierIndex(soldiers)
+  const absentKeys  = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
+  const { compTotal, compPresent, total, present } = computeStrength(soldiers, absentKeys, overrides)
   const dutyMap = Object.fromEntries(duties.map((d) => [d.duty_type, d.name ?? '']))
-  const exByPlt = groupByPlatoon(activeExceptions, soldiers)
+  const exByPlt = groupByPlatoon(activeExceptions, idx)
 
   const lines: string[] = []
   lines.push(`40 SAR ${config.companyName} COMPANY`)
@@ -166,7 +164,7 @@ function generateReport(input: ParadeReportInput, config: ParadeStateConfig): st
 
   function renderBlock(pltKey: string, label: string) {
     const group      = exByPlt[pltKey] ?? []
-    const pltAbsent  = new Set(group.filter((e) => e.counts_as_absence).map((e) => e.name))
+    const pltAbsent  = new Set(group.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
     const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, pltKey, pltAbsent, overrides)
 
     lines.push(`${label}: ${pltPresent}/${pltTotal}`)
@@ -176,7 +174,7 @@ function generateReport(input: ParadeReportInput, config: ParadeStateConfig): st
     for (const { key, label: scopeLabel } of STD_SCOPES) {
       const scopeGroup = group.filter((e) => e.scope === key)
       lines.push(`${scopeLabel}: ${scopeGroup.length}`)
-      scopeGroup.forEach((e, idx) => lines.push(formatExceptionLine(e, idx, soldiers)))
+      scopeGroup.forEach((e, n) => lines.push(formatExceptionLine(e, n, idx)))
     }
   }
 
@@ -201,10 +199,23 @@ function generateReport(input: ParadeReportInput, config: ParadeStateConfig): st
  * @returns The fully formatted report as a newline-joined string.
  */
 export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig, _company?: Company): string {
+  // Posted-out soldiers drop out of strength, and so do their exceptions
+  const allIdx = soldierIndex(input.soldiers)
+  const soldiers = input.soldiers.filter(isOnStrength)
+  const idx = soldierIndex(soldiers)
+  const live = (list: Exception[]) => {
+    const kept = list.filter((e) => {
+      if (isRevoked(e)) return false
+      const s = soldierOf(e, allIdx)
+      return !s || isOnStrength(s)
+    })
+    return sortExceptions(mergeRuns(kept), idx)
+  }
   const sorted: ParadeReportInput = {
     ...input,
-    activeExceptions: sortExceptions(input.activeExceptions, input.soldiers),
-    allExceptions: input.allExceptions ? sortExceptions(input.allExceptions, input.soldiers) : undefined,
+    soldiers,
+    activeExceptions: live(input.activeExceptions),
+    allExceptions: input.allExceptions ? live(input.allExceptions) : undefined,
   }
   return generateReport(sorted, config)
 }
