@@ -185,6 +185,86 @@ BEGIN
       INSERT INTO public."%s_Settings" (id) VALUES (1)
       ON CONFLICT (id) DO NOTHING', c);
 
+    -- ── Person-centric exceptions ─────────────────────────────────────────
+    -- A stable id per soldier so exceptions survive a rename. name stays the PK
+    -- for now; the upsert-on-name bulk import keeps the id of an existing row.
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS id uuid NOT NULL DEFAULT gen_random_uuid()', c);
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = c || '_NominalRoll_id_key') THEN
+      EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD CONSTRAINT "%s_NominalRoll_id_key" UNIQUE (id)', c, c);
+    END IF;
+    -- false = posted out: hidden from strength and the roll, history kept
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS on_strength boolean NOT NULL DEFAULT true', c);
+
+    -- SET NULL, not CASCADE: clearing the roll before a bulk re-import must not
+    -- wipe exceptions — they fall back to matching by name (see soldierKey()).
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS soldier_id uuid REFERENCES public."%s_NominalRoll" (id) ON DELETE SET NULL', c, c);
+    -- The fine-grained kind (MC, LD, RMJ, Excuse, Leave, Off, ...); scope is the parade section it prints under
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS type text', c);
+    -- Set = taken back (keyed wrongly, withdrawn): counts nowhere but stays on the soldier''s history
+    EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS revoked_at timestamptz', c);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_exceptions_soldier_idx" ON public."%s_Exceptions" (soldier_id)', c, c);
+
+    EXECUTE format('
+      UPDATE public."%s_Exceptions" e SET soldier_id = n.id
+      FROM public."%s_NominalRoll" n
+      WHERE e.soldier_id IS NULL AND n.name = e.name', c, c);
+    EXECUTE format($f$
+      UPDATE public."%s_Exceptions" SET type = CASE
+        WHEN scope = 'Att C' THEN 'MC'
+        WHEN scope = 'Status' AND (reason ~* '\mLD\M' OR reason ~* 'light\s*duty') THEN 'LD'
+        WHEN scope = 'Status' AND reason ~* '\mRMJ\M' THEN 'RMJ'
+        WHEN scope = 'Status' THEN 'Excuse'
+        WHEN scope = 'Off/Leave' AND reason ~* 'leave' THEN 'Leave'
+        WHEN scope = 'Off/Leave' THEN 'Off'
+        ELSE scope
+      END
+      WHERE type IS NULL$f$, c);
+
+    -- ── Conduct tracking ──────────────────────────────────────────────────
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_Conducts" (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name       text NOT NULL,
+        date       date NOT NULL,
+        end_date   date CHECK (end_date IS NULL OR end_date >= date),
+        start_time time,
+        end_time   time,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )', c);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_conducts_date_idx" ON public."%s_Conducts" (date)', c, c);
+
+    -- Only manual calls are stored; automatic fall-outs are derived from Exceptions
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_ConductDecisions" (
+        id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        conduct_id    uuid NOT NULL REFERENCES public."%s_Conducts" (id) ON DELETE CASCADE,
+        soldier_id    uuid NOT NULL REFERENCES public."%s_NominalRoll" (id) ON DELETE CASCADE,
+        participating boolean NOT NULL,
+        reason        text,
+        created_at    timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (conduct_id, soldier_id)
+      )', c, c, c);
+    EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_conduct_decisions_soldier_idx" ON public."%s_ConductDecisions" (soldier_id)', c, c);
+
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Conducts"         TO authenticated', c);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_ConductDecisions" TO authenticated', c);
+    EXECUTE format('ALTER TABLE public."%s_Conducts"         ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('ALTER TABLE public."%s_ConductDecisions" ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Conducts" ON public."%s_Conducts"', c, c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_ConductDecisions" ON public."%s_ConductDecisions"', c, c);
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_Conducts" ON public."%s_Conducts"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_ConductDecisions" ON public."%s_ConductDecisions"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+
   END LOOP;
 END;
 $$;
