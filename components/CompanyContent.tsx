@@ -9,14 +9,16 @@ import NominalRoll from './nominal-roll/NominalRoll'
 import ParadeState from './parade/ParadeState'
 import DutyDashboard from './dashboard/DutyDashboard'
 import OffLeaveTracking from './off-leave/OffLeaveTracking'
+import ConductsTab from './conducts/ConductsTab'
 import CommanderLoginForm from './auth/CommanderLoginForm'
 
-type Tab = 'dashboard' | 'nominal-roll' | 'parade-state' | 'off-leave'
+type Tab = 'dashboard' | 'nominal-roll' | 'parade-state' | 'conducts' | 'off-leave'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'nominal-roll', label: 'Nominal Roll' },
   { id: 'parade-state', label: 'Parade State' },
+  { id: 'conducts', label: 'Conducts' },
   { id: 'off-leave', label: 'Off/Leave Tracking' },
 ]
 
@@ -93,6 +95,8 @@ export default function CompanyContent({
           <NominalRoll company={company} />
         ) : activeTab === 'parade-state' ? (
           <ParadeState company={company} companyLabel={label} />
+        ) : activeTab === 'conducts' ? (
+          <ConductsTab company={company} companyLabel={label} />
         ) : (
           <OffLeaveTracking company={company} />
         )}
