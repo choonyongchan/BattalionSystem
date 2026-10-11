@@ -137,7 +137,7 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
                               <div className="flex gap-1 justify-end items-center">
                                 <button
                                   onClick={() => {
-                                    if (confirm.isConfirming(e.id)) return confirm.resolve(e.id, () => mutate(() => repos.exceptions.remove(e.id)))
+                                    if (confirm.isConfirming(e.id)) return confirm.resolve(() => mutate(() => repos.exceptions.remove(e.id)))
                                     setEdit({ ...e })
                                     setAbsenceTouched(false)
                                     setErrors({})

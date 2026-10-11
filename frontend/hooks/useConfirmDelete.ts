@@ -7,7 +7,7 @@ export function useConfirmDelete<T extends string | number>() {
     confirming,
     isConfirming: (id: T) => confirming === id,
     request:      (id: T) => setConfirming(id),
-    resolve:      (id: T, fn: () => void) => { setConfirming(null); fn() },
+    resolve:      (fn: () => void) => { setConfirming(null); fn() },
     cancel:       () => setConfirming(null),
   }
 }

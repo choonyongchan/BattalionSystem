@@ -1,6 +1,7 @@
 import type { Exception } from '@/shared/types'
 import type { Company } from '@/shared/companies'
 import { exceptionType, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
+import { ddmmyy, pad2 } from '@/shared/dates'
 
 /**
  * Report sick (RSI) message: who reported sick on a day, split URTI / NON-URTI.
@@ -21,10 +22,6 @@ export const isUrtiException = (e: Exception): boolean => exceptionType(e) === '
 export const rsiCompanyLabel = (company: Company): string =>
   company === 'hercules' ? 'HQ COY' : `${company.toUpperCase()} COY`
 
-/** Pads a number to two digits. */
-const pad2 = (n: number) => String(n).padStart(2, '0')
-/** Formats an ISO date as DDMMYY. */
-const ddmmyy = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}`
 
 /** S/N, R/N and REASON lines for one report sick. */
 function entryLines(e: Exception, n: number, idx: SoldierIndex): string[] {

@@ -181,7 +181,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
             >Edit</button>
             {delConfirm.isConfirming(selected.id) ? (
               <>
-                <button className="px-2.5 py-1.5 text-xs bg-red-500 text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(selected.id, () => deleteConduct(selected))}>Delete conduct</button>
+                <button className="px-2.5 py-1.5 text-xs bg-red-500 text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(() => deleteConduct(selected))}>Delete conduct</button>
                 <button className="px-2.5 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg" onClick={delConfirm.cancel}>Keep</button>
               </>
             ) : (

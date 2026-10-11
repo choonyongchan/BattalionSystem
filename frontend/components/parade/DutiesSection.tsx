@@ -123,7 +123,7 @@ export default function DutiesSection({ company, theme, date, setDate, settings,
                             {d && (
                               <button
                                 onClick={() => confirm.isConfirming(dt)
-                                  ? confirm.resolve(dt, () => mutate(() => repos.duties.remove(dt, date)))
+                                  ? confirm.resolve(() => mutate(() => repos.duties.remove(dt, date)))
                                   : confirm.request(dt)}
                                 className={confirm.isConfirming(dt) ? CONFIRM_BTN : ICON_BTN_DANGER}
                                 title={confirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}

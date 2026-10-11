@@ -176,7 +176,7 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
                                     onClick={() => confirming
-                                      ? confirm.resolve(s.name, () => remove(s.name))
+                                      ? confirm.resolve(() => remove(s.name))
                                       : (setEdit({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setErrors({}))}
                                     disabled={deletingName === s.name}
                                     className={confirming

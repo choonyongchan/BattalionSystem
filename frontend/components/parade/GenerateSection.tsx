@@ -43,7 +43,7 @@ export default function GenerateSection({ company, companyLabel, theme, paradeTi
       strengthOverrides: strengthInputsToNumbers(data.strInputs),
       allExceptions: data.exceptions,
       paradeType,
-    }, PARADE_CONFIG[company], company)
+    }, PARADE_CONFIG[company])
     onGenerated(report, paradeType)
     track('parade_state_generated', { company, soldierCount: data.soldiers.length, date: today, paradeType, excludeStayIn })
   }

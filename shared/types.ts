@@ -60,11 +60,3 @@ export interface DutyEntry {
   date: string
   name: string
 }
-
-// @deprecated — superseded by the new Settings table and lib/settings.ts. Kept only because
-// the live Configuration table still exists; application code should not write new data
-// through this type.
-export interface Configuration {
-  parade_type: string
-  time: string
-}

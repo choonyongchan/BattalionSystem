@@ -20,16 +20,6 @@ type DutyTable = {
   Update:        { duty_type?: string; date?: string; name?: string }
   Relationships: []
 }
-// @deprecated — superseded by the new Settings table (see SettingsTable below) and
-// lib/settings.ts. Kept only because the live Configuration table still exists; application
-// code should not write new data through this type.
-type ConfigTable = {
-  Row:           { parade_type: string; time: string }
-  Insert:        { parade_type: string; time: string }
-  Update:        { parade_type?: string; time?: string }
-  Relationships: []
-}
-
 type SettingsTable = {
   Row: {
     id: number
@@ -99,7 +89,6 @@ type CompanyTables =
   { [C in Company as `${Capitalize<C>}_NominalRoll`]:   NominalRollTable } &
   { [C in Company as `${Capitalize<C>}_Exceptions`]:    ExceptionsTable  } &
   { [C in Company as `${Capitalize<C>}_Duty`]:          DutyTable        } &
-  { [C in Company as `${Capitalize<C>}_Configuration`]: ConfigTable      } &
   { [C in Company as `${Capitalize<C>}_Settings`]:      SettingsTable    } &
   { [C in Company as `${Capitalize<C>}_OffLeave`]:      OffLeaveTable    } &
   { [C in Company as `${Capitalize<C>}_Conducts`]:      ConductsTable    } &

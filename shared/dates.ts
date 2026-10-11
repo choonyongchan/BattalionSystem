@@ -37,3 +37,9 @@ export function dayHeaderLabel(iso: string): { weekday: string; day: string } {
     day: d.toLocaleDateString('en-SG', { day: '2-digit', month: 'short' }),
   }
 }
+
+/** Formats an ISO date (YYYY-MM-DD...) as DDMMYY, e.g. "2026-03-05" -> "050326". */
+export const ddmmyy = (iso: string): string => `${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}`
+
+/** Pads a number to two digits, e.g. 7 -> "07". */
+export const pad2 = (n: number): string => String(n).padStart(2, '0')

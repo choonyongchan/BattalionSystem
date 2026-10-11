@@ -13,7 +13,6 @@ import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoint
 import { useAuth } from '@/frontend/hooks/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/frontend/hooks/useSettings'
 import { resolveDayType } from '@/backend/domain/settings/settings'
-import { todaySGDate } from '@/shared/dates'
 import CommanderLoginForm from '@/frontend/components/auth/CommanderLoginForm'
 
 /** Duty points leaderboard: who has done which duties, weighted by settings. */
@@ -89,12 +88,6 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const filterPoints = useMemo(
     () => filter === 'all' ? points : computePoints(dayFilteredDuties, weightSettings, holidays, filter),
     [filter, points, dayFilteredDuties, weightSettings, holidays],
-  )
-
-  const today = todaySGDate()
-  const backToBack = useMemo(
-    () => new Set(duties.filter(d => d.date === today).map(d => d.name)),
-    [duties, today],
   )
 
   const eligibleForDuty = useMemo(

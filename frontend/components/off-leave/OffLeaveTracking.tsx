@@ -302,7 +302,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                             <div className="flex gap-1 justify-end items-center">
                               <button
                                 onClick={() => nameConfirm.isConfirming(r.name)
-                                  ? nameConfirm.resolve(r.name, () => deleteRecord(r.name))
+                                  ? nameConfirm.resolve(() => deleteRecord(r.name))
                                   : setEditRow({ name: r.name, off: String(r.off), leave: String(r.leave) })}
                                 disabled={deletingName === r.name}
                                 className={nameConfirm.isConfirming(r.name)

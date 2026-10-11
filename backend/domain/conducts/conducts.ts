@@ -2,6 +2,7 @@ import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/type
 import type { Company, PlatoonBlock } from '@/shared/companies'
 import { RANK_ORDER, getRankType } from '@/shared/ranks'
 import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
+import { ddmmyy, pad2 } from '@/shared/dates'
 
 /**
  * Conduct tracking, adapted from 40SAR_Archer: who takes part in a training
@@ -24,8 +25,6 @@ export function conductDay(c: Conduct, todayISO: string): string {
   return todayISO > end ? end : todayISO
 }
 
-/** Formats an ISO date as DDMMYY. */
-const ddmmyy = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}`
 /** Formats "HH:MM[:SS]" as "HHMM"; empty when null. */
 const hhmm = (time: string | null) => (time ? time.slice(0, 5).replace(':', '') : '')
 
@@ -199,8 +198,6 @@ export function conductBlocks(platoons: PlatoonBlock[], includeHQ = true): { key
   return includeHQ ? [{ key: 'HQ', label: 'COY HQ' }, ...blocks] : blocks
 }
 
-/** Pads a number to two digits. */
-const pad2 = (n: number) => String(n).padStart(2, '0')
 
 /** Title, date and time lines for a conduct state. */
 function headerLines(label: string, c: Conduct): string[] {

@@ -177,7 +177,7 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
                             <button onClick={() => setEdit({ ...e })} className={ICON_BTN} title="Edit">✎</button>
                             <button
                               onClick={() => confirm.isConfirming(e.id)
-                                ? confirm.resolve(e.id, () => mutate(() => repos.exceptions.remove(e.id)))
+                                ? confirm.resolve(() => mutate(() => repos.exceptions.remove(e.id)))
                                 : confirm.request(e.id)}
                               className={confirm.isConfirming(e.id) ? CONFIRM_BTN : ICON_BTN_DANGER}
                               title={confirm.isConfirming(e.id) ? 'Confirm clear' : 'Clear'}

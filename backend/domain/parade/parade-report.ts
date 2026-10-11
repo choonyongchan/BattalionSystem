@@ -1,10 +1,11 @@
 import type { Soldier, Exception, DutyEntry } from '@/shared/types'
 import { displayDutyName } from '@/shared/names'
-import type { ParadeStateConfig, Company } from '@/shared/companies'
+import type { ParadeStateConfig } from '@/shared/companies'
 import { getRankType, RANK_TYPES, RANK_ORDER } from '@/shared/ranks'
 import { STD_SCOPES } from '@/shared/companies'
 import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES } from '@/backend/domain/exceptions/exception-validation'
 import { exceptionSoldierKey, isOnStrength, isRevoked, mergeRuns, soldierIndex, soldierKeyOf, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
+import { ddmmyy } from '@/shared/dates'
 
 /** Compares ISO dates, nulls first. */
 function compareOptionalDate(a: string | null, b: string | null): number {
@@ -47,15 +48,6 @@ const BLOCK_SEP   = '--------------------------------'
 
 const RANK_LABELS: Record<string, string> = { Officer: 'OFFICER', WOSPEC: 'WOSPEC', Enlistee: 'ENLISTEE' }
 
-/** Formats an ISO date as DDMMYY. */
-function toDDMMYY(iso: string) {
-  const d = new Date(iso)
-  return (
-    d.getDate().toString().padStart(2, '0') +
-    (d.getMonth() + 1).toString().padStart(2, '0') +
-    d.getFullYear().toString().slice(2)
-  )
-}
 
 
 /** A platoon's strength for one rank type: the override if set, else the roll count. */
@@ -114,13 +106,13 @@ function formatDates(e: Exception): string {
   if (SINGLE_DATE_SCOPES.includes(e.scope as (typeof SINGLE_DATE_SCOPES)[number])) {
     const d = e.end ?? e.start
     if (!d) return ''
-    let s = toDDMMYY(d)
+    let s = ddmmyy(d)
     if (e.scope === 'MA' && e.time) s += ` ${e.time.replace(':', '')}`
     return `(${s})`
   }
-  if (e.start && !e.end) return `(SINCE ${toDDMMYY(e.start)})`
-  if (e.start && e.end) return `(${toDDMMYY(e.start)}-${toDDMMYY(e.end)})`
-  if (e.end) return `(${toDDMMYY(e.end)})`
+  if (e.start && !e.end) return `(SINCE ${ddmmyy(e.start)})`
+  if (e.start && e.end) return `(${ddmmyy(e.start)}-${ddmmyy(e.end)})`
+  if (e.end) return `(${ddmmyy(e.end)})`
   return ''
 }
 
@@ -150,7 +142,7 @@ function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex): string
 function generateReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
   const overrides   = input.strengthOverrides ?? {}
-  const dateCompact = toDDMMYY(date)
+  const dateCompact = ddmmyy(date)
   const idx         = soldierIndex(soldiers)
   const absentKeys  = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
   const { compTotal, compPresent, total, present } = computeStrength(soldiers, absentKeys, overrides)
@@ -210,10 +202,9 @@ function generateReport(input: ParadeReportInput, config: ParadeStateConfig): st
  *
  * @param input - Report data (soldiers, exceptions, duties, strength overrides).
  * @param config - Per-company parade-state config (company name, platoon blocks, visible duty types).
- * @param _company - Unused; kept for call-site compatibility.
  * @returns The fully formatted report as a newline-joined string.
  */
-export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig, _company?: Company): string {
+export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig): string {
   // Posted-out soldiers drop out of strength, and so do their exceptions
   const allIdx = soldierIndex(input.soldiers)
   const soldiers = input.soldiers.filter(isOnStrength)

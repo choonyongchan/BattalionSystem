@@ -10,10 +10,8 @@ import type { ExceptionScope } from '@/backend/domain/exceptions/exception-valid
 import { SCOPE_TYPES, exceptionType, isActiveOn, isRevoked } from '@/backend/domain/exceptions/active'
 import { useSettingsQuery } from '@/frontend/hooks/useSettings'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
-import { todaySGDate } from '@/shared/dates'
+import { ddmmyy, todaySGDate } from '@/shared/dates'
 
-/** Formats an ISO date as DDMMYY. */
-const ddmmyy = (iso: string) => `${iso.slice(8, 10)}${iso.slice(5, 7)}${iso.slice(2, 4)}`
 
 /** Short date range for an exception, e.g. "since 010326" or "010326–030326". */
 function dateRange(e: Exception): string {
@@ -143,7 +141,7 @@ export default function SoldierSheet({ company, soldier, exceptions, onClose, on
             : <button className={`${btn} border-gray-200 text-gray-600 hover:bg-gray-50`} disabled={busy} onClick={() => setRevoked(e, false)}>Restore</button>}
           {confirming ? (
             <>
-              <button className={`${btn} border-red-500 bg-red-500 text-white`} disabled={busy} onClick={() => delConfirm.resolve(e.id, () => remove(e))}>Delete for good</button>
+              <button className={`${btn} border-red-500 bg-red-500 text-white`} disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete for good</button>
               <button className={`${btn} border-gray-200 text-gray-600`} onClick={delConfirm.cancel}>Keep</button>
             </>
           ) : (
