@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { supabase, tbl } from '@/lib/supabase'
 import type { Soldier, DutyEntry, Exception } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
-import { COMPANY_THEMES, PARADE_CONFIG, ALL_DUTY_TYPES } from '@/lib/companies'
+import { COMPANY_THEMES, pointsDutyTypes } from '@/lib/companies'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/lib/duty/duty-rules'
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty/duty-dashboard'
 import { useAuth } from '@/hooks/useAuth'
@@ -17,12 +17,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const theme = COMPANY_THEMES[company]
   const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
 
-  // Use company's configured duty types; fall back to all 7. Guard Duty is always appended —
-  // it's tracked in Exceptions rather than the Duty table and isn't company-gated.
-  const dutyTypes = [
-    ...(PARADE_CONFIG[company].visibleDutyTypes.length > 0 ? PARADE_CONFIG[company].visibleDutyTypes : ALL_DUTY_TYPES),
-    'Guard Duty',
-  ]
+  const dutyTypes = pointsDutyTypes(company)
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [duties, setDuties] = useState<DutyEntry[]>([])

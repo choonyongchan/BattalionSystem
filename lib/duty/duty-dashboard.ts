@@ -68,6 +68,7 @@ export function getEligibleForDuty(
   ))
 }
 
+/** Highest points first. */
 export function sortByPoints(soldiers: Soldier[], points: Record<string, number>): Soldier[] {
-  return [...soldiers].sort((a, b) => (points[a.name] ?? 0) - (points[b.name] ?? 0))
+  return [...soldiers].sort((a, b) => (points[b.name] ?? 0) - (points[a.name] ?? 0))
 }

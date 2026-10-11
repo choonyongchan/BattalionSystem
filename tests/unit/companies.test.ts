@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, getRankType, DEFAULT_RANK_RULES, DUTY_ELIGIBILITY, PARADE_CONFIG } from '@/lib/companies'
+import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, getRankType, DEFAULT_RANK_RULES, DUTY_ELIGIBILITY, PARADE_CONFIG, pointsDutyTypes } from '@/lib/companies'
 import { displayName } from '@/lib/supabase'
 
 describe('DISABLED_COMPANIES', () => {
@@ -65,5 +65,13 @@ describe('displayName', () => {
   })
   it('falls back to the bare name when not found', () => {
     expect(displayName('UNKNOWN', soldiers)).toBe('UNKNOWN')
+  })
+})
+
+describe('pointsDutyTypes', () => {
+  it('adds Duty Clerk for Hercules only, with Guard Duty last', () => {
+    expect(pointsDutyTypes('hercules')).toEqual(['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'Duty Clerk', 'Guard Duty'])
+    expect(pointsDutyTypes('stallion')).not.toContain('Duty Clerk')
+    expect(pointsDutyTypes('stallion').at(-1)).toBe('Guard Duty')
   })
 })

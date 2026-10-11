@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import type { Company } from '@/lib/companies'
-import { ALL_DUTY_TYPES, PARADE_CONFIG, COMPANY_THEMES } from '@/lib/companies'
+import { COMPANY_THEMES, pointsDutyTypes } from '@/lib/companies'
 import { DAY_TYPES, DAY_TYPE_LABELS } from '@/lib/settings'
 import type { AppSettings, DayType } from '@/lib/settings'
 import { useSaveSettingsMutation } from '@/lib/settings'
@@ -45,14 +45,12 @@ function rowsToExceptions(rows: FormValues['exceptionRows']): Record<string, num
 
 export default function DutyWeightsSection({ company, settings }: { company: Company; settings: AppSettings }) {
   const theme = COMPANY_THEMES[company]
-  const dutyTypes = [
-    ...(PARADE_CONFIG[company].visibleDutyTypes.length > 0 ? PARADE_CONFIG[company].visibleDutyTypes : ALL_DUTY_TYPES),
-    'Guard Duty',
-  ]
+  const dutyTypes = pointsDutyTypes(company)
   const { register, control, handleSubmit, formState: { isDirty, errors } } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      duty_base_weights: settings.duty_base_weights,
+      // A duty type with no stored weight (e.g. Duty Clerk, added later) starts at 1, as computePoints assumes
+      duty_base_weights: { ...Object.fromEntries(dutyTypes.map((dt) => [dt, 1])), ...settings.duty_base_weights },
       duty_day_multipliers: settings.duty_day_multipliers,
       exceptionRows: exceptionsToRows(settings.duty_weight_exceptions),
     },

@@ -130,6 +130,12 @@ export const PARADE_CONFIG: Record<Company, ParadeStateConfig> = Object.fromEntr
   }]),
 ) as Record<Company, ParadeStateConfig>
 
+/** Duty types that earn points: the company's duties, Hercules' (brigade) Duty Clerk, then Guard Duty (kept in Exceptions). */
+export function pointsDutyTypes(company: Company): string[] {
+  const base = PARADE_CONFIG[company].visibleDutyTypes.length > 0 ? PARADE_CONFIG[company].visibleDutyTypes : ALL_DUTY_TYPES
+  return [...base, ...(company === 'hercules' ? ['Duty Clerk'] : []), 'Guard Duty']
+}
+
 export const COMPANY_THEMES: Record<Company, {
   cardBorder: string
   cardHoverBg: string

@@ -138,10 +138,10 @@ describe('getEligibleForDuty', () => {
 })
 
 describe('sortByPoints', () => {
-  it('sorts ascending by point value', () => {
+  it('sorts descending by point value', () => {
     const points = { A: 5, B: 1, C: 3 }
     const soldiers = [{ rank: 'PTE', name: 'A', platoon: '1' }, { rank: 'PTE', name: 'B', platoon: '1' }, { rank: 'PTE', name: 'C', platoon: '1' }]
-    expect(sortByPoints(soldiers, points).map(s => s.name)).toEqual(['B', 'C', 'A'])
+    expect(sortByPoints(soldiers, points).map(s => s.name)).toEqual(['A', 'C', 'B'])
   })
 
   it('handles an empty list', () => {
