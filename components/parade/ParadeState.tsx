@@ -42,7 +42,9 @@ const REASON_HINTS: Record<ExceptionScope, string> = {
 
 const PARADE_TYPES = ['First Parade', 'Last Parade'] as const
 
-type Section = 'config' | 'duties' | 'exceptions'
+type Section = 'config' | 'duties' | 'exceptions' | 'generate'
+
+const STAY_IN = /stay[\s-]?in/i
 
 function toSGDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-SG', {
@@ -107,6 +109,8 @@ export default function ParadeState({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [lastParadeType, setLastParadeType] = useState<'First Parade' | 'Last Parade' | null>(null)
+  const [paradeType, setParadeType] = useState<'First Parade' | 'Last Parade'>('First Parade')
+  const [excludeStayIn, setExcludeStayIn] = useState(false)
   const [search, setSearch] = useState('')
 
 
@@ -421,7 +425,7 @@ export default function ParadeState({
     setExceptions((prev) => prev.map((e) => e.id === id ? { ...e, counts_as_absence: value } : e))
   }
 
-  async function generate(paradeType: 'First Parade' | 'Last Parade') {
+  async function generate() {
     const today = todayISO()
     const strOverridesAsNumbers: Record<string, Record<string, number>> = {}
     for (const [platoon, rtMap] of Object.entries(strOverrides)) {
@@ -437,7 +441,9 @@ export default function ParadeState({
       date: today,
       companyLabel,
       soldiers: allSoldiers,
-      activeExceptions: exceptionsActiveOn(today),
+      // Excluding stay-in = count them absent; their STATUS lines still print
+      activeExceptions: exceptionsActiveOn(today).map((e) =>
+        excludeStayIn && e.scope === 'Status' && STAY_IN.test(e.reason ?? '') ? { ...e, counts_as_absence: true } : e),
       paradeTimeStr: paradeTimes[paradeType] ?? '',
       duties: todaysDuties,
       strengthOverrides: strOverridesAsNumbers,
@@ -446,7 +452,7 @@ export default function ParadeState({
     }, PARADE_CONFIG[company], company)
     setOutput(report)
     setLastParadeType(paradeType)
-    track('parade_state_generated', { company, soldierCount: soldiers.length, date: today, paradeType })
+    track('parade_state_generated', { company, soldierCount: soldiers.length, date: today, paradeType, excludeStayIn })
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
@@ -460,6 +466,7 @@ export default function ParadeState({
     { id: 'config', label: 'Config' },
     { id: 'duties', label: 'Duties' },
     { id: 'exceptions', label: 'Exceptions' },
+    { id: 'generate', label: 'Generate' },
   ]
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
@@ -1413,20 +1420,41 @@ export default function ParadeState({
         </div>
       )}
 
-      {/* Generate buttons */}
-      <div className="pt-2 border-t border-gray-200">
-        <div className="grid grid-cols-2 gap-3">
-          {(['First Parade', 'Last Parade'] as const).map((pt) => (
-            <button
-              key={pt}
-              onClick={() => generate(pt)}
-              className={`py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
-            >
-              {pt}
-            </button>
-          ))}
+      {/* Generate section */}
+      {activeSection === 'generate' && (
+        <div className="space-y-3">
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4">
+            <fieldset>
+              <legend className="text-xs text-gray-500 mb-2">Parade</legend>
+              <div className="flex gap-4">
+                {PARADE_TYPES.map((pt) => (
+                  <label key={pt} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="paradeType" className="h-4 w-4" checked={paradeType === pt} onChange={() => setParadeType(pt)} />
+                    {pt}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className="text-xs text-gray-500 mb-2">Exclude Excuse Stay-In Personnel</legend>
+              <div className="flex gap-4">
+                {([['No', false], ['Yes', true]] as const).map(([label, value]) => (
+                  <label key={label} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="radio" name="excludeStayIn" className="h-4 w-4" checked={excludeStayIn === value} onChange={() => setExcludeStayIn(value)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+          <button
+            onClick={generate}
+            className={`w-full py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
+          >
+            Generate Parade State
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Output */}
       {output && (

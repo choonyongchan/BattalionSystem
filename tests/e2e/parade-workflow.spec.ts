@@ -39,7 +39,8 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: 'First Parade' }).click()
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate Parade State' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })
@@ -50,7 +51,8 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: 'First Parade' }).click()
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate Parade State' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('OFF/LEAVE:', { timeout: 10000 })
@@ -62,7 +64,8 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: 'First Parade' }).click()
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate Parade State' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('CDO: LTA LEE JUN WEI', { timeout: 10000 })
@@ -74,7 +77,8 @@ test.describe('Parade State workflow', () => {
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
-    await page.getByRole('button', { name: 'First Parade' }).click()
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate Parade State' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })
@@ -124,7 +128,8 @@ test.describe('Parade State workflow', () => {
     // reflect today (2026-01-15, per the mocked clock), not this selected date.
     await page.locator('input[type="date"]').fill('2026-01-01')
 
-    await page.getByRole('button', { name: 'First Parade' }).click()
+    await page.getByRole('button', { name: 'Generate', exact: true }).click()
+    await page.getByRole('button', { name: 'Generate Parade State' }).click()
 
     const output = page.locator('textarea')
     await expect(output).toContainText('COMPANY: 9/13', { timeout: 10000 })

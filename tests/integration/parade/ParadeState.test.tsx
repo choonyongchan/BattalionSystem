@@ -36,6 +36,17 @@ async function setParadeDate(date: string) {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 
+// Open the Generate tab and generate with whatever options are selected (First Parade by default).
+async function generateReport() {
+  await userEvent.click(screen.getByRole('button', { name: 'Generate' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Generate Parade State' }))
+}
+
+function presentCount() {
+  const ta = document.querySelector('textarea') as HTMLTextAreaElement
+  return Number(ta.value.match(/COMPANY: (\d+)\//)![1])
+}
+
 function renderParadeState() {
   const client = new QueryClient()
   return render(
@@ -97,7 +108,7 @@ describe('ParadeState', () => {
 
   it('generates report with correct strength: 13 total, 9 present, 4 absent', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
 
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
@@ -108,7 +119,7 @@ describe('ParadeState', () => {
   it('Status exception (counts_as_absence=false) does not reduce present count', async () => {
     // GOH RONG HAO has Status, counts_as_absence: false — still 9 present, 4 absent
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
 
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
@@ -191,7 +202,7 @@ describe('ParadeState', () => {
       expect(screen.getByText(/NG BOON SENG/)).toBeInTheDocument()
     }, { timeout: 10000 })
 
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
       expect(textarea.value).toContain('COMPANY: 9/13')
@@ -200,7 +211,7 @@ describe('ParadeState', () => {
 
   it('includes CDO duty assignment in generated report', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
 
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
@@ -236,7 +247,7 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
 
     // Generate report — present drops from 9 to 8
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
     await waitFor(() => {
       const textarea = document.querySelector('textarea') as HTMLTextAreaElement
       expect(textarea.value).toContain('COMPANY: 8/13')
@@ -284,10 +295,33 @@ describe('ParadeState', () => {
     }, { timeout: 10000 })
   })
 
+  it('Exclude Excuse Stay-In counts stay-in Status as absent but keeps the status line', async () => {
+    await renderOnFixtureDate()
+    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
+    await userEvent.type(screen.getByPlaceholderText('Search soldier...'), 'YEO JIA')
+    await userEvent.click(await screen.findByText('YEO JIA HENG', {}, { timeout: 5000 }))
+    await userEvent.click(screen.getByRole('button', { name: 'Status' })) // Absent? defaults off; dates default to the viewed date
+    await userEvent.type(screen.getByPlaceholderText('e.g. Excuse RMJ, Excuse Uniform'), 'Excuse Stay-In')
+    await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
+    await waitFor(() => expect(screen.getByText('Excuse Stay-In')).toBeInTheDocument(), { timeout: 10000 })
+
+    // Other tests share the DB, so compare against the "No" baseline rather than a fixed count
+    await generateReport()
+    const before = await waitFor(() => presentCount(), { timeout: 5000 })
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Yes' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Parade State' }))
+    await waitFor(() => {
+      expect(presentCount()).toBe(before - 1)
+      expect((document.querySelector('textarea') as HTMLTextAreaElement).value).toMatch(/Excuse Stay-In/i)
+    }, { timeout: 5000 })
+  }, 30000)
+
   it('navigating the duty date does not change the generated parade report (always uses today)', async () => {
     // ponytail: 30s — renderOnFixtureDate + setParadeDate both hit real Supabase
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
     const reportBeforeNav = await waitFor(() => {
       const ta = document.querySelector('textarea') as HTMLTextAreaElement
       expect(ta.value).toContain('COMPANY:')
@@ -298,7 +332,7 @@ describe('ParadeState', () => {
     // Duties tab internally) — this must have no effect on the generated report,
     // since Parade State is always generated for today regardless of duty date.
     await setParadeDate('2026-01-17')
-    await userEvent.click(screen.getByRole('button', { name: 'First Parade' }))
+    await generateReport()
     await waitFor(() => {
       const ta = document.querySelector('textarea') as HTMLTextAreaElement
       expect(ta.value).toBe(reportBeforeNav)
