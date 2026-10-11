@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isValidAmount, sortOffLeaveByRank } from '@/lib/off-leave/off-leave'
-import type { Soldier } from '@/lib/supabase'
+import { isValidAmount, sortOffLeaveByRank } from '@/backend/domain/off-leave/off-leave'
+import type { Soldier } from '@/shared/types'
 
 describe('isValidAmount', () => {
   it('accepts positive half-day steps', () => {

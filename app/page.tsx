@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, HIDDEN_COMPANIES, companyLabel } from '@/lib/companies'
+import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, HIDDEN_COMPANIES, companyLabel } from '@/shared/companies'
 
+/** Landing page listing each company; disabled ones show a "Coming Soon" popup. */
 export default function HomePage() {
   const [showComingSoon, setShowComingSoon] = useState(false)
 

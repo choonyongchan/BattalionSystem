@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hasDuplicateExceptionRows } from '@/lib/duty/duty-weights-validation'
+import { hasDuplicateExceptionRows } from '@/backend/domain/duty/duty-weights-validation'
 
 describe('hasDuplicateExceptionRows', () => {
   it('returns false when all rows have distinct duty type + day type keys', () => {

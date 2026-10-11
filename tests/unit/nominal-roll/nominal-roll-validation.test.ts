@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { validateEdit, sortValue } from '@/lib/nominal-roll/nominal-roll-validation'
-import type { EditRow } from '@/lib/nominal-roll/nominal-roll-validation'
-import type { Soldier } from '@/lib/supabase'
+import { validateEdit, sortValue } from '@/backend/domain/nominal-roll/nominal-roll-validation'
+import type { EditRow } from '@/backend/domain/nominal-roll/nominal-roll-validation'
+import type { Soldier } from '@/shared/types'
 
 const baseRow: EditRow = { originalName: 'TAN AH KOW', rank: 'CPL', name: 'TAN AH KOW', platoon: '1', four_d: '1234' }
 

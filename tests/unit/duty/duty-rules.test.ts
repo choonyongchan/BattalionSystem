@@ -1,7 +1,7 @@
-﻿import { describe, it, expect } from 'vitest'
-import { isEligible, eligibleSoldiers, isRankRangeInvalid } from '@/lib/duty/duty-rules'
-import { FIXTURE_SOLDIERS } from '../../fixtures/soldiers'
-import type { Soldier } from '@/lib/supabase'
+import { describe, it, expect } from 'vitest'
+import { isEligible, eligibleSoldiers, isRankRangeInvalid } from '@/backend/domain/duty/duty-rules'
+import { FIXTURE_SOLDIERS } from '@/tests/fixtures/soldiers'
+import type { Soldier } from '@/shared/types'
 
 function s(rank: string, name = 'SOLDIER'): Soldier {
   return { rank, name, platoon: '1' }
@@ -109,7 +109,7 @@ describe('PDS1 eligibility', () => {
     expect(isEligible('PDS1', s('2SG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
   })
 
-  it('CPL is NOT eligible (one step below lower bound 3SG â€” Enlistee)', () => {
+  it('CPL is NOT eligible (one step below lower bound 3SG — Enlistee)', () => {
     expect(isEligible('PDS1', s('CPL'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
@@ -135,7 +135,7 @@ describe('name overrides', () => {
 
   it('empty name override array falls back to rank rule', () => {
     const lta: Soldier = { rank: 'LTA', name: 'LEE BOON SENG', platoon: '1' }
-    // Empty list means no override â€” rank rule applies; LTA passes CDO
+    // Empty list means no override — rank rule applies; LTA passes CDO
     expect(isEligible('CDO', lta, { CDO: [] }, NO_RANK_RULES)).toBe(true)
   })
 })
@@ -187,20 +187,20 @@ describe('edge cases', () => {
 
 // â”€â”€ eligibleSoldiers against realistic 13-soldier fixture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe('eligibleSoldiers â€” fixture soldiers', () => {
+describe('eligibleSoldiers — fixture soldiers', () => {
   it('CDO returns only 2LT..LTA soldiers (LEE JUN WEI and CHEN MING ZHI)', () => {
     const result = eligibleSoldiers('CDO', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
     const names = result.map(s => s.name)
     expect(names).toContain('LEE JUN WEI')
     expect(names).toContain('CHEN MING ZHI')
-    // CPT TAN WEI LIANG is above LTA upper bound â€” excluded
+    // CPT TAN WEI LIANG is above LTA upper bound — excluded
     expect(names).not.toContain('TAN WEI LIANG')
     expect(result).toHaveLength(2)
   })
 
   it('COS returns PTE..3SG range only (7 of 13): excludes Officers, higher WOSPECs, and REC', () => {
     // DEFAULT_RANK_RULES.COS = { from: 'PTE'(1), to: '3SG'(5) }
-    // Eligible: PTE, LCP, CPL, CFC, 3SG â€” not REC (below), not SSG/1SG/CPT/LTA (above)
+    // Eligible: PTE, LCP, CPL, CFC, 3SG — not REC (below), not SSG/1SG/CPT/LTA (above)
     const result = eligibleSoldiers('COS', FIXTURE_SOLDIERS, NO_OVERRIDES, NO_RANK_RULES)
     const names = result.map(s => s.name)
     expect(result).toHaveLength(7)
@@ -213,10 +213,10 @@ describe('eligibleSoldiers â€” fixture soldiers', () => {
     expect(names).toContain('LIM WEI JIAN')   // PTE
     expect(names).toContain('TAN RONG XIAN')  // LCP
     // Excluded
-    expect(names).not.toContain('ONG JUN SHENG')  // REC â€” below lower bound
-    expect(names).not.toContain('CHONG KAH WAI')  // SSG â€” above upper bound
-    expect(names).not.toContain('TAN WEI LIANG')  // CPT â€” far above
-    expect(names).not.toContain('WONG KAH MENG')  // 1SG â€” above upper bound
+    expect(names).not.toContain('ONG JUN SHENG')  // REC — below lower bound
+    expect(names).not.toContain('CHONG KAH WAI')  // SSG — above upper bound
+    expect(names).not.toContain('TAN WEI LIANG')  // CPT — far above
+    expect(names).not.toContain('WONG KAH MENG')  // 1SG — above upper bound
   })
 
   it('PDS1 returns 3SGÃ—2 + 1SGÃ—1 (NG BOON SENG, HO KAI XIANG, WONG KAH MENG)', () => {

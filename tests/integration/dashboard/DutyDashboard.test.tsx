@@ -1,11 +1,11 @@
-﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import DutyDashboard from '@/components/dashboard/DutyDashboard'
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
-import { DEFAULT_SETTINGS } from '@/lib/settings'
+import DutyDashboard from '@/frontend/components/dashboard/DutyDashboard'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
+import { DEFAULT_SETTINGS } from '@/backend/domain/settings/settings'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({
@@ -54,7 +54,7 @@ describe('DutyDashboard', () => {
     expect(pointsFor('WONG KAH MENG')).toBe('2') // CDS duty + Guard Duty (exception fixture), both Thu ×1
     expect(pointsFor('YEO JIA HENG')).toBe('1')  // COS duty
     expect(pointsFor('HO KAI XIANG')).toBe('1')  // PDS1 duty
-    // ONG JUN SHENG (REC) is ineligible for every duty type â€” excluded entirely
+    // ONG JUN SHENG (REC) is ineligible for every duty type — excluded entirely
     expect(screen.queryByText(nameCell('ONG JUN SHENG'))).not.toBeInTheDocument()
   })
 
@@ -64,7 +64,7 @@ describe('DutyDashboard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'CDO' }))
 
-    expect(screen.getByText(nameCell('LEE JUN WEI'))).toBeInTheDocument()   // LTA â€” CDO-eligible
+    expect(screen.getByText(nameCell('LEE JUN WEI'))).toBeInTheDocument()   // LTA — CDO-eligible
     // WONG KAH MENG (1SG) is not CDO-eligible (Officers only)
     expect(screen.queryByText(nameCell('WONG KAH MENG'))).not.toBeInTheDocument()
   })

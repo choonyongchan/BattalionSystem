@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   SCOPE_TYPES, scopeOfType, exceptionType, isRevoked, isActiveOn,
   soldierKeyOf, soldierIndex, exceptionSoldierKey, buildActiveMap, mergeRuns, isOnStrength,
-} from '@/lib/exceptions/active'
-import type { Exception, Soldier } from '@/lib/supabase'
+} from '@/backend/domain/exceptions/active'
+import type { Exception, Soldier } from '@/shared/types'
 
 let nextId = 1
 function ex(p: Partial<Exception>): Exception {

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import OffLeaveTracking from '@/components/off-leave/OffLeaveTracking'
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
+import OffLeaveTracking from '@/frontend/components/off-leave/OffLeaveTracking'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({

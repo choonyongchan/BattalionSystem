@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { isUrti, generateRsiReport, rsiCompanyLabel } from '@/lib/rsi/rsi'
-import { soldierIndex } from '@/lib/exceptions/active'
-import type { Exception, Soldier } from '@/lib/supabase'
+import { isUrti, generateRsiReport, rsiCompanyLabel } from '@/backend/domain/rsi/rsi'
+import { soldierIndex } from '@/backend/domain/exceptions/active'
+import type { Exception, Soldier } from '@/shared/types'
 
 let nextId = 1
 const rs = (soldier_id: string, type: string, reason: string): Exception => ({

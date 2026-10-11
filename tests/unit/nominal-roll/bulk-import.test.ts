@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseCSV, validateAndTransform } from '@/lib/nominal-roll/bulk-import'
-import type { Soldier } from '@/lib/supabase'
+import { parseCSV, validateAndTransform } from '@/backend/domain/nominal-roll/bulk-import'
+import type { Soldier } from '@/shared/types'
 
 const existing: Soldier[] = [
   { rank: 'CPL', name: 'EXISTING_SOLDIER', platoon: '1' },

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/backend/data/client'
 import { FIXTURE_SOLDIERS } from './soldiers'
 import { FIXTURE_EXCEPTIONS } from './exceptions'
 import { FIXTURE_DUTIES } from './duties'

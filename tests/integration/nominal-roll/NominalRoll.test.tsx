@@ -1,9 +1,9 @@
-﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import NominalRoll from '@/components/nominal-roll/NominalRoll'
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
+import NominalRoll from '@/frontend/components/nominal-roll/NominalRoll'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({
@@ -60,7 +60,7 @@ describe('NominalRoll', () => {
     render(<NominalRoll company="test" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
-    // Delete ONG JUN SHENG (REC in Pl 4 â€” the only REC in the fixture)
+    // Delete ONG JUN SHENG (REC in Pl 4 — the only REC in the fixture)
     // Delete requires 2 clicks: Remove â†’ Confirm delete
     const row = screen.getByText('ONG JUN SHENG').closest('tr')!
     await userEvent.click(row.querySelector('button[title="Remove"]') as HTMLElement)

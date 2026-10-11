@@ -1,4 +1,4 @@
-import type { Soldier } from '@/lib/supabase'
+import type { Soldier } from '@/shared/types'
 
 export const FIXTURE_SOLDIERS: Soldier[] = [
   // HQ Platoon

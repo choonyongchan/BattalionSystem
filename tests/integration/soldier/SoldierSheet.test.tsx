@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import NominalRoll from '@/components/nominal-roll/NominalRoll'
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
+import NominalRoll from '@/frontend/components/nominal-roll/NominalRoll'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({
@@ -63,7 +63,8 @@ describe('SoldierSheet', () => {
 
     const dialog = screen.getByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: /History/ }))
-    expect(within(dialog).getByText('Revoked')).toBeInTheDocument()
+    // The DB write lands before the sheet's reload does — wait for the UI to catch up
+    expect(await within(dialog).findByText('Revoked', {}, { timeout: 10000 })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Restore' })).toBeInTheDocument()
   })
 

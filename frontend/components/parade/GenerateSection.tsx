@@ -1,0 +1,85 @@
+'use client'
+
+import { useState } from 'react'
+import { track } from '@vercel/analytics'
+import type { Company, CompanyTheme } from '@/shared/companies'
+import { PARADE_CONFIG } from '@/shared/companies'
+import { todaySGDate } from '@/shared/dates'
+import { isActiveOn } from '@/backend/domain/exceptions/active'
+import { generateParadeReport } from '@/backend/domain/parade/parade-report'
+import { applyExcludeStayIn, sortExceptions } from '@/backend/domain/parade/exception-table'
+import { strengthInputsToNumbers } from '@/backend/domain/parade/strength'
+import type { ParadeData } from '@/frontend/hooks/useParadeData'
+import { PARADE_TYPES, type ParadeType } from './parade-ui'
+
+/**
+ * Parade options and the Generate button. The report is always for today, whatever duty
+ * date is selected; the text is handed to `onGenerated`.
+ */
+export default function GenerateSection({ company, companyLabel, theme, paradeTimes, data, onGenerated }: {
+  company: Company
+  companyLabel: string
+  theme: CompanyTheme
+  paradeTimes: Record<string, string>
+  data: ParadeData
+  onGenerated: (report: string, paradeType: ParadeType) => void
+}) {
+  const [paradeType, setParadeType] = useState<ParadeType>('First Parade')
+  const [excludeStayIn, setExcludeStayIn] = useState(false)
+
+  /** Builds today's parade state report from current data and the chosen options. */
+  async function generate() {
+    const today = todaySGDate()
+    const { data: duties } = await data.repos.duties.listOn(today)
+    const active = sortExceptions(data.exceptions).filter((e) => isActiveOn(e, today))
+    const report = generateParadeReport({
+      date: today,
+      companyLabel,
+      soldiers: data.allSoldiers,
+      // Excluding stay-in = count them absent; their STATUS lines still print
+      activeExceptions: applyExcludeStayIn(active, excludeStayIn),
+      paradeTimeStr: paradeTimes[paradeType] ?? '',
+      duties,
+      strengthOverrides: strengthInputsToNumbers(data.strInputs),
+      allExceptions: data.exceptions,
+      paradeType,
+    }, PARADE_CONFIG[company], company)
+    onGenerated(report, paradeType)
+    track('parade_state_generated', { company, soldierCount: data.soldiers.length, date: today, paradeType, excludeStayIn })
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4">
+        <fieldset>
+          <legend className="text-xs text-gray-500 mb-2">Parade</legend>
+          <div className="flex gap-4">
+            {PARADE_TYPES.map((pt) => (
+              <label key={pt} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" name="paradeType" className="h-4 w-4" checked={paradeType === pt} onChange={() => setParadeType(pt)} />
+                {pt}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="text-xs text-gray-500 mb-2">Exclude Excuse Stay-In Personnel</legend>
+          <div className="flex gap-4">
+            {([['No', false], ['Yes', true]] as const).map(([label, value]) => (
+              <label key={label} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" name="excludeStayIn" className="h-4 w-4" checked={excludeStayIn === value} onChange={() => setExcludeStayIn(value)} />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+      <button
+        onClick={generate}
+        className={`w-full py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
+      >
+        Generate Parade State
+      </button>
+    </div>
+  )
+}

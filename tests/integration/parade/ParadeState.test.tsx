@@ -2,10 +2,10 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import ParadeState from '@/components/parade/ParadeState'
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
-import { FIXTURE_DATE } from '../../fixtures/exceptions'
+import ParadeState from '@/frontend/components/parade/ParadeState'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
+import { FIXTURE_DATE } from '@/tests/fixtures/exceptions'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({

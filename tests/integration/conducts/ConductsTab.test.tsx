@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ConductsTab from '@/components/conducts/ConductsTab'
-import { supabase } from '@/lib/supabase'
-import { todaySGDate } from '@/lib/utils'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
+import ConductsTab from '@/frontend/components/conducts/ConductsTab'
+import { supabase } from '@/backend/data/client'
+import { todaySGDate } from '@/shared/dates'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 const today = todaySGDate()
 

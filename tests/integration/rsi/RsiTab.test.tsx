@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import RsiTab from '@/components/rsi/RsiTab'
-import { supabase } from '@/lib/supabase'
-import { todaySGDate } from '@/lib/utils'
-import { truncateTestDb, seedTestDb } from '../../fixtures/db'
+import RsiTab from '@/frontend/components/rsi/RsiTab'
+import { supabase } from '@/backend/data/client'
+import { todaySGDate } from '@/shared/dates'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 const today = todaySGDate()
 

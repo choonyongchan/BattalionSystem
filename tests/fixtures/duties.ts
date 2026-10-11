@@ -1,4 +1,4 @@
-import type { DutyEntry } from '@/lib/supabase'
+import type { DutyEntry } from '@/shared/types'
 import { FIXTURE_DATE } from './exceptions'
 
 export const FIXTURE_DUTIES: DutyEntry[] = [

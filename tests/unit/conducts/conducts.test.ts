@@ -3,9 +3,9 @@ import {
   conductEnd, conductDay, conductDateRange, conductTimeRange, nearestConduct,
   classifyConduct, needsDecision, generateConductState, generatePlatoonConductState, conductBlocks,
   conductSoldiers, conductIncludesHQ,
-} from '@/lib/conducts/conducts'
-import type { Conduct, ConductDecision, Exception, Soldier } from '@/lib/supabase'
-import type { PlatoonBlock } from '@/lib/companies'
+} from '@/backend/domain/conducts/conducts'
+import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
+import type { PlatoonBlock } from '@/shared/companies'
 
 const C = (p: Partial<Conduct> = {}): Conduct => ({
   id: 'c1', name: 'IPPT1', date: '2026-09-22', end_date: null, start_time: null, end_time: null, ...p,

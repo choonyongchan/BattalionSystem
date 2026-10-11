@@ -1,6 +1,6 @@
-import type { AppSettings } from '@/lib/settings'
-import { DEFAULT_SETTINGS } from '@/lib/settings'
-import type { ParadeStateConfig } from '@/lib/companies'
+import type { AppSettings } from '@/backend/domain/settings/settings'
+import { DEFAULT_SETTINGS } from '@/backend/domain/settings/settings'
+import type { ParadeStateConfig } from '@/shared/companies'
 
 export const FIXTURE_SETTINGS: AppSettings = {
   ...DEFAULT_SETTINGS,

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/frontend/hooks/useAuth'
 
 const unsubscribe = vi.fn()
 let authChangeCallback: (event: string, session: unknown) => void = () => {}
 
-vi.mock('@/lib/supabase', () => ({
+vi.mock('@/backend/data/client', () => ({
   supabase: {
     auth: {
       getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
@@ -19,7 +19,7 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/backend/data/client'
 
 beforeEach(() => vi.clearAllMocks())
 

@@ -1,4 +1,4 @@
-import type { OffLeave } from '@/lib/supabase'
+import type { OffLeave } from '@/shared/types'
 
 export const FIXTURE_OFF_LEAVE: OffLeave[] = [
   { name: 'GOH RONG HAO',  off: 0,   leave: 1 }, // PTE

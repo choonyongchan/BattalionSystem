@@ -1,8 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config({ path: '.env.test' })
 
-import { supabase } from '@/lib/supabase'
-import { truncateTestDb, seedTestDb } from '../fixtures/db'
+import { supabase } from '@/backend/data/client'
+import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
 
 export default async function globalSetup() {
   const { error } = await supabase.auth.signInWithPassword({

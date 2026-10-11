@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   isValidTime, isExceptionValid, validateAddEx,
-  isEditExceptionValid, validateEditEx, exceptionSortValue, strWarn, anyMismatch,
+  isEditExceptionValid, validateEditEx, exceptionSortValue,
   compareExceptionOrder, groupExceptionsByPerson,
-} from '@/lib/exceptions/exception-validation'
-import type { ExForm } from '@/lib/exceptions/exception-validation'
-import type { Exception, Soldier } from '@/lib/supabase'
+} from '@/backend/domain/exceptions/exception-validation'
+import type { ExForm } from '@/backend/domain/exceptions/exception-validation'
+import { strWarn, anyMismatch } from '@/backend/domain/parade/strength'
+import type { Exception, Soldier } from '@/shared/types'
 
 describe('isValidTime', () => {
   it('accepts empty string', () => expect(isValidTime('')).toBe(true))

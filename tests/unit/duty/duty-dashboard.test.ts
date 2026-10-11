@@ -1,9 +1,9 @@
 ﻿import { describe, it, expect } from 'vitest'
-import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/lib/duty/duty-dashboard'
-import type { WeightSettings } from '@/lib/duty/duty-dashboard'
-import { FIXTURE_SOLDIERS } from '../../fixtures/soldiers'
-import { FIXTURE_DUTIES } from '../../fixtures/duties'
-import type { DutyEntry } from '@/lib/supabase'
+import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/backend/domain/duty/duty-dashboard'
+import type { WeightSettings } from '@/backend/domain/duty/duty-dashboard'
+import { FIXTURE_SOLDIERS } from '@/tests/fixtures/soldiers'
+import { FIXTURE_DUTIES } from '@/tests/fixtures/duties'
+import type { DutyEntry } from '@/shared/types'
 
 const NO_HOLIDAYS = new Set<string>()
 

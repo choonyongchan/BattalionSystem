@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { generateParadeReport } from '@/lib/parade/parade-report'
-import { FIXTURE_SOLDIERS } from '../../fixtures/soldiers'
-import { FIXTURE_EXCEPTIONS, FIXTURE_DATE } from '../../fixtures/exceptions'
-import { FIXTURE_DUTIES } from '../../fixtures/duties'
-import { FIXTURE_PARADE_CONFIG } from '../../fixtures/config'
-import type { Exception, Soldier } from '@/lib/supabase'
+import { generateParadeReport } from '@/backend/domain/parade/parade-report'
+import { FIXTURE_SOLDIERS } from '@/tests/fixtures/soldiers'
+import { FIXTURE_EXCEPTIONS, FIXTURE_DATE } from '@/tests/fixtures/exceptions'
+import { FIXTURE_DUTIES } from '@/tests/fixtures/duties'
+import { FIXTURE_PARADE_CONFIG } from '@/tests/fixtures/config'
+import type { Exception, Soldier } from '@/shared/types'
 
 const BASE_INPUT = {
   date: FIXTURE_DATE,

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import CommanderLoginForm from '@/components/auth/CommanderLoginForm'
+import CommanderLoginForm from '@/frontend/components/auth/CommanderLoginForm'
 
 beforeEach(() => {
   localStorage.clear()

@@ -1,4 +1,4 @@
-import type { Exception } from '@/lib/supabase'
+import type { Exception } from '@/shared/types'
 
 // Fixed past date so tests don't depend on "today"
 export const FIXTURE_DATE = '2026-01-15'

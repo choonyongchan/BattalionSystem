@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, resolveDayType } from '@/lib/settings'
+import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, resolveDayType } from '@/backend/domain/settings/settings'
 
 const VALID_SETTINGS = {
   duty_base_weights: { CDO: 2, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1 },

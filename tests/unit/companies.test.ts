@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, getRankType, DEFAULT_RANK_RULES, DUTY_ELIGIBILITY, PARADE_CONFIG, pointsDutyTypes } from '@/lib/companies'
-import { displayName } from '@/lib/supabase'
+import { COMPANIES, COMPANY_THEMES, DISABLED_COMPANIES, PARADE_CONFIG, pointsDutyTypes } from '@/shared/companies'
+import { getRankType, DEFAULT_RANK_RULES, DUTY_ELIGIBILITY } from '@/shared/ranks'
+import { displayName } from '@/shared/names'
 
 describe('DISABLED_COMPANIES', () => {
   it('marks archer, braves, cougar as disabled', () => {
