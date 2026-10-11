@@ -36,8 +36,11 @@ async function loaded() {
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 
+// Name cells read "<RANK> <NAME>" — match the name at the end of the cell
+const nameCell = (name: string) => new RegExp(` ${name}$`)
+
 function pointsFor(name: string) {
-  const row = screen.getByText(name).closest('tr')!
+  const row = screen.getByText(nameCell(name)).closest('tr')!
   const cells = row.querySelectorAll('td')
   return cells[cells.length - 1].textContent
 }
@@ -48,11 +51,11 @@ describe('DutyDashboard', () => {
     await loaded()
 
     expect(pointsFor('LEE JUN WEI')).toBe('1')   // CDO duty
-    expect(pointsFor('WONG KAH MENG')).toBe('1') // CDS duty
+    expect(pointsFor('WONG KAH MENG')).toBe('2') // CDS duty + Guard Duty (exception fixture), both Thu ×1
     expect(pointsFor('YEO JIA HENG')).toBe('1')  // COS duty
     expect(pointsFor('HO KAI XIANG')).toBe('1')  // PDS1 duty
     // ONG JUN SHENG (REC) is ineligible for every duty type â€” excluded entirely
-    expect(screen.queryByText('ONG JUN SHENG')).not.toBeInTheDocument()
+    expect(screen.queryByText(nameCell('ONG JUN SHENG'))).not.toBeInTheDocument()
   })
 
   it('filter pill narrows the leaderboard to soldiers eligible for that duty type', async () => {
@@ -61,9 +64,9 @@ describe('DutyDashboard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'CDO' }))
 
-    expect(screen.getByText('LEE JUN WEI')).toBeInTheDocument()   // LTA â€” CDO-eligible
+    expect(screen.getByText(nameCell('LEE JUN WEI'))).toBeInTheDocument()   // LTA â€” CDO-eligible
     // WONG KAH MENG (1SG) is not CDO-eligible (Officers only)
-    expect(screen.queryByText('WONG KAH MENG')).not.toBeInTheDocument()
+    expect(screen.queryByText(nameCell('WONG KAH MENG'))).not.toBeInTheDocument()
   })
 
   it('a custom duty_base_weights value from Settings is reflected in the leaderboard', async () => {
