@@ -149,11 +149,12 @@ export default function ParadeState({
   }
 
   useEffect(() => {
+    setLoading(true)
     load()
   }, [company, date])
 
+  // Refreshes in place so edits keep the scroll position
   async function load() {
-    setLoading(true)
     setError(null)
     const [soldiersRes, exceptionsRes, dutiesRes, strRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*'),
@@ -497,7 +498,7 @@ export default function ParadeState({
     return soldiers.filter((s) => isInRange(rule, s.rank))
   }
 
-  const dutyEditInputClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const dutyEditInputClass = `w-full min-w-[6rem] border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   const dutyTypesToShow = company === 'hercules' ? [...ALL_DUTY_TYPES, 'Duty Clerk'] : ALL_DUTY_TYPES
 
@@ -508,7 +509,7 @@ export default function ParadeState({
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {/* Header */}
       <div>
         <h2 className="text-base font-semibold text-gray-800">Parade State</h2>
@@ -668,9 +669,9 @@ export default function ParadeState({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Duty</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500">Assigned To</th>
-                    <th className="w-24" />
+                    <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Duty</th>
+                    <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Assigned To</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
@@ -682,10 +683,10 @@ export default function ParadeState({
                         key={dt}
                         className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
                       >
-                        <td className="px-4 py-3 font-medium">{dt}</td>
+                        <td className="px-3 py-1.5 whitespace-nowrap font-medium">{dt}</td>
                         {isEditing ? (
                           <>
-                            <td className="px-2 py-2 space-y-1">
+                            <td className="px-2 py-1 space-y-1">
                               <SearchDropdown
                                 {...soldierDropdownProps}
                                 items={dutyPersonnelItems(editDuty.duty_type, editDuty.name2 === EXTERNAL_PERSONNEL.name)}
@@ -704,7 +705,7 @@ export default function ParadeState({
                                 />
                               )}
                             </td>
-                            <td className="px-2 py-2">
+                            <td className="px-2 py-1">
                               <div className="flex gap-1 justify-end">
                                 <button
                                   onClick={updateDuty}
@@ -724,15 +725,15 @@ export default function ParadeState({
                           </>
                         ) : (
                           <>
-                            <td className="px-4 py-3 text-gray-600">{d?.name ? displayName(d.name, soldiers) : '–'}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-gray-600">{d?.name ? displayName(d.name, soldiers) : '–'}</td>
+                            <td className="px-3 py-1.5 whitespace-nowrap">
                               <div className="flex gap-1 justify-end items-center">
                                 <button
                                   onClick={() => {
                                     const [n1, n2] = splitDutyNames(d?.name ?? '')
                                     setEditDuty({ duty_type: dt, name: n1 ?? '', name2: n2 ?? '' })
                                   }}
-                                  className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
+                                  className="text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1"
                                   title="Edit"
                                 >
                                   ✎
@@ -741,8 +742,8 @@ export default function ParadeState({
                                   <button
                                     onClick={() => dutyConfirm.isConfirming(dt) ? dutyConfirm.resolve(dt, () => deleteDuty(dt)) : dutyConfirm.request(dt)}
                                     className={dutyConfirm.isConfirming(dt)
-                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                      ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1'}
                                     title={dutyConfirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}
                                   >
                                     {dutyConfirm.isConfirming(dt) ? 'Yes' : '✕'}
@@ -822,9 +823,9 @@ export default function ParadeState({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Role</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                      <th className="w-24" />
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Role</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
@@ -837,7 +838,7 @@ export default function ParadeState({
                         >
                           {isEditing ? (
                             <>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <select
                                   value={editGuardDuty!.reason ?? ''}
                                   onChange={(e2) => {
@@ -853,7 +854,7 @@ export default function ParadeState({
                                   ))}
                                 </select>
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <SearchDropdown
                                   {...soldierDropdownProps}
                                   items={eligibleGuardSoldiers(editGuardDuty!.reason ?? '')}
@@ -863,7 +864,7 @@ export default function ParadeState({
                                   disabled={!editGuardDuty!.reason}
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <div className="flex gap-1 justify-end">
                                   <button
                                     onClick={updateGuardDuty}
@@ -882,13 +883,13 @@ export default function ParadeState({
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
-                              <td className="px-4 py-3 font-medium">{displayName(e.name, soldiers)}</td>
-                              <td className="px-4 py-3">
+                              <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{e.reason ?? '–'}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap font-medium">{displayName(e.name, soldiers)}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
                                     onClick={() => setEditGuardDuty({ ...e })}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors text-xl p-3"
+                                    className="text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1"
                                     title="Edit"
                                   >
                                     ✎
@@ -896,8 +897,8 @@ export default function ParadeState({
                                   <button
                                     onClick={() => gdConfirm.isConfirming(e.id) ? gdConfirm.resolve(e.id, () => deleteException(e.id)) : gdConfirm.request(e.id)}
                                     className={gdConfirm.isConfirming(e.id)
-                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                      ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1'}
                                     title={gdConfirm.isConfirming(e.id) ? 'Confirm clear' : 'Clear'}
                                   >
                                     {gdConfirm.isConfirming(e.id) ? 'Yes' : '✕'}
@@ -1161,11 +1162,11 @@ export default function ParadeState({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">4D</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Scope</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Reason</th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">4D</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Scope</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Reason</th>
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => cycleExSort('start')}
@@ -1177,7 +1178,7 @@ export default function ParadeState({
                           </span>
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => cycleExSort('end')}
@@ -1189,8 +1190,8 @@ export default function ParadeState({
                           </span>
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">Absent?</th>
-                      <th className="w-24" />
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Absent?</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
@@ -1214,10 +1215,10 @@ export default function ParadeState({
                               <>
                                 {showGroupCells && (
                                   <>
-                                <td className="px-4 py-3 text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
+                                <td className="px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === editEx!.name)?.four_d ?? '–'}
                                 </td>
-                                <td className="px-2 py-2" rowSpan={groupRowSpan}>
+                                <td className="px-2 py-1" rowSpan={groupRowSpan}>
                                   <SearchDropdown
                                     {...soldierDropdownProps}
                                     items={soldiers}
@@ -1226,7 +1227,7 @@ export default function ParadeState({
                                     inputClass={exClass('name')}
                                   />
                                 </td>
-                                <td className="px-2 py-2" rowSpan={groupRowSpan}>
+                                <td className="px-2 py-1" rowSpan={groupRowSpan}>
                                   <div className="flex flex-wrap gap-1">
                                     {guardDutyScopes.map((s) => (
                                       <button
@@ -1244,7 +1245,7 @@ export default function ParadeState({
                                 </td>
                                   </>
                                 )}
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-1">
                                   <div className="space-y-1">
                                     <input
                                       type="text"
@@ -1280,7 +1281,7 @@ export default function ParadeState({
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-1">
                                   {editSingleDate ? (
                                     <div className="space-y-1">
                                       <input
@@ -1304,7 +1305,7 @@ export default function ParadeState({
                                       className={exClass('start')} />
                                   )}
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-1">
                                   {editSingleDate ? (
                                     <span className="text-gray-400 text-xs">same as start</span>
                                   ) : (
@@ -1315,7 +1316,7 @@ export default function ParadeState({
                                       className={exClass('end')} />
                                   )}
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-1">
                                   <label className="flex items-center justify-center h-full py-2 cursor-pointer">
                                     <input
                                       type="checkbox"
@@ -1325,7 +1326,7 @@ export default function ParadeState({
                                     />
                                   </label>
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-2 py-1">
                                   <div className="flex gap-1 justify-end">
                                     <button
                                       onClick={updateException}
@@ -1347,26 +1348,26 @@ export default function ParadeState({
                               <>
                                 {showGroupCells && (
                                   <>
-                                <td className="px-4 py-3 text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
+                                <td className="px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === e.name)?.four_d ?? '–'}
                                 </td>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap" rowSpan={groupRowSpan}>
+                                <td className="px-3 py-1.5 whitespace-nowrap font-medium" rowSpan={groupRowSpan}>
                                   {soldiers.find((s) => s.name === e.name)?.rank ? `${soldiers.find((s) => s.name === e.name)?.rank} ${e.name}` : e.name}
                                 </td>
-                                <td className="px-4 py-3" rowSpan={groupRowSpan}>
+                                <td className="px-3 py-1.5 whitespace-nowrap" rowSpan={groupRowSpan}>
                                   <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>
                                     {e.scope ?? '–'}
                                   </span>
                                 </td>
                                   </>
                                 )}
-                                <td className="px-4 py-3 text-gray-500">{e.reason ?? '–'}</td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.start ? toSGDate(e.start) : '–'}</td>
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{e.end ? toSGDate(e.end) : '–'}</td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-1.5 text-gray-500"><div className="w-max max-w-sm whitespace-normal">{e.reason ?? '–'}</div></td>
+                                <td className="px-3 py-1.5 whitespace-nowrap text-gray-500 text-xs">{e.start ? toSGDate(e.start) : '–'}</td>
+                                <td className="px-3 py-1.5 whitespace-nowrap text-gray-500 text-xs">{e.end ? toSGDate(e.end) : '–'}</td>
+                                <td className="px-3 py-1.5 whitespace-nowrap">
                                   <input type="checkbox" className="h-5 w-5" checked={e.counts_as_absence} disabled />
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-3 py-1.5 whitespace-nowrap">
                                   <div className="flex gap-1 justify-end items-center">
                                     <button
                                       onClick={() => exConfirm.isConfirming(e.id)
@@ -1377,8 +1378,8 @@ export default function ParadeState({
                                           setEditExErrors({})
                                         })()}
                                       className={exConfirm.isConfirming(e.id)
-                                        ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm'
-                                        : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3'}
+                                        ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1'}
                                       title={exConfirm.isConfirming(e.id) ? 'Confirm delete' : 'Edit'}
                                     >
                                       {exConfirm.isConfirming(e.id) ? 'Yes' : '✎'}
@@ -1386,8 +1387,8 @@ export default function ParadeState({
                                     <button
                                       onClick={() => exConfirm.isConfirming(e.id) ? exConfirm.cancel() : exConfirm.request(e.id)}
                                       className={exConfirm.isConfirming(e.id)
-                                        ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors'
-                                        : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3'}
+                                        ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors'
+                                        : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1'}
                                       title={exConfirm.isConfirming(e.id) ? 'Cancel' : 'Remove'}
                                     >
                                       {exConfirm.isConfirming(e.id) ? 'No' : '✕'}

@@ -169,21 +169,21 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+                        <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
                         {filter === 'all' ? (
                           <>
                             {dutyTypes.map(dt => (
                               <th
                                 key={dt}
                                 onClick={() => handleSort(dt)}
-                                className="text-center px-3 py-3 font-medium text-gray-500 w-14 cursor-pointer select-none hover:text-gray-700"
+                                className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
                               >
                                 {dt}{sortCol === dt ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                               </th>
                             ))}
                             <th
                               onClick={() => handleSort('Total')}
-                              className="text-center px-3 py-3 font-medium text-gray-500 w-14 cursor-pointer select-none hover:text-gray-700"
+                              className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
                             >
                               Total{sortCol === 'Total' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                             </th>
@@ -191,7 +191,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                         ) : (
                           <th
                             onClick={() => handleSort('Points')}
-                            className="text-center px-3 py-3 font-medium text-gray-500 w-20 cursor-pointer select-none hover:text-gray-700"
+                            className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
                           >
                             Points{sortCol === 'Points' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                           </th>
@@ -210,23 +210,23 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                         const isMax = total === maxPts && sorted.length > 1 && total > 0
                         return (
                           <tr key={s.name} className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
-                            <td className="px-4 py-3 font-medium text-gray-900">{s.rank} {s.name}</td>
+                            <td className="px-3 py-1.5 whitespace-nowrap font-medium text-gray-900">{s.rank} {s.name}</td>
                             {filter === 'all' ? (
                               <>
                                 {dutyTypes.map(dt => {
                                   const dtPoints = pointsByDutyType[s.name]?.[dt] ?? 0
                                   return (
-                                    <td key={dt} className={`px-3 py-3 text-center ${dtPoints === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
+                                    <td key={dt} className={`px-2 py-1.5 text-center ${dtPoints === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
                                       {dtPoints === 0 ? '—' : dtPoints}
                                     </td>
                                   )
                                 })}
-                                <td className={`px-3 py-3 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                                <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
                                   {total}
                                 </td>
                               </>
                             ) : (
-                              <td className={`px-3 py-3 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                              <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
                                 {total}
                               </td>
                             )}
@@ -273,7 +273,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
         )}
       </nav>
 
-      <div className="flex-1 w-full max-w-3xl mx-auto px-4 py-6">
+      <div className="flex-1 w-full max-w-screen-2xl mx-auto px-3 sm:px-6 py-3">
         {authLoading ? (
           <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
         ) : !isCommander ? (

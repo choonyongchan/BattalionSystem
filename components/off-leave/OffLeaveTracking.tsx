@@ -33,11 +33,12 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
   const nameConfirm = useConfirmDelete<string>()
 
   useEffect(() => {
+    setLoading(true)
     load()
   }, [company])
 
+  // Refreshes in place so edits keep the scroll position
   async function load() {
-    setLoading(true)
     setError(null)
     const [soldiersRes, recordsRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*'),
@@ -110,12 +111,12 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
   const rows = sortOffLeaveByRank(filtered, soldiers)
 
   const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
-  const editClass = `w-full border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const editClass = `w-full min-w-[6rem] border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
 
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div>
         <h2 className="text-base font-semibold text-gray-800">Off/Leave Tracking</h2>
         <p className="text-xs text-gray-500">{records.length} personnel</p>
@@ -222,11 +223,11 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">Rank</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 w-20">Off</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 w-20">Leave</th>
-                  <th className="w-24" />
+                  <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Rank</th>
+                  <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
+                  <th className="text-right px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Off</th>
+                  <th className="text-right px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Leave</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -237,11 +238,11 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                       key={r.name}
                       className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">{soldierByName.get(r.name)?.rank ?? '–'}</td>
-                      <td className="px-4 py-3 font-medium">{r.name}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-gray-600">{soldierByName.get(r.name)?.rank ?? '–'}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap font-medium">{r.name}</td>
                       {isEditing ? (
                         <>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-1">
                             <input
                               type="number"
                               step="0.5"
@@ -254,7 +255,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                               className={editClass}
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-1">
                             <input
                               type="number"
                               step="0.5"
@@ -266,7 +267,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                               className={editClass}
                             />
                           </td>
-                          <td className="px-2 py-2">
+                          <td className="px-2 py-1">
                             <div className="flex gap-1 justify-end">
                               <button
                                 onClick={updateRecord}
@@ -286,9 +287,9 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                         </>
                       ) : (
                         <>
-                          <td className="px-4 py-3 text-right">{r.off}</td>
-                          <td className="px-4 py-3 text-right">{r.leave}</td>
-                          <td className="px-4 py-3">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-right">{r.off}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-right">{r.leave}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="flex gap-1 justify-end items-center">
                               <button
                                 onClick={() => nameConfirm.isConfirming(r.name)
@@ -296,8 +297,8 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                                   : setEditRow({ name: r.name, off: String(r.off), leave: String(r.leave) })}
                                 disabled={deletingName === r.name}
                                 className={nameConfirm.isConfirming(r.name)
-                                  ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm'
-                                  : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
+                                  ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm'
+                                  : 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                 title={nameConfirm.isConfirming(r.name) ? 'Confirm delete' : 'Edit'}
                               >
                                 {nameConfirm.isConfirming(r.name) ? 'Yes' : '✎'}
@@ -306,8 +307,8 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                                 onClick={() => nameConfirm.isConfirming(r.name) ? nameConfirm.cancel() : nameConfirm.request(r.name)}
                                 disabled={deletingName === r.name}
                                 className={nameConfirm.isConfirming(r.name)
-                                  ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50'
-                                  : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
+                                  ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                  : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                 title={nameConfirm.isConfirming(r.name) ? 'Cancel' : 'Remove'}
                               >
                                 {nameConfirm.isConfirming(r.name) ? 'No' : '✕'}

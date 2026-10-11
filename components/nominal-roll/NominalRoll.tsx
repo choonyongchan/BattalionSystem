@@ -21,7 +21,7 @@ function whereaboutsBorder(active: Exception[]): string {
 }
 
 function fieldInputClass(hasError: boolean, focusRing: string) {
-  const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full'
+  const base = 'border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 w-full min-w-[6rem]'
   return hasError ? `${base} border-red-500 ring-2 ring-red-500` : `${base} border-gray-300 ${focusRing}`
 }
 
@@ -64,12 +64,12 @@ export default function NominalRoll({ company }: { company: Company }) {
   const [deleteAllErr, setDeleteAllErr] = useState<string | null>(null)
 
   useEffect(() => {
+    setLoading(true)
     load()
   }, [company])
 
-  /** quiet: refresh in place — a full "Loading..." swap would unmount an open SoldierSheet mid-edit. */
-  async function load(quiet = false) {
-    if (!quiet) setLoading(true)
+  /** Refreshes in place — a "Loading..." swap would unmount an open SoldierSheet and jump the scroll to the top. */
+  async function load() {
     setError(null)
     const [rollRes, exRes] = await Promise.all([
       supabase.from(tbl(company, 'NominalRoll')).select('*').order('platoon'),
@@ -215,28 +215,43 @@ export default function NominalRoll({ company }: { company: Company }) {
   if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div>
           <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
           <p className="text-xs text-gray-500">{allSoldiers.filter(isOnStrength).length} personnel</p>
         </div>
-        <div className="flex gap-2">
+        <input
+          type="search"
+          placeholder="Search by rank, name, platoon, 4D…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-48 max-w-sm border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+        />
+        {postedOutCount > 0 && (
+          <button
+            onClick={() => setShowPostedOut(!showPostedOut)}
+            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 text-gray-600'}`}
+          >
+            {showPostedOut ? 'Hide' : 'Show'} posted out ({postedOutCount})
+          </button>
+        )}
+        <div className="flex gap-2 ml-auto">
           <button
             onClick={() => { setDeleteAllState('prompt'); setDeleteAllPw(''); setDeleteAllErr(null) }}
-            className="px-4 py-3 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition-colors"
+            className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition-colors"
           >
             Delete All
           </button>
           <button
             onClick={() => setShowImport(true)}
-            className="px-4 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
+            className="px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors"
           >
             Bulk Import
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+            className={`px-3 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
           >
             {showForm ? 'Cancel' : '+ Add'}
           </button>
@@ -271,27 +286,6 @@ export default function NominalRoll({ company }: { company: Company }) {
             </button>
           </div>
           {deleteAllErr && <p className="text-xs text-red-600">{deleteAllErr}</p>}
-        </div>
-      )}
-
-      <div className="flex justify-center">
-        <input
-          type="search"
-          placeholder="Search by rank, name, platoon, 4D…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
-        />
-      </div>
-
-      {postedOutCount > 0 && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => setShowPostedOut(!showPostedOut)}
-            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 text-gray-600'}`}
-          >
-            {showPostedOut ? 'Hide' : 'Show'} posted out ({postedOutCount})
-          </button>
         </div>
       )}
 
@@ -363,7 +357,7 @@ export default function NominalRoll({ company }: { company: Company }) {
         if (group.length === 0) return null
         return (
           <div key={type}>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
               {type}s – {group.length}
             </h3>
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -371,31 +365,31 @@ export default function NominalRoll({ company }: { company: Company }) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-24">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button onClick={() => toggleSort('four_d')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
                           4D
                           {sortKey === 'four_d' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button onClick={() => toggleSort('platoon')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
                           Platoon
                           {sortKey === 'platoon' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500 w-20">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button onClick={() => toggleSort('rank')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
                           Rank
                           {sortKey === 'rank' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="text-left px-4 py-3 font-medium text-gray-500">
+                      <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">
                         <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
                           Name
                           {sortKey === 'name' && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                         </button>
                       </th>
-                      <th className="w-24" />
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
@@ -408,7 +402,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                         >
                           {isEditing ? (
                             <>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <input
                                   type="text"
                                   autoFocus
@@ -422,7 +416,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   className={editClass('four_d')}
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <select
                                   value={editRow.platoon}
                                   onChange={(e) => setEditRow({ ...editRow, platoon: e.target.value })}
@@ -435,7 +429,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   {PLATOONS.map((p) => <option key={p} value={p}>{p}</option>)}
                                 </select>
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <SearchDropdown
                                   items={ALL_RANKS}
                                   value={editRow.rank}
@@ -453,7 +447,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   placeholder="e.g. CPL, 3SG, LTA"
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <input
                                   type="text"
                                   value={editRow.name}
@@ -465,7 +459,7 @@ export default function NominalRoll({ company }: { company: Company }) {
                                   className={editClass('name')}
                                 />
                               </td>
-                              <td className="px-2 py-2">
+                              <td className="px-2 py-1">
                                 <div className="flex gap-1 justify-end">
                                   <button
                                     onClick={updateSoldier}
@@ -485,16 +479,16 @@ export default function NominalRoll({ company }: { company: Company }) {
                             </>
                           ) : (
                             <>
-                              <td className={`px-4 py-3 text-gray-400 font-mono text-xs ${whereaboutsBorder(activeFor(s))}`}>{s.four_d ?? '–'}</td>
-                              <td className="px-4 py-3 text-gray-500">{s.platoon}</td>
-                              <td className="px-4 py-3 font-mono text-xs text-gray-600">{s.rank}</td>
-                              <td className="px-4 py-3 font-medium">
+                              <td className={`px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs ${whereaboutsBorder(activeFor(s))}`}>{s.four_d ?? '–'}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{s.platoon}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-gray-600">{s.rank}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap font-medium">
                                 <button onClick={() => setOpenKey(soldierKeyOf(s))} className="text-left hover:underline">
                                   {s.name}
                                 </button>
                                 {!isOnStrength(s) && <span className="ml-2 text-xs text-red-600">posted out</span>}
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="px-3 py-1.5 whitespace-nowrap">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
                                     onClick={() => nameConfirm.isConfirming(s.name)
@@ -502,8 +496,8 @@ export default function NominalRoll({ company }: { company: Company }) {
                                       : (setEditRow({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setEditErrors({}))}
                                     disabled={deletingName === s.name}
                                     className={nameConfirm.isConfirming(s.name)
-                                      ? 'px-3 py-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm'
-                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-xl p-3 disabled:opacity-50'}
+                                      ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Confirm delete' : 'Edit'}
                                   >
                                     {nameConfirm.isConfirming(s.name) ? 'Yes' : '✎'}
@@ -512,8 +506,8 @@ export default function NominalRoll({ company }: { company: Company }) {
                                     onClick={() => nameConfirm.isConfirming(s.name) ? nameConfirm.cancel() : nameConfirm.request(s.name)}
                                     disabled={deletingName === s.name}
                                     className={nameConfirm.isConfirming(s.name)
-                                      ? 'px-3 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50'
-                                      : 'text-gray-400 hover:text-red-500 transition-colors text-xl p-3 disabled:opacity-50'}
+                                      ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                      : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                     title={nameConfirm.isConfirming(s.name) ? 'Cancel' : 'Remove'}
                                   >
                                     {nameConfirm.isConfirming(s.name) ? 'No' : '✕'}
@@ -551,7 +545,7 @@ export default function NominalRoll({ company }: { company: Company }) {
           soldier={openSoldier}
           exceptions={exceptionsByKey.get(soldierKeyOf(openSoldier)) ?? []}
           onClose={() => setOpenKey(null)}
-          onChanged={() => load(true)}
+          onChanged={() => load()}
         />
       )}
 
