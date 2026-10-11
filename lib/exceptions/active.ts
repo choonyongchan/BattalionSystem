@@ -10,7 +10,8 @@ import type { ExceptionScope } from './exception-validation'
 export const SCOPE_TYPES: Record<ExceptionScope, readonly string[]> = {
   'Att C': ['MC'],
   Status: ['LD', 'RMJ', 'Excuse'],
-  'Report Sick': ['Report Sick'],
+  // URTI is split out for the RSI report; 'Report Sick' is the non-URTI rest
+  'Report Sick': ['Report Sick', 'URTI'],
   MA: ['MA'],
   'Off/Leave': ['Leave', 'Off'],
   'Guard Duty': ['Guard Duty'],
@@ -98,7 +99,7 @@ export function buildActiveMap(exceptions: Exception[], soldiers: Soldier[], dat
 }
 
 /** Events, not stretches: two report sicks or two guard duties back to back are two, not one long one. */
-const NEVER_MERGED = new Set(['Report Sick', 'Guard Duty'])
+const NEVER_MERGED = new Set(['Report Sick', 'URTI', 'Guard Duty'])
 
 /** "3D MC" → "MC": the day count is one row's length, not the exception's identity. */
 const DAYS_PREFIX = /^\s*\d+\s*D\s+/i

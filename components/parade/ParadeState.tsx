@@ -510,6 +510,8 @@ export default function ParadeState({
   const dutyTypesToShow = company === 'hercules' ? [...ALL_DUTY_TYPES, 'Duty Clerk'] : ALL_DUTY_TYPES
 
   const guardDutyScopes: ExceptionScope[] = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty')
+  // New report sicks are keyed in the RSI tab; existing ones can still be edited here
+  const addScopes = guardDutyScopes.filter((s) => s !== 'Report Sick')
 
   const guardDutyEntries = defaultExceptions.filter((e) => e.scope === 'Guard Duty')
 
@@ -974,7 +976,7 @@ export default function ParadeState({
                 <div>
                   <label className="block text-xs text-gray-500 mb-2">Scope <span className="text-red-500">*</span></label>
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                    {guardDutyScopes.map((s) => (
+                    {addScopes.map((s) => (
                       <button
                         key={s}
                         type="button"
@@ -987,6 +989,7 @@ export default function ParadeState({
                       </button>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-400 mt-1">Report sick → RSI tab</p>
                 </div>
 
                 {exForm.scope === 'Status' ? (
