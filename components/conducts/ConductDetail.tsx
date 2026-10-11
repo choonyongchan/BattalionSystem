@@ -17,15 +17,16 @@ export interface DecisionActions {
  * One conduct: who needs a call, who's falling out, who's taking part, and the
  * copyable conduct state for the whole company or one block.
  */
-export default function ConductDetail({ companyLabel, conduct, parts, platoons, busy, actions }: {
+export default function ConductDetail({ companyLabel, conduct, parts, platoons, includeHQ, busy, actions }: {
   companyLabel: string
   conduct: Conduct
   parts: Participation[]
   platoons: PlatoonBlock[]
+  includeHQ: boolean
   busy: boolean
   actions: DecisionActions
 }) {
-  const blocks = conductBlocks(platoons)
+  const blocks = conductBlocks(platoons, includeHQ)
   const [blockKey, setBlockKey] = useState<string>('ALL')
   const [search, setSearch] = useState('')
   const [fallingOut, setFallingOut] = useState<{ id: string; reason: string } | null>(null)
@@ -43,7 +44,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
   const block = blocks.find((b) => b.key === blockKey)
   const text = block
     ? generatePlatoonConductState(conduct, parts, block)
-    : generateConductState(companyLabel, conduct, parts, platoons)
+    : generateConductState(companyLabel, conduct, parts, platoons, includeHQ)
 
   async function copy() {
     await navigator.clipboard.writeText(text)

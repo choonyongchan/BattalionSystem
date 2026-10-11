@@ -1,5 +1,5 @@
 import type { Conduct, ConductDecision, Exception, Soldier } from '../supabase'
-import type { PlatoonBlock } from '../companies'
+import type { Company, PlatoonBlock } from '../companies'
 import { RANK_ORDER, getRankType } from '../companies'
 import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '../exceptions/active'
 
@@ -102,19 +102,21 @@ export interface Participation {
 const CONFIRM_TYPES = new Set(['LD', 'RMJ'])
 const RMJ_RE = /\bRMJ\b/i
 
+// By scope, not type: a report sick is typed URTI or Report Sick (non-URTI)
+const isReportSick = (e: Exception) => e.scope === 'Report Sick'
+
 function describe(e: Exception): string {
-  const type = exceptionType(e)
-  if (type === 'Report Sick') return e.reason ? `Report Sick — ${e.reason}` : 'Report Sick'
-  return e.reason || type
+  if (isReportSick(e)) return e.reason ? `Report Sick — ${e.reason}` : 'Report Sick'
+  return e.reason || exceptionType(e)
 }
 
-const isHard = (e: Exception) => e.counts_as_absence || exceptionType(e) === 'MC' || exceptionType(e) === 'Report Sick'
+const isHard = (e: Exception) => e.counts_as_absence || exceptionType(e) === 'MC' || isReportSick(e)
 
 /** An MC reads first, then a report sick, then whatever keeps him out of camp. */
 function hardOutReason(active: Exception[]): string | null {
   const pick =
     active.find((e) => exceptionType(e) === 'MC') ??
-    active.find((e) => exceptionType(e) === 'Report Sick') ??
+    active.find(isReportSick) ??
     active.find((e) => e.counts_as_absence)
   return pick ? describe(pick) : null
 }
@@ -173,9 +175,18 @@ export function classifyConduct(
 /** The "needs a call" pile: pinged and not yet decided. */
 export const needsDecision = (parts: Participation[]): Participation[] => parts.filter((p) => p.kind === 'out-default')
 
-/** COY HQ first, then the company's platoons — the same blocks as the parade state. */
-export function conductBlocks(platoons: PlatoonBlock[]): { key: string; label: string }[] {
-  return [{ key: 'HQ', label: 'COY HQ' }, ...platoons.map((p) => ({ key: p.key, label: p.label }))]
+/** Companies whose COY HQ sits out of conducts entirely: not counted, not listed. */
+const HQ_EXCLUDED = new Set<Company>(['hercules'])
+export const conductIncludesHQ = (company: Company): boolean => !HQ_EXCLUDED.has(company)
+
+/** The roll a conduct is classified over — the whole company, less COY HQ where it sits out. */
+export const conductSoldiers = (company: Company, soldiers: Soldier[]): Soldier[] =>
+  conductIncludesHQ(company) ? soldiers : soldiers.filter((s) => s.platoon !== 'HQ')
+
+/** COY HQ first (unless it sits out), then the company's platoons — the same blocks as the parade state. */
+export function conductBlocks(platoons: PlatoonBlock[], includeHQ = true): { key: string; label: string }[] {
+  const blocks = platoons.map((p) => ({ key: p.key, label: p.label }))
+  return includeHQ ? [{ key: 'HQ', label: 'COY HQ' }, ...blocks] : blocks
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -206,9 +217,9 @@ function fallOutLines(parts: Participation[]): string[] {
 }
 
 /** The whole company's conduct state: strength, trooper fall-outs per block, commander fall-outs last. */
-export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[], platoons: PlatoonBlock[]): string {
+export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[], platoons: PlatoonBlock[], includeHQ = true): string {
   const lines = [...headerLines(`${companyLabel.toUpperCase()} COY`, c), '', ...strengthLines(parts)]
-  for (const block of conductBlocks(platoons)) {
+  for (const block of conductBlocks(platoons, includeHQ)) {
     const out = fallOutLines(parts.filter((p) => p.soldier.platoon === block.key && !isCommander(p.soldier)))
     lines.push('', `${block.label}: ${pad2(out.length)}`, ...out)
   }

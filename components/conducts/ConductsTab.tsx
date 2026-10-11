@@ -5,7 +5,7 @@ import { supabase, tbl } from '@/lib/supabase'
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/lib/supabase'
 import type { Company } from '@/lib/companies'
 import { PARADE_CONFIG } from '@/lib/companies'
-import { classifyConduct, conductDateRange, conductEnd, nearestConduct } from '@/lib/conducts/conducts'
+import { classifyConduct, conductDateRange, conductEnd, conductIncludesHQ, conductSoldiers, nearestConduct } from '@/lib/conducts/conducts'
 import { todaySGDate } from '@/lib/utils'
 import { useConfirmDelete } from '@/hooks/hooks'
 import ConductDetail from './ConductDetail'
@@ -66,8 +66,8 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     conducts.find((c) => c.id === selectedId) ?? nearestConduct(upcoming.length ? upcoming : conducts, new Date())
 
   const parts = useMemo(
-    () => (selected ? classifyConduct(selected, soldiers, exceptions, decisions, today) : []),
-    [selected, soldiers, exceptions, decisions, today],
+    () => (selected ? classifyConduct(selected, conductSoldiers(company, soldiers), exceptions, decisions, today) : []),
+    [selected, company, soldiers, exceptions, decisions, today],
   )
 
   async function saveConduct() {
@@ -181,7 +181,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
               <button className="px-2.5 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg" onClick={() => delConfirm.request(selected.id)}>Delete</button>
             )}
           </div>
-          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={platoons} busy={busy} actions={actions} />
+          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={platoons} includeHQ={conductIncludesHQ(company)} busy={busy} actions={actions} />
         </div>
       )}
     </div>

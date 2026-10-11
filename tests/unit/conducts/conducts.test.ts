@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   conductEnd, conductDay, conductDateRange, conductTimeRange, nearestConduct,
   classifyConduct, needsDecision, generateConductState, generatePlatoonConductState, conductBlocks,
+  conductSoldiers, conductIncludesHQ,
 } from '@/lib/conducts/conducts'
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/lib/supabase'
 import type { PlatoonBlock } from '@/lib/companies'
@@ -114,6 +115,21 @@ describe('classifyConduct', () => {
     expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [other], today))['FIT GUY'].kind).toBe('in')
   })
 
+  it('anyone marked absent falls out automatically, whatever the scope', () => {
+    const absent = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Others', type: 'Others', reason: 'Court', counts_as_absence: true })]
+    expect(byName(classifyConduct(C(), SOLDIERS, absent, [], today))['FIT GUY']).toMatchObject({ kind: 'out-auto', reason: 'Court' })
+  })
+
+  it('a report sick falls out automatically, URTI or not', () => {
+    const rs = [
+      ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Report Sick', type: 'URTI', reason: 'Flu', start: today, end: today }),
+      ex({ soldier_id: 'fl', name: 'FLEGS GUY', scope: 'Report Sick', type: 'Report Sick', reason: 'Eczema', start: today, end: today }),
+    ]
+    const p = byName(classifyConduct(C(), SOLDIERS, rs, [], today))
+    expect(p['FIT GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Flu' })
+    expect(p['FLEGS GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Eczema' })
+  })
+
   it('a hard fall-out cannot be overridden by a decision', () => {
     const can: ConductDecision = { id: 'd4', conduct_id: 'c1', soldier_id: 'mc', participating: true, reason: null }
     expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today))['MC GUY'].kind).toBe('out-auto')
@@ -136,6 +152,19 @@ describe('conduct state text', () => {
 
   it('orders the blocks COY HQ then the platoons', () => {
     expect(conductBlocks(BLOCKS).map((b) => b.label)).toEqual(['COY HQ', 'PL 1', 'PL 2'])
+  })
+
+  it('Hercules leaves COY HQ out of the count and the text entirely', () => {
+    expect(conductIncludesHQ('hercules')).toBe(false)
+    expect(conductIncludesHQ('stallion')).toBe(true)
+    const herc = classifyConduct(conduct, conductSoldiers('hercules', SOLDIERS), EXCEPTIONS, [], today)
+    expect(byName(herc)['OC ONE']).toBeUndefined()
+    const text = generateConductState('Hercules', conduct, herc, BLOCKS, false)
+    expect(text).toContain('COMMANDERS: 01/01')
+    expect(text).toContain('OVERALL: 03/06')
+    expect(text).not.toContain('COY HQ')
+    expect(conductBlocks(BLOCKS, false).map((b) => b.label)).toEqual(['PL 1', 'PL 2'])
+    expect(conductSoldiers('stallion', SOLDIERS)).toHaveLength(SOLDIERS.length)
   })
 
   it('renders the company conduct state', () => {
