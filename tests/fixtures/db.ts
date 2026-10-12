@@ -24,6 +24,7 @@ export async function truncateTestDb() {
     db.from('Test_Exceptions').delete().gte('id', 0),
     db.from('Test_NominalRoll').delete().neq('name', ''),
     db.from('Test_OffLeave').delete().neq('name', ''),
+    db.from('Test_StrengthOverride').delete().neq('platoon', ''),
     // Never PublicHolidays: it is battalion-wide live data, not a Test_ table
   ]
   const results = await Promise.all(ops)

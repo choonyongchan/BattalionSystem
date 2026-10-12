@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   SCOPE_TYPES, scopeOfType, exceptionType, isRevoked, isActiveOn,
-  soldierKeyOf, soldierIndex, exceptionSoldierKey, buildActiveMap, mergeRuns, isOnStrength,
-} from '@/backend/domain/exceptions/active'
+  soldierKeyOf, soldierIndex, exceptionSoldierKey, buildActiveMap, mergeRuns, isOnStrength, exceptionLinkFields } from '@/backend/domain/exceptions/active'
 import type { Exception, Soldier } from '@/shared/types'
 
 let nextId = 1
@@ -157,5 +156,22 @@ describe('mergeRuns', () => {
   it('leaves a single row untouched', () => {
     const e = ex({ soldier_id: 'u-tan', scope: 'Att C', type: 'MC', reason: '3D MC', start: '2026-01-06', end: '2026-01-08' })
     expect(mergeRuns([e])).toEqual([e])
+  })
+})
+
+describe('exceptionLinkFields', () => {
+  const soldiers = [{ id: 'u1', rank: 'PTE', name: 'GOH RONG HAO', platoon: '1' }]
+
+  it('links the soldier by id and infers the type from scope and reason', () => {
+    expect(exceptionLinkFields(soldiers, 'GOH RONG HAO', 'Status', 'Light Duty')).toEqual({ soldier_id: 'u1', type: 'LD' })
+  })
+
+  it('keeps a still-valid current type, re-infers one that no longer fits the scope', () => {
+    expect(exceptionLinkFields(soldiers, 'GOH RONG HAO', 'Report Sick', 'Flu', 'URTI').type).toBe('URTI')
+    expect(exceptionLinkFields(soldiers, 'GOH RONG HAO', 'Att C', 'Flu', 'URTI').type).toBe('MC')
+  })
+
+  it('leaves the link empty for a name not on the roll', () => {
+    expect(exceptionLinkFields(soldiers, 'NOBODY', 'Others', null).soldier_id).toBeNull()
   })
 })
