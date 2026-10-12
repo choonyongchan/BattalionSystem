@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { resetTestDb } from '@/tests/fixtures/db'
 
 // All tests require real credentials — skip gracefully if not configured
 test.describe('Parade State workflow', () => {
@@ -6,6 +7,8 @@ test.describe('Parade State workflow', () => {
     const password = process.env.TEST_SUPABASE_PASSWORD
     const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
     test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
+    // Several tests add exceptions; start each from the fixtures so counts don't leak
+    await resetTestDb()
 
     // Parade State is always generated for "today" regardless of the duty date
     // selected in the UI, so pin the browser clock to the fixture date (2026-01-15).
@@ -14,28 +17,28 @@ test.describe('Parade State workflow', () => {
     await page.goto('/test/')
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
-    await expect(page.getByText('Nominal Roll')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('tab', { name: 'Nominal Roll' })).toBeVisible({ timeout: 15000 })
   })
 
   test('navigates to Parade State tab', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await expect(page.getByRole('button', { name: 'Exceptions' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Duties' })).toBeVisible()
   })
 
   test('Exceptions tab shows fixture exception (TAN WEI LIANG on Off/Leave)', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
     await page.getByRole('button', { name: 'Exceptions' }).click()
 
     await expect(page.getByText('TAN WEI LIANG')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Off/Leave')).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Off/Leave' })).toBeVisible()
   })
 
   test('generated parade state has correct strength numbers (13 total, 9 present, 4 absent)', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
@@ -47,7 +50,7 @@ test.describe('Parade State workflow', () => {
   })
 
   test('generated report includes exception details', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
@@ -60,7 +63,7 @@ test.describe('Parade State workflow', () => {
   })
 
   test('generated report includes duty assignments', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
@@ -73,7 +76,7 @@ test.describe('Parade State workflow', () => {
 
   test('Status exception (non-absence) does not increase absent count', async ({ page }) => {
     // GOH RONG HAO has Status / counts_as_absence: false → still 9 present, 4 absent
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
 
@@ -85,7 +88,7 @@ test.describe('Parade State workflow', () => {
   })
 
   test('editing an existing exception saves successfully (regression: "time" column must exist)', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
     await page.getByRole('button', { name: 'Exceptions' }).click()
@@ -101,7 +104,7 @@ test.describe('Parade State workflow', () => {
   })
 
   test('Add Exception button is disabled until Soldier is picked; MA can be saved with Location/Reason/Date blank', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     await page.locator('input[type="date"]').fill('2026-01-15')
     await page.getByRole('button', { name: 'Exceptions' }).click()
@@ -122,7 +125,7 @@ test.describe('Parade State workflow', () => {
   })
 
   test('switching the duty date does not change the generated parade state (always uses today)', async ({ page }) => {
-    await page.getByRole('button', { name: 'Parade State' }).click()
+    await page.getByRole('tab', { name: 'Parade State' }).click()
     await page.getByRole('button', { name: 'Duties' }).click() // date input lives under Duties; Config is the default section
     // Navigate away to a date with no fixture exceptions — the report must still
     // reflect today (2026-01-15, per the mocked clock), not this selected date.

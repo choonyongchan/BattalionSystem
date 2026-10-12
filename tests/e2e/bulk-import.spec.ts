@@ -17,7 +17,7 @@ test.describe('Bulk Import workflow', () => {
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
     await expect(page.getByText('Nominal Roll').first()).toBeVisible({ timeout: 15000 })
-    await page.getByRole('button', { name: 'Nominal Roll' }).click()
+    await page.getByRole('tab', { name: 'Nominal Roll' }).click()
     await page.getByRole('button', { name: /bulk import/i }).click()
     await expect(page.getByText('Download Template')).toBeVisible()
   })

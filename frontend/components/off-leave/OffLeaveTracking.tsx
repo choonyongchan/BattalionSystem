@@ -5,10 +5,10 @@ import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository
 import { OffLeaveRepository } from '@/backend/data/repositories/OffLeaveRepository'
 import type { Soldier, OffLeave } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { COMPANY_THEMES } from '@/shared/companies'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { isValidAmount, sortOffLeaveByRank } from '@/backend/domain/off-leave/off-leave'
+import { THEME } from '@/frontend/theme'
 
 type Kind = 'off' | 'leave'
 
@@ -22,7 +22,6 @@ const isValidBalance = (v: string) => v !== '' && (Number(v) === 0 || isValidAmo
 
 /** Off/Leave tab: per-soldier off and leave balances with add, edit and delete. */
 export default function OffLeaveTracking({ company }: { company: Company }) {
-  const theme = COMPANY_THEMES[company]
 
   const [soldiers, setSoldiers] = useState<Soldier[]>([])
   const [records, setRecords] = useState<OffLeave[]>([])
@@ -119,16 +118,16 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
     : records
   const rows = sortOffLeaveByRank(filtered, soldiers)
 
-  const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
-  const editClass = `w-full min-w-[6rem] border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const inputClass = `w-full border border-hairline rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`
+  const editClass = `w-full min-w-[6rem] border border-hairline rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${THEME.focusRing}`
 
-  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
+  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-base font-semibold text-gray-800">Off/Leave Tracking</h2>
-        <p className="text-xs text-gray-500">{records.length} personnel</p>
+        <h2 className="text-base font-semibold text-ink">Off/Leave Tracking</h2>
+        <p className="text-xs text-ink-60">{records.length} personnel</p>
       </div>
 
       <div className="flex items-center justify-between gap-4">
@@ -137,7 +136,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
           placeholder="Search by rank, name, 4D..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+          className="w-full border border-hairline rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus bg-white"
         />
         <div className="flex-shrink-0">
           <button
@@ -145,7 +144,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
               if (!showForm) setForm(EMPTY_FORM)
               setShowForm(!showForm)
             }}
-            className={`px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+            className={`px-4 py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors`}
           >
             {showForm ? 'Cancel' : '+ Off/Leave'}
           </button>
@@ -153,15 +152,15 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+        <div className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
           {error}
         </div>
       )}
 
       {showForm && (
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
+        <div className="bg-parchment border border-hairline rounded-card p-4 space-y-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
+            <label className="block text-xs text-ink-60 mb-1">Soldier <span className="text-danger">*</span></label>
             <SearchDropdown
               items={soldiers}
               value={form.name}
@@ -170,8 +169,8 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
               matches={(s, q) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
               renderOption={(s) => (
                 <div className="flex gap-2">
-                  <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
-                  <span className="font-medium text-gray-800">{s.name}</span>
+                  <span className="font-mono text-xs text-ink-60 w-12 shrink-0 pt-0.5">{s.rank}</span>
+                  <span className="font-medium text-ink">{s.name}</span>
                 </div>
               )}
               onChange={(name) => setForm({ ...form, name })}
@@ -181,16 +180,16 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 mb-2">Type <span className="text-red-500">*</span></label>
+            <label className="block text-xs text-ink-60 mb-2">Type <span className="text-danger">*</span></label>
             <div className="flex gap-2">
               {(['off', 'leave'] as const).map((k) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setForm({ ...form, kind: k })}
-                  className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${form.kind === k
-                    ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                  className={`flex-none px-3 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${form.kind === k
+                    ? `${THEME.buttonBg} ${THEME.buttonHoverBg} text-white border-transparent`
+                    : 'bg-white border-hairline text-ink-80 hover:border-hairline'}`}
                 >
                   {k === 'off' ? 'Off' : 'Leave'}
                 </button>
@@ -199,7 +198,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Number of days <span className="text-red-500">*</span></label>
+            <label className="block text-xs text-ink-60 mb-1">Number of days <span className="text-danger">*</span></label>
             <input
               type="number"
               step="0.5"
@@ -215,7 +214,7 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
           <button
             onClick={addRecord}
             disabled={submitting || !form.name || !isValidAmount(Number(form.amount))}
-            className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+            className={`w-full py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {submitting ? 'Adding...' : 'Add Off/Leave'}
           </button>
@@ -223,19 +222,19 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
       )}
 
       {rows.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">
+        <div className="text-center py-12 text-ink-60 text-sm">
           {query ? 'No records match that query.' : 'No off/leave records.'}
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-hairline rounded-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Rank</th>
-                  <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
-                  <th className="text-right px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Off</th>
-                  <th className="text-right px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Leave</th>
+                <tr className="bg-parchment border-b border-hairline">
+                  <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Rank</th>
+                  <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
+                  <th className="text-right px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Off</th>
+                  <th className="text-right px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Leave</th>
                   <th />
                 </tr>
               </thead>
@@ -245,9 +244,9 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                   return (
                     <tr
                       key={r.name}
-                      className={`border-b border-gray-100 last:border-0 ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}
+                      className={`border-b border-hairline last:border-0 ${i % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5' : ''}`}
                     >
-                      <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-gray-600">{soldierByName.get(r.name)?.rank ?? '–'}</td>
+                      <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-ink-80">{soldierByName.get(r.name)?.rank ?? '–'}</td>
                       <td className="px-3 py-1.5 whitespace-nowrap font-medium">{r.name}</td>
                       {isEditing ? (
                         <>
@@ -281,13 +280,13 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                               <button
                                 onClick={updateRecord}
                                 disabled={savingEdit || !editValid}
-                                className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
+                                className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                               >
                                 {savingEdit ? '…' : 'Save'}
                               </button>
                               <button
                                 onClick={() => setEditRow(null)}
-                                className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
+                                className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment"
                               >
                                 Cancel
                               </button>
@@ -306,8 +305,8 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                                   : setEditRow({ name: r.name, off: String(r.off), leave: String(r.leave) })}
                                 disabled={deletingName === r.name}
                                 className={nameConfirm.isConfirming(r.name)
-                                  ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm'
-                                  : 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1 disabled:opacity-50'}
+                                  ? 'px-2 py-1 bg-danger hover:bg-danger active:bg-danger text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                  : 'text-ink-60 hover:text-ink-80 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                 title={nameConfirm.isConfirming(r.name) ? 'Confirm delete' : 'Edit'}
                               >
                                 {nameConfirm.isConfirming(r.name) ? 'Yes' : '✎'}
@@ -316,8 +315,8 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                                 onClick={() => nameConfirm.isConfirming(r.name) ? nameConfirm.cancel() : nameConfirm.request(r.name)}
                                 disabled={deletingName === r.name}
                                 className={nameConfirm.isConfirming(r.name)
-                                  ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
-                                  : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1 disabled:opacity-50'}
+                                  ? 'px-2 py-1 bg-parchment hover:bg-hairline active:bg-hairline text-ink-80 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                  : 'text-ink-60 hover:text-danger transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                 title={nameConfirm.isConfirming(r.name) ? 'Cancel' : 'Remove'}
                               >
                                 {nameConfirm.isConfirming(r.name) ? 'No' : '✕'}

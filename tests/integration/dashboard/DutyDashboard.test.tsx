@@ -27,7 +27,7 @@ function renderDashboard() {
   const client = new QueryClient()
   return render(
     <QueryClientProvider client={client}>
-      <DutyDashboard company="test" label="Test" embedded />
+      <DutyDashboard company="test" />
     </QueryClientProvider>,
   )
 }

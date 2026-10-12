@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import type { CompanyTheme } from '@/shared/companies'
 import type { Exception, Soldier } from '@/shared/types'
 import { toSGDate } from '@/shared/dates'
 import type { AppSettings } from '@/backend/domain/settings/settings'
@@ -15,6 +14,7 @@ import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { CONFIRM_BTN, ICON_BTN, ICON_BTN_DANGER, fieldInputClass } from '@/frontend/components/shared/styles'
 import { REASON_HINTS, soldierDropdownProps } from './parade-ui'
+import { THEME } from '@/frontend/theme'
 
 // Guard Duty rows are managed in the Duties tab
 const EDIT_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty')
@@ -29,8 +29,7 @@ function nextSort(prev: ExceptionSort, column: 'start' | 'end'): ExceptionSort {
  * Exceptions grouped by scope and soldier (merged name cells), sortable by start/end,
  * with inline edit and confirm-to-delete.
  */
-export default function ExceptionsTable({ theme, settings, data, rows }: {
-  theme: CompanyTheme
+export default function ExceptionsTable({ settings, data, rows }: {
   settings: AppSettings | undefined
   data: ParadeData
   rows: Exception[]
@@ -45,7 +44,7 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
 
   const groups = buildExceptionGroups(rows, sort, soldiers)
   /** Inline-edit input class for a field, red when invalid. */
-  const fieldClass = (field: string) => fieldInputClass(!!errors[field], theme.focusRing)
+  const fieldClass = (field: string) => fieldInputClass(!!errors[field], THEME.focusRing)
 
   /** Leaves edit mode and clears errors. */
   function cancel() {
@@ -80,28 +79,28 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
 
   /** Sortable column header for start or end date. */
   const sortHeader = (column: 'start' | 'end', label: string) => (
-    <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap" aria-sort={sort?.column === column ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" onClick={() => setSort((prev) => nextSort(prev, column))} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+    <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap" aria-sort={sort?.column === column ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" onClick={() => setSort((prev) => nextSort(prev, column))} className="flex items-center gap-1 hover:text-ink-80 transition-colors">
         {label}
-        <span className="text-gray-300 text-[10px]">{sort?.column === column ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+        <span className="text-ink-48 text-[10px]">{sort?.column === column ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
       </button>
     </th>
   )
 
   let rowIdx = -1
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-white border border-hairline rounded-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">4D</th>
-              <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
-              <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Scope</th>
-              <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Reason</th>
+            <tr className="bg-parchment border-b border-hairline">
+              <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">4D</th>
+              <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
+              <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Scope</th>
+              <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Reason</th>
               {sortHeader('start', 'Start')}
               {sortHeader('end', 'End')}
-              <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Absent?</th>
+              <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Absent?</th>
               <th />
             </tr>
           </thead>
@@ -116,20 +115,20 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
                     const showGroupCells = ei === 0 || isGroupEditing
                     const rowSpan = ei === 0 && !isGroupEditing ? group.length : undefined
                     return (
-                      <tr key={e.id} className={`border-b border-gray-100 last:border-0 group ${rowIdx % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30 border-b-0' : ''}`}>
+                      <tr key={e.id} className={`border-b border-hairline last:border-0 group ${rowIdx % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5 border-b-0' : ''}`}>
                         {isEditing && edit ? (
                           <EditCells
-                            theme={theme} settings={settings} soldiers={soldiers} edit={edit} setEdit={setEdit}
+                            settings={settings} soldiers={soldiers} edit={edit} setEdit={setEdit}
                             showGroupCells={showGroupCells} rowSpan={rowSpan} fieldClass={fieldClass}
                             absenceTouched={absenceTouched} onAbsenceTouched={() => setAbsenceTouched(true)}
                             saving={saving} onSave={save} onCancel={cancel}
                           />
                         ) : (
                           <>
-                            {showGroupCells && <ReadGroupCells theme={theme} soldiers={soldiers} e={e} rowSpan={rowSpan} />}
-                            <td className="px-3 py-1.5 text-gray-500"><div className="w-max max-w-sm whitespace-normal">{e.reason ?? '–'}</div></td>
-                            <td className="px-3 py-1.5 whitespace-nowrap text-gray-500 text-xs">{e.start ? toSGDate(e.start) : '–'}</td>
-                            <td className="px-3 py-1.5 whitespace-nowrap text-gray-500 text-xs">{e.end ? toSGDate(e.end) : '–'}</td>
+                            {showGroupCells && <ReadGroupCells soldiers={soldiers} e={e} rowSpan={rowSpan} />}
+                            <td className="px-3 py-1.5 text-ink-60"><div className="w-max max-w-sm whitespace-normal">{e.reason ?? '–'}</div></td>
+                            <td className="px-3 py-1.5 whitespace-nowrap text-ink-60 text-xs">{e.start ? toSGDate(e.start) : '–'}</td>
+                            <td className="px-3 py-1.5 whitespace-nowrap text-ink-60 text-xs">{e.end ? toSGDate(e.end) : '–'}</td>
                             <td className="px-3 py-1.5 whitespace-nowrap">
                               <input type="checkbox" className="h-5 w-5" checked={e.counts_as_absence} disabled />
                             </td>
@@ -150,7 +149,7 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
                                 <button
                                   onClick={() => confirm.isConfirming(e.id) ? confirm.cancel() : confirm.request(e.id)}
                                   className={confirm.isConfirming(e.id)
-                                    ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors'
+                                    ? 'px-2 py-1 bg-parchment hover:bg-hairline active:bg-hairline text-ink-80 text-xs font-semibold rounded-lg transition-colors'
                                     : ICON_BTN_DANGER}
                                   title={confirm.isConfirming(e.id) ? 'Cancel' : 'Remove'}
                                 >
@@ -174,14 +173,14 @@ export default function ExceptionsTable({ theme, settings, data, rows }: {
 }
 
 /** Read-only 4D, name and scope cells shared by a soldier's rows in one scope. */
-function ReadGroupCells({ theme, soldiers, e, rowSpan }: { theme: CompanyTheme; soldiers: Soldier[]; e: Exception; rowSpan?: number }) {
+function ReadGroupCells({ soldiers, e, rowSpan }: { soldiers: Soldier[]; e: Exception; rowSpan?: number }) {
   const soldier = soldiers.find((s) => s.name === e.name)
   return (
     <>
-      <td className="px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs" rowSpan={rowSpan}>{soldier?.four_d ?? '–'}</td>
+      <td className="px-3 py-1.5 whitespace-nowrap text-ink-60 font-mono text-xs" rowSpan={rowSpan}>{soldier?.four_d ?? '–'}</td>
       <td className="px-3 py-1.5 whitespace-nowrap font-medium" rowSpan={rowSpan}>{soldier?.rank ? `${soldier.rank} ${e.name}` : e.name}</td>
       <td className="px-3 py-1.5 whitespace-nowrap" rowSpan={rowSpan}>
-        <span className={`inline-block ${theme.badgeBg} ${theme.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>{e.scope ?? '–'}</span>
+        <span className={`inline-block ${THEME.badgeBg} ${THEME.badgeText} text-xs font-medium px-2 py-0.5 rounded-lg whitespace-nowrap`}>{e.scope ?? '–'}</span>
       </td>
     </>
   )
@@ -189,10 +188,9 @@ function ReadGroupCells({ theme, soldiers, e, rowSpan }: { theme: CompanyTheme; 
 
 /** Inline edit cells for one exception row. */
 function EditCells({
-  theme, settings, soldiers, edit, setEdit, showGroupCells, rowSpan, fieldClass,
+  settings, soldiers, edit, setEdit, showGroupCells, rowSpan, fieldClass,
   absenceTouched, onAbsenceTouched, saving, onSave, onCancel,
 }: {
-  theme: CompanyTheme
   settings: AppSettings | undefined
   soldiers: Soldier[]
   edit: Exception
@@ -208,13 +206,13 @@ function EditCells({
 }) {
   const singleDate = SINGLE_DATE_SCOPES.includes(edit.scope as ExceptionScope)
   /** Classes for a toggle chip, filled when active. */
-  const chip = (active: boolean) => active ? `${theme.buttonBg} text-white border-transparent` : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+  const chip = (active: boolean) => active ? `${THEME.buttonBg} text-white border-transparent` : 'bg-white border-hairline text-ink-80 hover:border-hairline'
 
   return (
     <>
       {showGroupCells && (
         <>
-          <td className="px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs" rowSpan={rowSpan}>
+          <td className="px-3 py-1.5 whitespace-nowrap text-ink-60 font-mono text-xs" rowSpan={rowSpan}>
             {soldiers.find((s) => s.name === edit.name)?.four_d ?? '–'}
           </td>
           <td className="px-2 py-1" rowSpan={rowSpan}>
@@ -281,7 +279,7 @@ function EditCells({
       </td>
       <td className="px-2 py-1">
         {singleDate ? (
-          <span className="text-gray-400 text-xs">same as start</span>
+          <span className="text-ink-60 text-xs">same as start</span>
         ) : (
           <input type="date" value={edit.end ?? ''} onChange={(ev) => setEdit({ ...edit, end: ev.target.value })} className={fieldClass('end')} />
         )}
@@ -301,11 +299,11 @@ function EditCells({
           <button
             onClick={onSave}
             disabled={saving || !isEditExceptionValid(edit)}
-            className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {saving ? '…' : 'Save'}
           </button>
-          <button onClick={onCancel} className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
+          <button onClick={onCancel} className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment">
             Cancel
           </button>
         </div>

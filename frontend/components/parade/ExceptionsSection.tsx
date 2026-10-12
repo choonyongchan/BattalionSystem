@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import type { CompanyTheme } from '@/shared/companies'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import { matchesExceptionQuery, sortExceptions } from '@/backend/domain/parade/exception-table'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import AddExceptionForm from './AddExceptionForm'
 import ExceptionsTable from './ExceptionsTable'
+import { THEME } from '@/frontend/theme'
 
 /** Searchable list of exceptions (Guard Duty excluded) with an add form. */
-export default function ExceptionsSection({ theme, date, settings, data }: {
-  theme: CompanyTheme
+export default function ExceptionsSection({ date, settings, data }: {
   date: string
   settings: AppSettings | undefined
   data: ParadeData
@@ -29,25 +28,25 @@ export default function ExceptionsSection({ theme, date, settings, data }: {
           aria-label="Search exceptions"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+          className="w-full border border-hairline rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus bg-white"
         />
         <button
           onClick={() => setShowForm(!showForm)}
-          className={`flex-shrink-0 px-4 py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+          className={`flex-shrink-0 px-4 py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors`}
         >
           {showForm ? 'Cancel' : '+ Exception'}
         </button>
       </div>
 
       {/* Remounts on open, so the form resets to the currently viewed date */}
-      {showForm && <AddExceptionForm theme={theme} date={date} settings={settings} data={data} onDone={() => setShowForm(false)} />}
+      {showForm && <AddExceptionForm date={date} settings={settings} data={data} onDone={() => setShowForm(false)} />}
 
       {rows.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">
+        <div className="text-center py-12 text-ink-60 text-sm">
           {search.trim() ? 'No exceptions match that query.' : 'No exceptions for this date.'}
         </div>
       ) : (
-        <ExceptionsTable theme={theme} settings={settings} data={data} rows={rows} />
+        <ExceptionsTable settings={settings} data={data} rows={rows} />
       )}
     </div>
   )

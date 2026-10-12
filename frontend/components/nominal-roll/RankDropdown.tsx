@@ -18,8 +18,8 @@ export default function RankDropdown({ value, onChange, inputClass }: {
       matches={(r, q) => r.rank.toLowerCase().startsWith(q.toLowerCase())}
       renderOption={(r) => (
         <div className="flex gap-3 items-center">
-          <span className="font-mono font-medium text-gray-800 w-14 shrink-0">{r.rank}</span>
-          <span className="text-xs text-gray-400">{r.type}</span>
+          <span className="font-mono font-medium text-ink w-14 shrink-0">{r.rank}</span>
+          <span className="text-xs text-ink-60">{r.type}</span>
         </div>
       )}
       onChange={onChange}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { CompanyTheme } from '@/shared/companies'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import {
   EXCEPTION_SCOPES, IN_OUT_SCOPES, SINGLE_DATE_SCOPES,
@@ -11,6 +10,7 @@ import {
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { REASON_HINTS, soldierDropdownProps } from './parade-ui'
+import { THEME } from '@/frontend/theme'
 
 // Guard Duty is added in the Duties tab; new report sicks are keyed in the RSI tab
 const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty' && s !== 'Report Sick')
@@ -23,8 +23,7 @@ const emptyForm = (date: string): ExForm =>
  * Form for adding an exception. STATUS can hold several rows (one per status) that are
  * saved together; other scopes save one row.
  */
-export default function AddExceptionForm({ theme, date, settings, data, onDone }: {
-  theme: CompanyTheme
+export default function AddExceptionForm({ date, settings, data, onDone }: {
   date: string
   settings: AppSettings | undefined
   data: ParadeData
@@ -37,10 +36,10 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
   const [errors, setErrors] = useState<Record<string, boolean>>({})
 
   const singleDate = SINGLE_DATE_SCOPES.includes(form.scope)
-  const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const inputClass = `w-full border border-hairline rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`
   /** Input class for a field, red when it failed validation. */
   const fieldClass = (field: string) => errors[field]
-    ? 'w-full border border-red-500 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ring-2 ring-red-500'
+    ? 'w-full border border-danger rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ring-2 ring-danger'
     : inputClass
   /** Patches one STATUS row. */
   const updateStatusRow = (i: number, patch: Partial<StatusRow>) =>
@@ -74,13 +73,13 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
 
   /** Classes for a toggle chip, filled when active. */
   const choiceClass = (active: boolean) => active
-    ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white border-transparent`
-    : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+    ? `${THEME.buttonBg} ${THEME.buttonHoverBg} text-white border-transparent`
+    : 'bg-white border-hairline text-ink-80 hover:border-hairline'
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-4">
+    <div className="bg-parchment border border-hairline rounded-card p-4 space-y-4">
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
+        <label className="block text-xs text-ink-60 mb-1">Soldier <span className="text-danger">*</span></label>
         <SearchDropdown
           {...soldierDropdownProps}
           items={soldiers}
@@ -91,7 +90,7 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
       </div>
 
       <div>
-        <label className="block text-xs text-gray-500 mb-2">Scope <span className="text-red-500">*</span></label>
+        <label className="block text-xs text-ink-60 mb-2">Scope <span className="text-danger">*</span></label>
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {ADD_SCOPES.map((s) => (
             <button
@@ -99,13 +98,13 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
               type="button"
               aria-pressed={form.scope === s}
               onClick={() => setForm({ ...form, scope: s, counts_as_absence: absenceTouched ? form.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
-              className={`flex-none px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${choiceClass(form.scope === s)}`}
+              className={`flex-none px-3 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${choiceClass(form.scope === s)}`}
             >
               {s}
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-400 mt-1">Report sick → RSI tab</p>
+        <p className="text-xs text-ink-60 mt-1">Report sick → RSI tab</p>
       </div>
 
       {form.scope === 'Status' ? (
@@ -114,36 +113,36 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
             const reasonKey = row.reason.trim().toLowerCase()
             const isDupe = reasonKey !== '' && statusRows.filter((r) => r.reason.trim().toLowerCase() === reasonKey).length > 1
             return (
-              <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+              <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-hairline' : ''}`}>
                 {statusRows.length > 1 && (
                   <div className="flex justify-end">
-                    <button type="button" onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+                    <button type="button" onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))} className="text-xs text-ink-60 hover:text-danger transition-colors">
                       × Remove
                     </button>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">From</label>
+                    <label className="block text-xs text-ink-60 mb-1">From</label>
                     <input type="date" value={row.start} onChange={(e) => updateStatusRow(i, { start: e.target.value })} className={inputClass} />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">To</label>
+                    <label className="block text-xs text-ink-60 mb-1">To</label>
                     <input type="date" value={row.end} onChange={(e) => updateStatusRow(i, { end: e.target.value })} className={inputClass} />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs mb-1">
                     {isDupe
-                      ? <span className="text-yellow-500 font-medium">Reason must be unique across entries</span>
-                      : <span className="text-gray-500">Reason</span>}
+                      ? <span className="text-amber-700 font-medium">Reason must be unique across entries</span>
+                      : <span className="text-ink-60">Reason</span>}
                   </label>
                   <input
                     type="text"
                     placeholder={REASON_HINTS.Status}
                     value={row.reason}
                     onChange={(e) => updateStatusRow(i, { reason: e.target.value })}
-                    className={isDupe ? `${inputClass} !border-yellow-300 !ring-2 !ring-yellow-200` : inputClass}
+                    className={isDupe ? `${inputClass} !border-amber-300 !ring-2 !ring-amber-100` : inputClass}
                   />
                 </div>
               </div>
@@ -152,24 +151,24 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
           <button
             type="button"
             onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
-            className="w-full py-2 text-sm text-gray-500 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl transition-colors"
+            className="w-full py-2 text-sm text-ink-60 border border-dashed border-hairline hover:border-hairline rounded-lg transition-colors"
           >
             + Add Status
           </button>
         </>
       ) : singleDate ? (
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Date</label>
+          <label className="block text-xs text-ink-60 mb-1">Date</label>
           <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className={fieldClass('end')} />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">From</label>
+            <label className="block text-xs text-ink-60 mb-1">From</label>
             <input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} className={fieldClass('start')} />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">To</label>
+            <label className="block text-xs text-ink-60 mb-1">To</label>
             <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className={fieldClass('end')} />
           </div>
         </div>
@@ -177,26 +176,26 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
 
       {form.scope === 'MA' && (
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Appointment Time (optional)</label>
+          <label className="block text-xs text-ink-60 mb-1">Appointment Time (optional)</label>
           <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={fieldClass('time')} />
         </div>
       )}
 
       {form.scope !== 'Status' && (
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Reason</label>
+          <label className="block text-xs text-ink-60 mb-1">Reason</label>
           <input type="text" placeholder={REASON_HINTS[form.scope]} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className={fieldClass('reason')} />
         </div>
       )}
 
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Location (optional)</label>
+        <label className="block text-xs text-ink-60 mb-1">Location (optional)</label>
         <input type="text" placeholder="e.g. CGH, NUH, Raffles" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={fieldClass('location')} />
       </div>
 
       {IN_OUT_SCOPES.includes(form.scope) && (
         <div>
-          <label className="block text-xs text-gray-500 mb-2">In/Out (optional)</label>
+          <label className="block text-xs text-ink-60 mb-2">In/Out (optional)</label>
           <div className="flex gap-2">
             {(['', 'IN', 'OUT'] as const).map((v) => (
               <button
@@ -212,7 +211,7 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm text-gray-700 -mx-1 px-1 py-2 cursor-pointer">
+      <label className="flex items-center gap-2 text-sm text-ink-80 -mx-1 px-1 py-2 cursor-pointer">
         <input
           type="checkbox"
           className="h-5 w-5"
@@ -225,7 +224,7 @@ export default function AddExceptionForm({ theme, date, settings, data, onDone }
       <button
         onClick={add}
         disabled={!isExceptionValid(form, statusRows)}
-        className={`w-full py-3 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+        className={`w-full py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         Add Exception
       </button>

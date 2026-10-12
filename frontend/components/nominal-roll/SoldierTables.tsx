@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type KeyboardEvent } from 'react'
-import type { Company, CompanyTheme } from '@/shared/companies'
+import type { Company } from '@/shared/companies'
 import type { Exception, Soldier } from '@/shared/types'
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import type { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
@@ -11,6 +11,7 @@ import { groupByRankType, RANK_SECTIONS, sortSoldiers, type SoldierSortKey, type
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import { fieldInputClass } from '@/frontend/components/shared/styles'
 import RankDropdown from './RankDropdown'
+import { THEME } from '@/frontend/theme'
 
 const COLUMNS: { key: SoldierSortKey; label: string }[] = [
   { key: 'four_d', label: '4D' },
@@ -30,9 +31,8 @@ function whereaboutsBorder(active: Exception[]): string {
  * One sortable table per rank type (Officer / WOSPEC / Enlistee) with inline edit,
  * confirm-to-delete, and a click-through to the soldier's sheet.
  */
-export default function SoldierTables({ company, theme, platoons, soldiers, repo, activeFor, onOpen, onChanged, onError }: {
+export default function SoldierTables({ company, platoons, soldiers, repo, activeFor, onOpen, onChanged, onError }: {
   company: Company
-  theme: CompanyTheme
   platoons: string[]
   soldiers: Soldier[]
   repo: SoldierRepository
@@ -51,7 +51,7 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
 
   const grouped = groupByRankType(sortSoldiers(soldiers, sortKey, sortDir))
   /** Inline-edit input class for a field, red when invalid. */
-  const editClass = (field: string) => fieldInputClass(!!errors[field], theme.focusRing, 'min-w-[6rem]')
+  const editClass = (field: string) => fieldInputClass(!!errors[field], THEME.focusRing, 'min-w-[6rem]')
 
   /** Cycles a column's sort: ascending, descending, then default order. */
   function toggleSort(key: SoldierSortKey) {
@@ -113,16 +113,16 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
         if (group.length === 0) return null
         return (
           <div key={type}>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">{type}s – {group.length}</h3>
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <h3 className="text-sm font-semibold text-ink mb-1">{type}s – {group.length}</h3>
+            <div className="bg-white border border-hairline rounded-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
+                    <tr className="bg-parchment border-b border-hairline">
                       {COLUMNS.map((c) => (
-                        <th key={c.key} className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap"
+                        <th key={c.key} className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap"
                           aria-sort={sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}>
-                          <button onClick={() => toggleSort(c.key)} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                          <button onClick={() => toggleSort(c.key)} className="flex items-center gap-1 hover:text-ink-80 transition-colors">
                             {c.label}
                             {sortKey === c.key && <span className="text-xs">{sortDir === 'asc' ? '↑' : '↓'}</span>}
                           </button>
@@ -136,7 +136,7 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
                       const isEditing = edit?.originalName === s.name
                       const confirming = confirm.isConfirming(s.name)
                       return (
-                        <tr key={s.name} className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}>
+                        <tr key={s.name} className={`border-b border-hairline last:border-0 group ${i % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5' : ''}`}>
                           {isEditing && edit ? (
                             <>
                               <td className="px-2 py-1">
@@ -156,21 +156,21 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
                               </td>
                               <td className="px-2 py-1">
                                 <div className="flex gap-1 justify-end">
-                                  <button onClick={save} disabled={saving} className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}>
+                                  <button onClick={save} disabled={saving} className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}>
                                     {saving ? '…' : 'Save'}
                                   </button>
-                                  <button onClick={cancel} className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">Cancel</button>
+                                  <button onClick={cancel} className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment">Cancel</button>
                                 </div>
                               </td>
                             </>
                           ) : (
                             <>
-                              <td className={`px-3 py-1.5 whitespace-nowrap text-gray-400 font-mono text-xs ${whereaboutsBorder(activeFor(s))}`}>{s.four_d ?? '–'}</td>
-                              <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{s.platoon}</td>
-                              <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-gray-600">{s.rank}</td>
+                              <td className={`px-3 py-1.5 whitespace-nowrap text-ink-60 font-mono text-xs ${whereaboutsBorder(activeFor(s))}`}>{s.four_d ?? '–'}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap text-ink-60">{s.platoon}</td>
+                              <td className="px-3 py-1.5 whitespace-nowrap font-mono text-xs text-ink-80">{s.rank}</td>
                               <td className="px-3 py-1.5 whitespace-nowrap font-medium">
                                 <button onClick={() => onOpen(s)} className="text-left hover:underline">{s.name}</button>
-                                {!isOnStrength(s) && <span className="ml-2 text-xs text-red-600">posted out</span>}
+                                {!isOnStrength(s) && <span className="ml-2 text-xs text-danger">posted out</span>}
                               </td>
                               <td className="px-3 py-1.5 whitespace-nowrap">
                                 <div className="flex gap-1 justify-end items-center">
@@ -180,8 +180,8 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
                                       : (setEdit({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setErrors({}))}
                                     disabled={deletingName === s.name}
                                     className={confirming
-                                      ? 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 shadow-sm'
-                                      : 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1 disabled:opacity-50'}
+                                      ? 'px-2 py-1 bg-danger hover:bg-danger active:bg-danger text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                      : 'text-ink-60 hover:text-ink-80 transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                     title={confirming ? 'Confirm delete' : 'Edit'}
                                   >
                                     {confirming ? 'Yes' : '✎'}
@@ -190,8 +190,8 @@ export default function SoldierTables({ company, theme, platoons, soldiers, repo
                                     onClick={() => confirming ? confirm.cancel() : confirm.request(s.name)}
                                     disabled={deletingName === s.name}
                                     className={confirming
-                                      ? 'px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-600 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
-                                      : 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1 disabled:opacity-50'}
+                                      ? 'px-2 py-1 bg-parchment hover:bg-hairline active:bg-hairline text-ink-80 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'
+                                      : 'text-ink-60 hover:text-danger transition-colors text-base px-2 py-1 disabled:opacity-50'}
                                     title={confirming ? 'Cancel' : 'Remove'}
                                   >
                                     {confirming ? 'No' : '✕'}

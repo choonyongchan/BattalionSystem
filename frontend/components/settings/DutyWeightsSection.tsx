@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import type { Company } from '@/shared/companies'
-import { COMPANY_THEMES, pointsDutyTypes } from '@/shared/companies'
+import { pointsDutyTypes } from '@/shared/companies'
 import { DAY_TYPES, DAY_TYPE_LABELS } from '@/backend/domain/settings/settings'
 import type { AppSettings, DayType } from '@/backend/domain/settings/settings'
 import { useSaveSettingsMutation } from '@/frontend/hooks/useSettings'
@@ -13,6 +13,7 @@ import { hasDuplicateExceptionRows } from '@/backend/domain/duty/duty-weights-va
 import { Input } from '@/frontend/components/ui/input'
 import { Label } from '@/frontend/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
+import { THEME } from '@/frontend/theme'
 
 const FormSchema = z.object({
   duty_base_weights: z.record(z.string(), z.number().nonnegative()),
@@ -47,7 +48,6 @@ function rowsToExceptions(rows: FormValues['exceptionRows']): Record<string, num
 
 /** Settings: duty base weights, day multipliers and per-day overrides. */
 export default function DutyWeightsSection({ company, settings }: { company: Company; settings: AppSettings }) {
-  const theme = COMPANY_THEMES[company]
   const dutyTypes = pointsDutyTypes(company)
   const { register, control, handleSubmit, formState: { isDirty, errors } } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -75,17 +75,17 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pb-4">
-      <p className="text-xs text-gray-500">Points awarded per duty type. A day multiplier applies on top; an exception below overrides both.</p>
+      <p className="text-xs text-ink-60">Points awarded per duty type. A day multiplier applies on top; an exception below overrides both.</p>
 
       <div>
-        <Label className="text-xs text-gray-500 mb-2 block">Base weight per duty type</Label>
+        <Label className="text-xs text-ink-60 mb-2 block">Base weight per duty type</Label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {dutyTypes.map((dt) => (
             <div key={dt}>
-              <Label className="text-xs text-gray-500 mb-1 block">{dt}</Label>
+              <Label className="text-xs text-ink-60 mb-1 block">{dt}</Label>
               <Input type="number" step={0.5} min={0} {...register(`duty_base_weights.${dt}`, { valueAsNumber: true })} />
               {errors.duty_base_weights?.[dt] && (
-                <p className="text-xs text-red-600 mt-1">{errors.duty_base_weights[dt]?.message}</p>
+                <p className="text-xs text-danger mt-1">{errors.duty_base_weights[dt]?.message}</p>
               )}
             </div>
           ))}
@@ -93,14 +93,14 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
       </div>
 
       <div>
-        <Label className="text-xs text-gray-500 mb-2 block">Day-type multiplier</Label>
+        <Label className="text-xs text-ink-60 mb-2 block">Day-type multiplier</Label>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {DAY_TYPES.map((day) => (
             <div key={day}>
-              <Label className="text-xs text-gray-500 mb-1 block">{DAY_TYPE_LABELS[day]}</Label>
+              <Label className="text-xs text-ink-60 mb-1 block">{DAY_TYPE_LABELS[day]}</Label>
               <Input type="number" step={0.1} min={0} {...register(`duty_day_multipliers.${day}`, { valueAsNumber: true })} />
               {errors.duty_day_multipliers?.[day] && (
-                <p className="text-xs text-red-600 mt-1">{errors.duty_day_multipliers[day]?.message}</p>
+                <p className="text-xs text-danger mt-1">{errors.duty_day_multipliers[day]?.message}</p>
               )}
             </div>
           ))}
@@ -108,7 +108,7 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
       </div>
 
       <div>
-        <Label className="text-xs text-gray-500 mb-2 block">Exceptions (exact override, wins over the formula)</Label>
+        <Label className="text-xs text-ink-60 mb-2 block">Exceptions (exact override, wins over the formula)</Label>
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="flex items-center gap-2">
@@ -137,21 +137,21 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
                 )}
               />
               <Input type="number" step={0.5} min={0} className="w-24" {...register(`exceptionRows.${i}.points`, { valueAsNumber: true })} />
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">×</button>
+              <button type="button" onClick={() => remove(i)} className="text-ink-60 hover:text-danger">×</button>
               {errors.exceptionRows?.[i]?.points && (
-                <p className="text-xs text-red-600">{errors.exceptionRows[i]?.points?.message}</p>
+                <p className="text-xs text-danger">{errors.exceptionRows[i]?.points?.message}</p>
               )}
             </div>
           ))}
           <button
             type="button"
             onClick={() => append({ dutyType: dutyTypes[0], dayType: 'PublicHoliday', points: 1 })}
-            className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+            className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
           >
             + Add exception
           </button>
           {(errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message) && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs text-danger">
               {errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message}
             </p>
           )}
@@ -161,7 +161,7 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
       <button
         type="submit"
         disabled={saveMutation.isPending || !isDirty}
-        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${THEME.buttonBg} ${THEME.buttonHoverBg} disabled:opacity-50`}
       >
         {saveMutation.isPending ? 'Saving…' : 'Save Duty Weights'}
       </button>

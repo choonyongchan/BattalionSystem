@@ -103,9 +103,9 @@ export default function RsiTab({ company }: { company: Company }) {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
+  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
-  const input = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300'
+  const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
   /** Formats an entry's soldier as "<4D> <rank> <name>", or the stored name. */
   const who = (e: Exception) => {
     const s = soldierOf(e, idx)
@@ -115,18 +115,18 @@ export default function RsiTab({ company }: { company: Company }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-gray-800">Report Sick (RSI)</h2>
-        <p className="text-xs text-gray-500">Entries go into the parade state under REPORT SICK and fall the soldier out of conducts.</p>
+        <h2 className="text-base font-semibold text-ink">Report Sick (RSI)</h2>
+        <p className="text-xs text-ink-60">Entries go into the parade state under REPORT SICK and fall the soldier out of conducts.</p>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{error}</div>}
+      {error && <div className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-gray-500">Date<input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        <label className="text-xs text-gray-500">Time<input type="time" className={input} value={time} onChange={(e) => setTime(e.target.value)} /></label>
+        <label className="text-xs text-ink-60">Date<input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label className="text-xs text-ink-60">Time<input type="time" className={input} value={time} onChange={(e) => setTime(e.target.value)} /></label>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
+      <div className="bg-parchment border border-hairline rounded-card p-4 space-y-3">
         <SearchDropdown
           items={soldiers}
           value={form.name}
@@ -135,8 +135,8 @@ export default function RsiTab({ company }: { company: Company }) {
           matches={(s, q) => `${s.four_d ?? ''} ${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
           renderOption={(s) => (
             <div className="flex gap-2">
-              <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
-              <span className="font-medium text-gray-800">{s.name}</span>
+              <span className="font-mono text-xs text-ink-60 w-12 shrink-0 pt-0.5">{s.rank}</span>
+              <span className="font-medium text-ink">{s.name}</span>
             </div>
           )}
           onChange={(name) => setForm({ ...form, name })}
@@ -152,36 +152,36 @@ export default function RsiTab({ company }: { company: Company }) {
             setForm({ ...form, reason, urti: form.urtiTouched ? form.urti : isUrti(reason) })
           }}
         />
-        <label className="flex items-center gap-2 text-sm text-gray-700">
+        <label className="flex items-center gap-2 text-sm text-ink-80">
           <input type="checkbox" className="h-4 w-4" checked={form.urti} onChange={(e) => setForm({ ...form, urti: e.target.checked, urtiTouched: true })} />
           URTI
         </label>
-        <button onClick={add} disabled={busy || !form.name || !form.reason.trim()} className="w-full py-2.5 bg-gray-800 text-white text-sm font-medium rounded-xl disabled:opacity-50">
+        <button onClick={add} disabled={busy || !form.name || !form.reason.trim()} className="w-full py-2.5 bg-ink text-white text-sm font-medium rounded-lg disabled:opacity-50">
           Add report sick
         </button>
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-center py-6 text-sm text-gray-400">No one reported sick on this day.</p>
+        <p className="text-center py-6 text-sm text-ink-60">No one reported sick on this day.</p>
       ) : (
-        <ul className="divide-y divide-gray-100 border border-gray-200 rounded-xl">
+        <ul className="divide-y divide-hairline border border-hairline rounded-lg">
           {entries.map((e) => (
             <li key={e.id} className="flex items-center gap-2 px-3 py-2 text-sm">
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-800 truncate">{who(e)}</div>
-                <div className="text-xs text-gray-500 truncate">{e.reason}</div>
+                <div className="font-medium text-ink truncate">{who(e)}</div>
+                <div className="text-xs text-ink-60 truncate">{e.reason}</div>
               </div>
-              <label className="flex items-center gap-1 text-xs text-gray-600">
+              <label className="flex items-center gap-1 text-xs text-ink-80">
                 <input type="checkbox" className="h-4 w-4" checked={isUrtiException(e)} disabled={busy} onChange={(ev) => setUrti(e, ev.target.checked)} />
                 URTI
               </label>
               {delConfirm.isConfirming(e.id) ? (
                 <>
-                  <button className="px-2.5 py-1.5 text-xs bg-red-500 text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete</button>
-                  <button className="px-2.5 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg" onClick={delConfirm.cancel}>Keep</button>
+                  <button className="px-2.5 py-1.5 text-xs bg-danger text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete</button>
+                  <button className="px-2.5 py-1.5 text-xs border border-hairline text-ink-80 rounded-lg" onClick={delConfirm.cancel}>Keep</button>
                 </>
               ) : (
-                <button className="px-2.5 py-1.5 text-xs border border-red-200 text-red-600 rounded-lg" onClick={() => delConfirm.request(e.id)}>Delete</button>
+                <button className="px-2.5 py-1.5 text-xs border border-danger/30 text-danger rounded-lg" onClick={() => delConfirm.request(e.id)}>Delete</button>
               )}
             </li>
           ))}
@@ -190,10 +190,10 @@ export default function RsiTab({ company }: { company: Company }) {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800">RSI message</h3>
-          <button onClick={copy} className="px-3 py-1.5 text-xs bg-gray-800 text-white rounded-lg">{copied ? 'Copied' : 'Copy'}</button>
+          <h3 className="text-sm font-semibold text-ink">RSI message</h3>
+          <button onClick={copy} className="px-3 py-1.5 text-xs bg-ink text-white rounded-lg">{copied ? 'Copied' : 'Copy'}</button>
         </div>
-        <pre className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs whitespace-pre-wrap font-mono">{text}</pre>
+        <pre className="bg-parchment border border-hairline rounded-lg p-3 text-xs whitespace-pre-wrap font-mono">{text}</pre>
       </div>
     </div>
   )

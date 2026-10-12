@@ -61,7 +61,7 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
 
   return (
     <div className="space-y-4 pb-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-60">
         Shared across all companies. Sync pulls the official offline SG public holiday dataset
         (no network call); it merges in new dates without overwriting manual entries.
       </p>
@@ -76,7 +76,7 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
         <button
           type="button"
           onClick={syncSingaporeHolidays}
-          className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+          className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
         >
           Sync Singapore Holidays
         </button>
@@ -84,7 +84,7 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
 
       <div className="flex items-center gap-2">
         <Popover>
-          <PopoverTrigger className="bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
+          <PopoverTrigger className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
             {pickerDate ? format(pickerDate, 'dd MMM yyyy') : 'Pick a date'}
           </PopoverTrigger>
           <PopoverContent className="p-0 w-auto">
@@ -96,19 +96,19 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
           type="button"
           onClick={addManual}
           disabled={!pickerDate}
-          className="bg-gray-900 text-white hover:bg-black rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+          className="bg-action text-white rounded-pill px-[22px] py-2 text-sm disabled:bg-ink-48"
         >
           Add
         </button>
       </div>
 
-      <div className="border border-gray-200 rounded-xl divide-y divide-gray-100">
+      <div className="border border-hairline rounded-lg divide-y divide-hairline">
         {sorted.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No public holidays yet.</p>
+          <p className="text-sm text-ink-60 text-center py-4">No public holidays yet.</p>
         ) : sorted.map((h) => (
           <div key={h.date} className="flex items-center justify-between px-3 py-2 text-sm">
             <span>{format(new Date(h.date), 'dd MMM yyyy')} {h.name && `— ${h.name}`}</span>
-            <button type="button" onClick={() => remove(h.date)} className="text-gray-400 hover:text-red-500">×</button>
+            <button type="button" onClick={() => remove(h.date)} className="text-ink-60 hover:text-danger">×</button>
           </div>
         ))}
       </div>

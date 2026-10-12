@@ -1,12 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import type { Company } from '@/shared/companies'
-import { COMPANY_THEMES } from '@/shared/companies'
-import { useAuth } from '@/frontend/hooks/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/frontend/hooks/useSettings'
-import CommanderLoginForm from '@/frontend/components/auth/CommanderLoginForm'
+import CompanyShell from '@/frontend/components/layout/CompanyShell'
 import DutyWeightsSection from './DutyWeightsSection'
 import ParadeTimesSection from './ParadeTimesSection'
 import EligibilitySection from './EligibilitySection'
@@ -25,79 +22,59 @@ const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: 'public-holidays', label: 'Public Holidays' },
 ]
 
-/** A company's settings page, one accordion section per setting group. */
+/** A company's settings page, one section per setting group, behind commander login. */
 export default function SettingsPage({ company, label }: { company: Company; label: string }) {
+  return (
+    <CompanyShell company={company} label={label}>
+      <SettingsContent company={company} />
+    </CompanyShell>
+  )
+}
+
+/** Settings section picker and the chosen section's form. */
+function SettingsContent({ company }: { company: Company }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('duty-weights')
-  const theme = COMPANY_THEMES[company]
-  const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
   const { data: settings, isLoading: settingsLoading } = useSettingsQuery(company)
   const { data: publicHolidays, isLoading: holidaysLoading } = usePublicHolidaysQuery()
 
-  const content = (settingsLoading || holidaysLoading || !settings) ? (
-    <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
-  ) : (
-    <div>
-      <div className="bg-white border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0 mb-4 overflow-x-auto">
-        <div className="flex min-w-max sm:min-w-0">
-          {SETTINGS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-3 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.id
-                  ? `${theme.activeBorder} ${theme.activeText}`
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4">
-        {activeTab === 'duty-weights' && <DutyWeightsSection company={company} settings={settings} />}
-        {activeTab === 'parade-times' && <ParadeTimesSection company={company} settings={settings} />}
-        {activeTab === 'eligibility' && <EligibilitySection company={company} settings={settings} />}
-        {activeTab === 'guard-duty-roles' && <GuardDutyRolesSection company={company} settings={settings} />}
-        {activeTab === 'absence-defaults' && <AbsenceDefaultsSection company={company} settings={settings} />}
-        {activeTab === 'public-holidays' && (
-          <div>
-            <p className="text-xs text-gray-400 mb-3">Shared across all companies</p>
-            <PublicHolidaysSection publicHolidays={publicHolidays ?? []} />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <nav className="sticky top-0 z-20 bg-amber-100 px-4 py-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
-        <div className="absolute inset-y-0 left-[34%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[42%] w-[16%] min-w-16 bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[59%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
-        <Link href={`/${company}`} className="text-yellow-800 hover:text-yellow-600 text-sm font-medium transition-colors relative z-10">
-          ← {label} Coy
-        </Link>
-        <span className="text-yellow-500 relative z-10">|</span>
-        <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">Settings</h1>
-        {!authLoading && isCommander && (
-          <div className="ml-auto relative z-10">
-            <button onClick={signOut} className="text-xs text-yellow-700 hover:text-yellow-900 font-medium transition-colors">
-              Sign Out
-            </button>
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
+      <h1 className="mb-6 text-[34px] font-semibold leading-tight tracking-[-0.374px] text-ink">Settings</h1>
+      {settingsLoading || holidaysLoading || !settings ? (
+        <p role="status" className="py-8 text-center text-sm text-ink-60">Loading...</p>
+      ) : (
+        <>
+          <div role="tablist" aria-label="Settings sections" className="-mx-4 mb-4 flex gap-1 overflow-x-auto px-4">
+            {SETTINGS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`h-9 shrink-0 whitespace-nowrap rounded-pill px-4 text-sm ${activeTab === tab.id
+                  ? 'bg-white font-semibold text-ink ring-1 ring-black/[0.08]'
+                  : 'text-ink-80 hover:text-ink'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        )}
-      </nav>
 
-      <div className="flex-1 w-full max-w-3xl mx-auto px-4 py-6">
-        {authLoading ? (
-          <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
-        ) : !isCommander ? (
-          <CommanderLoginForm companyLabel={label} onSignIn={signIn} />
-        ) : content}
-      </div>
-    </div>
+          <div role="tabpanel" className="rounded-card border border-hairline bg-white p-6">
+            {activeTab === 'duty-weights' && <DutyWeightsSection company={company} settings={settings} />}
+            {activeTab === 'parade-times' && <ParadeTimesSection company={company} settings={settings} />}
+            {activeTab === 'eligibility' && <EligibilitySection company={company} settings={settings} />}
+            {activeTab === 'guard-duty-roles' && <GuardDutyRolesSection company={company} settings={settings} />}
+            {activeTab === 'absence-defaults' && <AbsenceDefaultsSection company={company} settings={settings} />}
+            {activeTab === 'public-holidays' && (
+              <div>
+                <p className="mb-3 text-sm text-ink-60">Shared across all companies</p>
+                <PublicHolidaysSection publicHolidays={publicHolidays ?? []} />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </main>
   )
 }

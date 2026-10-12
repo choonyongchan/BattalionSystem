@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { track } from '@vercel/analytics'
-import type { Company, CompanyTheme } from '@/shared/companies'
+import type { Company } from '@/shared/companies'
 import { PARADE_CONFIG } from '@/shared/companies'
 import { todaySGDate } from '@/shared/dates'
 import { isActiveOn } from '@/backend/domain/exceptions/active'
@@ -11,15 +11,15 @@ import { applyExcludeStayIn, sortExceptions } from '@/backend/domain/parade/exce
 import { strengthInputsToNumbers } from '@/backend/domain/parade/strength'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import { PARADE_TYPES, type ParadeType } from './parade-ui'
+import { THEME } from '@/frontend/theme'
 
 /**
  * Parade options and the Generate button. The report is always for today, whatever duty
  * date is selected; the text is handed to `onGenerated`.
  */
-export default function GenerateSection({ company, companyLabel, theme, paradeTimes, data, onGenerated }: {
+export default function GenerateSection({ company, companyLabel, paradeTimes, data, onGenerated }: {
   company: Company
   companyLabel: string
-  theme: CompanyTheme
   paradeTimes: Record<string, string>
   data: ParadeData
   onGenerated: (report: string, paradeType: ParadeType) => void
@@ -50,12 +50,12 @@ export default function GenerateSection({ company, companyLabel, theme, paradeTi
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-4">
+      <div className="bg-white border border-hairline rounded-card p-4 space-y-4">
         <fieldset>
-          <legend className="text-xs text-gray-500 mb-2">Parade</legend>
+          <legend className="text-xs text-ink-60 mb-2">Parade</legend>
           <div className="flex gap-4">
             {PARADE_TYPES.map((pt) => (
-              <label key={pt} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label key={pt} className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer">
                 <input type="radio" name="paradeType" className="h-4 w-4" checked={paradeType === pt} onChange={() => setParadeType(pt)} />
                 {pt}
               </label>
@@ -63,10 +63,10 @@ export default function GenerateSection({ company, companyLabel, theme, paradeTi
           </div>
         </fieldset>
         <fieldset>
-          <legend className="text-xs text-gray-500 mb-2">Exclude Excuse Stay-In Personnel</legend>
+          <legend className="text-xs text-ink-60 mb-2">Exclude Excuse Stay-In Personnel</legend>
           <div className="flex gap-4">
             {([['No', false], ['Yes', true]] as const).map(([label, value]) => (
-              <label key={label} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label key={label} className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer">
                 <input type="radio" name="excludeStayIn" className="h-4 w-4" checked={excludeStayIn === value} onChange={() => setExcludeStayIn(value)} />
                 {label}
               </label>
@@ -76,7 +76,7 @@ export default function GenerateSection({ company, companyLabel, theme, paradeTi
       </div>
       <button
         onClick={generate}
-        className={`w-full py-4 ${theme.buttonBg} ${theme.buttonHoverBg} text-white font-semibold rounded-2xl transition-colors text-sm tracking-wide`}
+        className={`w-full py-4 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white font-semibold rounded-card transition-colors text-sm tracking-wide`}
       >
         Generate Parade State
       </button>

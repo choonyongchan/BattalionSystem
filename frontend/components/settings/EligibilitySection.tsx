@@ -3,13 +3,14 @@
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { Company } from '@/shared/companies'
-import { ALL_DUTY_TYPES, COMPANY_THEMES } from '@/shared/companies'
+import { ALL_DUTY_TYPES } from '@/shared/companies'
 import { RANK_ORDER, DEFAULT_RANK_RULES } from '@/shared/ranks'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import { useSaveSettingsMutation, useNominalRollQuery } from '@/frontend/hooks/useSettings'
 import { isRankRangeInvalid } from '@/backend/domain/duty/duty-rules'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
+import { THEME } from '@/frontend/theme'
 
 type FormValues = {
   eligibility_name_overrides: AppSettings['eligibility_name_overrides']
@@ -18,7 +19,6 @@ type FormValues = {
 
 /** Settings: who may do each duty, by rank range and named overrides. */
 export default function EligibilitySection({ company, settings }: { company: Company; settings: AppSettings }) {
-  const theme = COMPANY_THEMES[company]
   const { data: soldiers = [] } = useNominalRollQuery(company)
   const { watch, setValue, handleSubmit, formState: { isDirty } } = useForm<FormValues>({
     defaultValues: {
@@ -68,7 +68,7 @@ export default function EligibilitySection({ company, settings }: { company: Com
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-60">
         Precedence: a name-list override (if non-empty) wins; otherwise the rank-range override applies.
       </p>
       {ALL_DUTY_TYPES.map((dt) => {
@@ -76,16 +76,16 @@ export default function EligibilitySection({ company, settings }: { company: Com
         const rule = rankOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }
         const rangeInvalid = isRankRangeInvalid(rule)
         return (
-          <div key={dt} className="border border-gray-200 rounded-xl p-3 space-y-3">
-            <p className="text-xs font-bold text-gray-600 uppercase">{dt}</p>
+          <div key={dt} className="border border-hairline rounded-lg p-3 space-y-3">
+            <p className="text-sm font-semibold text-ink">{dt}</p>
 
             <div>
-              <p className="text-xs text-gray-500 mb-1">Name overrides (takes precedence)</p>
+              <p className="text-xs text-ink-60 mb-1">Name overrides (takes precedence)</p>
               <div className="flex flex-wrap gap-1 mb-2">
                 {names.map((n) => (
-                  <span key={n} className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-lg">
+                  <span key={n} className="inline-flex items-center gap-1 bg-parchment text-ink-80 text-xs px-2 py-1 rounded-lg">
                     {n}
-                    <button type="button" onClick={() => removeName(dt, n)} className="text-gray-400 hover:text-red-500">×</button>
+                    <button type="button" onClick={() => removeName(dt, n)} className="text-ink-60 hover:text-danger">×</button>
                   </span>
                 ))}
               </div>
@@ -98,26 +98,26 @@ export default function EligibilitySection({ company, settings }: { company: Com
                 matches={(s, q) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
                 renderOption={(s) => <span>{s.rank} {s.name}</span>}
                 onChange={(name) => addName(dt, name)}
-                inputClass="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm"
+                inputClass="w-full border border-hairline rounded-lg px-3 py-2 text-sm"
                 placeholder="Add soldier..."
               />
             </div>
 
             <div>
-              <p className="text-xs text-gray-500 mb-1">Rank-range override</p>
+              <p className="text-xs text-ink-60 mb-1">Rank-range override</p>
               <div className="flex items-center gap-2">
                 <Select value={rule.from} onValueChange={(v) => v && setRankRule(dt, v, rule.to)}>
                   <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{RANK_ORDER.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                 </Select>
-                <span className="text-xs text-gray-400">–</span>
+                <span className="text-xs text-ink-60">–</span>
                 <Select value={rule.to} onValueChange={(v) => v && setRankRule(dt, rule.from, v)}>
                   <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{RANK_ORDER.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {rangeInvalid && (
-                <p className="text-xs text-red-600 mt-1">&quot;From&quot; rank must not come after &quot;to&quot; rank.</p>
+                <p className="text-xs text-danger mt-1">&quot;From&quot; rank must not come after &quot;to&quot; rank.</p>
               )}
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function EligibilitySection({ company, settings }: { company: Com
       <button
         type="submit"
         disabled={saveMutation.isPending || !isDirty || invalidDutyTypes.length > 0}
-        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${theme.buttonBg} ${theme.buttonHoverBg} disabled:opacity-50`}
+        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${THEME.buttonBg} ${THEME.buttonHoverBg} disabled:opacity-50`}
       >
         {saveMutation.isPending ? 'Saving…' : 'Save Eligibility Overrides'}
       </button>

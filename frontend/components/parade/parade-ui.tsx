@@ -22,8 +22,8 @@ export const soldierDropdownProps = {
   matches: (s: Soldier, q: string) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase()),
   renderOption: (s: Soldier) => (
     <div className="flex gap-2">
-      <span className="font-mono text-xs text-gray-400 w-12 shrink-0 pt-0.5">{s.rank}</span>
-      <span className="font-medium text-gray-800">{s.name}</span>
+      <span className="font-mono text-xs text-ink-60 w-12 shrink-0 pt-0.5">{s.rank}</span>
+      <span className="font-medium text-ink">{s.name}</span>
     </div>
   ),
   placeholder: 'Search soldier...',

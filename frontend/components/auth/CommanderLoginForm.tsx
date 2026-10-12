@@ -102,10 +102,11 @@ export default function CommanderLoginForm({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-24">
-      <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-3">
-        <h2 className="text-base font-semibold text-gray-800">Welcome, {companyLabel} Commander</h2>
+    <form onSubmit={handleSubmit} className="space-y-3 text-left" aria-label={`${companyLabel} commander sign in`}>
+      <label htmlFor="commander-password" className="sr-only">Commander password</label>
+      <div className="flex gap-2">
         <input
+          id="commander-password"
           type="password"
           placeholder={isLocked ? `Try again in ${countdown}s` : 'Password'}
           value={password}
@@ -113,13 +114,22 @@ export default function CommanderLoginForm({
           disabled={isLocked || loading}
           autoFocus
           autoComplete="current-password"
-          className="w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:bg-gray-50 disabled:text-gray-400 placeholder:text-gray-400"
+          aria-invalid={!!error}
+          aria-describedby="commander-password-status"
+          className="h-11 min-w-0 flex-1 rounded-pill border border-black/10 bg-white px-5 text-[17px] text-ink placeholder:text-ink-60 focus:outline-none focus-visible:outline-2 focus-visible:outline-action-focus disabled:bg-parchment disabled:text-ink-60"
         />
-        {error && <p className="text-red-500 text-xs">{error}</p>}
-        {isLocked && <p className="text-amber-600 text-xs">Too many attempts. Try again in {countdown}s.</p>}
-        {/* hidden submit enables Enter key on mobile */}
-        <button type="submit" className="sr-only">Sign In</button>
-      </form>
-    </div>
+        <button
+          type="submit"
+          disabled={isLocked || loading || !password}
+          className="h-11 shrink-0 rounded-pill bg-action px-[22px] text-[17px] text-white disabled:bg-ink-48"
+        >
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+      </div>
+      <div id="commander-password-status" role="status" className="min-h-5 px-5 text-sm">
+        {error && <p className="text-danger">{error}</p>}
+        {isLocked && <p className="text-ink-80">Too many attempts. Try again in {countdown}s.</p>}
+      </div>
+    </form>
   )
 }

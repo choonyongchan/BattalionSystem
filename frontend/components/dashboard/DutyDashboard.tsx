@@ -1,24 +1,20 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import Link from 'next/link'
 import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
 import type { Soldier, DutyEntry } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { COMPANY_THEMES, pointsDutyTypes } from '@/shared/companies'
+import { pointsDutyTypes } from '@/shared/companies'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/backend/domain/duty/duty-rules'
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/backend/domain/duty/duty-dashboard'
-import { useAuth } from '@/frontend/hooks/useAuth'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/frontend/hooks/useSettings'
 import { resolveDayType } from '@/backend/domain/settings/settings'
-import CommanderLoginForm from '@/frontend/components/auth/CommanderLoginForm'
+import { THEME } from '@/frontend/theme'
 
 /** Duty points leaderboard: who has done which duties, weighted by settings. */
-export default function DutyDashboard({ company, label, embedded }: { company: Company; label: string; embedded?: boolean }) {
-  const theme = COMPANY_THEMES[company]
-  const { isCommander, loading: authLoading, signIn, signOut } = useAuth(company)
+export default function DutyDashboard({ company }: { company: Company }) {
 
   const dutyTypes = pointsDutyTypes(company)
 
@@ -47,7 +43,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const guardDutyRankOverrides = settings?.guard_duty_rank_overrides ?? {}
   const holidays = useMemo(() => new Set((publicHolidays ?? []).map(h => h.date)), [publicHolidays])
 
-  useEffect(() => { if (isCommander || embedded) load() }, [company, isCommander, embedded])
+  useEffect(() => { load() }, [company])
 
   /** Loads soldiers, roster duties and guard duties (stored as exceptions). */
   async function load() {
@@ -117,18 +113,18 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
   const dashboardContent = loading ? (
-    <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
+    <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
   ) : (
     <div className="space-y-6">
 
             {/* Day-type tabs */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b border-hairline">
               {(['all', 'weekday', 'weekend'] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setDayFilter(f)}
                   className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    dayFilter === f ? `${theme.activeBorder} ${theme.activeText}` : 'border-transparent text-gray-500 hover:text-gray-700'
+                    dayFilter === f ? `${THEME.activeBorder} ${THEME.activeText}` : 'border-transparent text-ink-60 hover:text-ink-80'
                   }`}
                 >
                   {f === 'all' ? 'All' : f === 'weekday' ? 'M-T' : 'F-S/PH'}
@@ -144,8 +140,8 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                   onClick={() => { setFilter(f); setSortCol(null) }}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     filter === f
-                      ? `${theme.buttonBg} ${theme.buttonHoverBg} text-white`
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? `${THEME.buttonBg} ${THEME.buttonHoverBg} text-white`
+                      : 'bg-parchment text-ink-80 hover:bg-hairline'
                   }`}
                 >
                   {f === 'all' ? 'All' : f}
@@ -155,29 +151,29 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
 
             {/* Breakdown */}
             <div>
-              <h3 className={`text-xs font-semibold uppercase tracking-widest mb-3 ${theme.activeText}`}>
+              <h3 className="mb-3 text-sm font-semibold text-ink">
                 Duty Breakdown
               </h3>
-              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-white border border-hairline rounded-card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
+                      <tr className="bg-parchment border-b border-hairline">
+                        <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
                         {filter === 'all' ? (
                           <>
                             {dutyTypes.map(dt => (
                               <th
                                 key={dt}
                                 onClick={() => handleSort(dt)}
-                                className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
+                                className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
                               >
                                 {dt}{sortCol === dt ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                               </th>
                             ))}
                             <th
                               onClick={() => handleSort('Total')}
-                              className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
+                              className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
                             >
                               Total{sortCol === 'Total' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                             </th>
@@ -185,7 +181,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                         ) : (
                           <th
                             onClick={() => handleSort('Points')}
-                            className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap cursor-pointer select-none hover:text-gray-700"
+                            className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
                           >
                             Points{sortCol === 'Points' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                           </th>
@@ -195,7 +191,7 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                     <tbody>
                       {sorted.length === 0 ? (
                         <tr>
-                          <td colSpan={filter === 'all' ? dutyTypes.length + 2 : 2} className="px-4 py-8 text-center text-sm text-gray-400">
+                          <td colSpan={filter === 'all' ? dutyTypes.length + 2 : 2} className="px-4 py-8 text-center text-sm text-ink-60">
                             No personnel in this category
                           </td>
                         </tr>
@@ -203,24 +199,24 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
                         const total = filterPoints[s.name] ?? 0
                         const isMax = total === maxPts && sorted.length > 1 && total > 0
                         return (
-                          <tr key={s.name} className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
-                            <td className="px-3 py-1.5 whitespace-nowrap font-medium text-gray-900">{s.rank} {s.name}</td>
+                          <tr key={s.name} className={`border-b border-hairline last:border-0 ${i % 2 === 1 ? 'bg-parchment/50' : ''}`}>
+                            <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">{s.rank} {s.name}</td>
                             {filter === 'all' ? (
                               <>
                                 {dutyTypes.map(dt => {
                                   const dtPoints = pointsByDutyType[s.name]?.[dt] ?? 0
                                   return (
-                                    <td key={dt} className={`px-2 py-1.5 text-center ${dtPoints === 0 ? 'text-gray-200' : 'text-gray-700'}`}>
+                                    <td key={dt} className={`px-2 py-1.5 text-center ${dtPoints === 0 ? 'text-ink-48' : 'text-ink-80'}`}>
                                       {dtPoints === 0 ? '—' : dtPoints}
                                     </td>
                                   )
                                 })}
-                                <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                                <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-ink' : 'text-ink-80'}`}>
                                   {total}
                                 </td>
                               </>
                             ) : (
-                              <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-red-500' : 'text-gray-700'}`}>
+                              <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-ink' : 'text-ink-80'}`}>
                                 {total}
                               </td>
                             )}
@@ -237,43 +233,5 @@ export default function DutyDashboard({ company, label, embedded }: { company: C
     </div>
   )
 
-  if (embedded) return dashboardContent
-
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <nav className="sticky top-0 z-20 bg-amber-100 px-4 py-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
-        <div className="absolute inset-y-0 left-[34%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[42%] w-[16%] min-w-16 bg-red-300/50 pointer-events-none" />
-        <div className="absolute inset-y-0 left-[59%] w-[7%] min-w-7 bg-red-300/50 pointer-events-none" />
-        <Link href={`/${company}`} className="text-yellow-800 hover:text-yellow-600 text-sm font-medium transition-colors relative z-10">
-          ← {label} Coy
-        </Link>
-        <span className="text-yellow-500 relative z-10">|</span>
-        <h1 className="font-bold text-sm tracking-wide text-yellow-900 relative z-10">Dashboard</h1>
-        {/* NOTE: this nav header is duplicated between DutyDashboard.tsx and CompanyContent.tsx —
-            known follow-up, not addressed here. */}
-        {!authLoading && isCommander && (
-          <div className="ml-auto flex items-center gap-3 relative z-10">
-            <Link href={`/${company}/settings`} title="Settings" className="text-yellow-700 hover:text-yellow-900 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </Link>
-            <button onClick={signOut} className="text-xs text-yellow-700 hover:text-yellow-900 font-medium transition-colors">
-              Sign Out
-            </button>
-          </div>
-        )}
-      </nav>
-
-      <div className="flex-1 w-full max-w-screen-2xl mx-auto px-3 sm:px-6 py-3">
-        {authLoading ? (
-          <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
-        ) : !isCommander ? (
-          <CommanderLoginForm companyLabel={label} onSignIn={signIn} />
-        ) : dashboardContent}
-      </div>
-    </div>
-  )
+  return dashboardContent
 }

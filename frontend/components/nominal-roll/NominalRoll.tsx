@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Exception, Soldier } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { COMPANY_THEMES, PARADE_CONFIG } from '@/shared/companies'
+import { PARADE_CONFIG } from '@/shared/companies'
 import { todaySGDate } from '@/shared/dates'
 import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
@@ -14,10 +14,10 @@ import BulkImportModal from './BulkImportModal'
 import AddSoldierForm from './AddSoldierForm'
 import DeleteAllPanel from './DeleteAllPanel'
 import SoldierTables from './SoldierTables'
+import { THEME } from '@/frontend/theme'
 
 /** Nominal Roll tab: search, add, bulk import, edit and delete soldiers; opens a soldier's sheet. */
 export default function NominalRoll({ company }: { company: Company }) {
-  const theme = COMPANY_THEMES[company]
   const platoons = ['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
   const soldierRepo = useMemo(() => new SoldierRepository(company), [company])
 
@@ -64,14 +64,14 @@ export default function NominalRoll({ company }: { company: Company }) {
   const activeFor = (s: Soldier) => (exceptionsByKey.get(soldierKeyOf(s)) ?? []).filter((e) => isActiveOn(e, today))
   const openSoldier = openKey ? allSoldiers.find((s) => soldierKeyOf(s) === openKey) : undefined
 
-  if (loading) return <div className="text-gray-400 text-sm py-8 text-center">Loading...</div>
+  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <h2 className="text-base font-semibold text-gray-800">Nominal Roll</h2>
-          <p className="text-xs text-gray-500">{onStrength.length} personnel</p>
+          <h2 className="text-base font-semibold text-ink">Nominal Roll</h2>
+          <p className="text-xs text-ink-60">{onStrength.length} personnel</p>
         </div>
         <input
           type="search"
@@ -79,27 +79,27 @@ export default function NominalRoll({ company }: { company: Company }) {
           aria-label="Search nominal roll"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 max-w-sm border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
+          className="flex-1 min-w-48 max-w-sm border border-hairline rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus bg-white"
         />
         {postedOutCount > 0 && (
           <button
             onClick={() => setShowPostedOut(!showPostedOut)}
             aria-pressed={showPostedOut}
-            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 text-gray-600'}`}
+            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-ink text-white border-ink' : 'border-hairline text-ink-80'}`}
           >
             {showPostedOut ? 'Hide' : 'Show'} posted out ({postedOutCount})
           </button>
         )}
         <div className="flex gap-2 ml-auto">
-          <button onClick={() => setPanel('deleteAll')} className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium rounded-xl transition-colors">
+          <button onClick={() => setPanel('deleteAll')} className="px-3 py-2 border border-danger/30 text-danger hover:bg-danger/5 text-sm font-medium rounded-lg transition-colors">
             Delete All
           </button>
-          <button onClick={() => setPanel('import')} className="px-3 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition-colors">
+          <button onClick={() => setPanel('import')} className="px-3 py-2 border border-hairline text-ink-80 hover:bg-parchment text-sm font-medium rounded-lg transition-colors">
             Bulk Import
           </button>
           <button
             onClick={() => setPanel(panel === 'add' ? 'none' : 'add')}
-            className={`px-3 py-2 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors`}
+            className={`px-3 py-2 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors`}
           >
             {panel === 'add' ? 'Cancel' : '+ Add'}
           </button>
@@ -110,24 +110,24 @@ export default function NominalRoll({ company }: { company: Company }) {
         <DeleteAllPanel company={company} count={allSoldiers.length} repo={soldierRepo} onDone={load} onError={setError} onCancel={() => setPanel('none')} />
       )}
 
-      {error && <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{error}</div>}
+      {error && <div role="alert" className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       {panel === 'add' && (
         <AddSoldierForm
-          theme={theme} platoons={platoons} repo={soldierRepo} onError={setError}
+          platoons={platoons} repo={soldierRepo} onError={setError}
           onAdded={async () => { setPanel('none'); await load() }}
         />
       )}
 
       <SoldierTables
-        company={company} theme={theme} platoons={platoons} soldiers={filterSoldiers(soldiers, search)} repo={soldierRepo}
+        company={company} platoons={platoons} soldiers={filterSoldiers(soldiers, search)} repo={soldierRepo}
         activeFor={activeFor} onOpen={(s) => setOpenKey(soldierKeyOf(s))} onChanged={load} onError={setError}
       />
 
       {soldiers.length === 0 && panel !== 'add' && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-ink-60">
           <p className="text-sm">No soldiers yet.</p>
-          <button onClick={() => setPanel('add')} className={`mt-3 text-sm ${theme.activeText} hover:underline`}>
+          <button onClick={() => setPanel('add')} className={`mt-3 text-sm ${THEME.activeText} hover:underline`}>
             Add the first soldier
           </button>
         </div>

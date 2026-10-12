@@ -1,20 +1,15 @@
-import { notFound } from 'next/navigation'
-import { COMPANIES, DISABLED_COMPANIES, companyLabel } from '@/shared/companies'
+import { DISABLED_COMPANIES, PRIMARY_COMPANY, companyHref, companyLabel } from '@/shared/companies'
 import SettingsPage from '@/frontend/components/settings/SettingsPage'
 import ComingSoon from '@/frontend/components/shared/ComingSoon'
+import Redirect from '@/frontend/components/shared/Redirect'
+import { companyFromParams } from '../company-param'
 
-/** Pre-renders one settings page per company for the static export. */
-export function generateStaticParams() {
-  return COMPANIES.map((company) => ({ company }))
-}
+export { generateStaticParams } from '../company-param'
 
-/** A company's settings page; 404 for unknown companies. */
+/** A non-primary company's settings page; the primary company's lives at /settings. */
 export default async function CompanySettingsPage({ params }: { params: Promise<{ company: string }> }) {
-  const { company: companyParam } = await params
-  if (!(COMPANIES as readonly string[]).includes(companyParam)) notFound()
-  const company = companyParam as (typeof COMPANIES)[number]
-
+  const company = await companyFromParams(params)
+  if (company === PRIMARY_COMPANY) return <Redirect to={companyHref(company, 'settings')} />
   if (DISABLED_COMPANIES.has(company)) return <ComingSoon company={company} />
-
   return <SettingsPage company={company} label={companyLabel(company)} />
 }

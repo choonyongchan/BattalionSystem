@@ -86,13 +86,13 @@ export default function SearchDropdown<T>({
         onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className={`${inputClass} ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}`}
+        className={`${inputClass} ${disabled ? 'opacity-50 cursor-not-allowed bg-parchment' : ''}`}
         autoComplete="off"
         disabled={disabled}
       />
       {!disabled && open && filtered.length > 0 && menuRect && createPortal(
         <ul
-          className="fixed z-30 max-h-52 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg"
+          className="fixed z-30 max-h-52 overflow-y-auto bg-white border border-hairline rounded-lg"
           style={{
             left: menuRect.left,
             width: menuRect.width,
@@ -109,7 +109,7 @@ export default function SearchDropdown<T>({
                   setQuery(getLabel(item))
                   setOpen(false)
                 }}
-                className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                className="w-full text-left px-4 py-3 text-sm hover:bg-parchment"
               >
                 {renderOption(item)}
               </button>

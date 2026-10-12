@@ -43,3 +43,14 @@ export async function seedTestDb() {
   const failed = ops.find(r => r.error)
   if (failed?.error) throw new Error(`seedTestDb failed: ${failed.error.message}`)
 }
+
+/** Signs in as the test commander, then truncates and reseeds — for test files that mutate data. */
+export async function resetTestDb() {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: process.env.TEST_SUPABASE_EMAIL!,
+    password: process.env.TEST_SUPABASE_PASSWORD!,
+  })
+  if (error) throw new Error(`resetTestDb sign-in failed: ${error.message}`)
+  await truncateTestDb()
+  await seedTestDb()
+}

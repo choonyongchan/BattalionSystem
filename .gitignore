@@ -31,3 +31,5 @@ docs/
 parade-state-example/
 graphify-out/
 backups/
+test-results/
+playwright-report/

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { CompanyTheme } from '@/shared/companies'
 import type { Exception } from '@/shared/types'
 import { displayName } from '@/shared/names'
 import { GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from '@/shared/ranks'
@@ -14,13 +13,13 @@ import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { CONFIRM_BTN, ICON_BTN, ICON_BTN_DANGER } from '@/frontend/components/shared/styles'
 import { soldierDropdownProps } from './parade-ui'
+import { THEME } from '@/frontend/theme'
 
 /**
  * Guard Duty for the selected date. Unlike the roster duties, any number of people can be
  * assigned; entries are stored as 'Guard Duty' exceptions.
  */
-export default function GuardDutyPanel({ theme, date, settings, data }: {
-  theme: CompanyTheme
+export default function GuardDutyPanel({ date, settings, data }: {
   date: string
   settings: AppSettings | undefined
   data: ParadeData
@@ -32,8 +31,8 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
   const confirm = useConfirmDelete<number>()
 
   const entries = sortExceptions(exceptions).filter((e) => e.scope === 'Guard Duty' && isActiveOn(e, date))
-  const inputClass = `w-full border border-gray-300 rounded-xl px-3 py-3 text-base focus:outline-none focus:ring-2 ${theme.focusRing}`
-  const editInputClass = `w-full min-w-[6rem] border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${theme.focusRing}`
+  const inputClass = `w-full border border-hairline rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`
+  const editInputClass = `w-full min-w-[6rem] border border-hairline rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${THEME.focusRing}`
 
   /** Soldiers whose rank fits the role's rank range (settings override, else default). */
   function eligibleFor(role: string) {
@@ -84,30 +83,30 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
   )
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <span className="text-sm font-medium text-gray-500">Guard Duty</span>
+    <div className="bg-white border border-hairline rounded-card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-hairline bg-parchment">
+        <span className="text-sm font-medium text-ink-60">Guard Duty</span>
         <button
           onClick={() => {
             if (!showForm) setForm({ name: '', reason: '' })
             setShowForm((v) => !v)
           }}
-          className={`px-3 py-1.5 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs font-medium rounded-lg transition-colors`}
+          className={`px-3 py-1.5 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs font-medium rounded-lg transition-colors`}
         >
           {showForm ? 'Cancel' : '+ Add'}
         </button>
       </div>
 
       {showForm && (
-        <div className="p-4 space-y-3 border-b border-gray-100 bg-gray-50/50">
+        <div className="p-4 space-y-3 border-b border-hairline bg-parchment/50">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Role</label>
+            <label className="block text-xs text-ink-60 mb-1">Role</label>
             <select value={form.reason} onChange={(e) => setForm(withRole(form, e.target.value))} className={inputClass}>
               {roleOptions}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Soldier <span className="text-red-500">*</span></label>
+            <label className="block text-xs text-ink-60 mb-1">Soldier <span className="text-danger">*</span></label>
             <SearchDropdown
               {...soldierDropdownProps}
               items={eligibleFor(form.reason)}
@@ -120,7 +119,7 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
           <button
             onClick={add}
             disabled={!form.name}
-            className={`w-full py-2.5 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+            className={`w-full py-2.5 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             Add Guard Duty
           </button>
@@ -128,14 +127,14 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
       )}
 
       {entries.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 text-sm">No Guard Duty entries for this date.</div>
+        <div className="text-center py-8 text-ink-60 text-sm">No Guard Duty entries for this date.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Role</th>
-                <th className="text-left px-3 py-1.5 font-medium text-gray-500 whitespace-nowrap">Name</th>
+              <tr className="bg-parchment border-b border-hairline">
+                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Role</th>
+                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
                 <th />
               </tr>
             </thead>
@@ -143,7 +142,7 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
               {entries.map((e, i) => {
                 const isEditing = edit?.id === e.id
                 return (
-                  <tr key={e.id} className={`border-b border-gray-100 last:border-0 group ${i % 2 === 0 ? '' : 'bg-gray-50/50'} ${isEditing ? 'bg-blue-50/30' : ''}`}>
+                  <tr key={e.id} className={`border-b border-hairline last:border-0 group ${i % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5' : ''}`}>
                     {isEditing && edit ? (
                       <>
                         <td className="px-2 py-1">
@@ -163,14 +162,14 @@ export default function GuardDutyPanel({ theme, date, settings, data }: {
                         </td>
                         <td className="px-2 py-1">
                           <div className="flex gap-1 justify-end">
-                            <button onClick={save} className={`px-2 py-1 ${theme.buttonBg} ${theme.buttonHoverBg} text-white text-xs rounded-lg`}>Save</button>
-                            <button onClick={() => setEdit(null)} className="px-2 py-1 border border-gray-300 text-gray-600 text-xs rounded-lg hover:bg-gray-50">Cancel</button>
+                            <button onClick={save} className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg`}>Save</button>
+                            <button onClick={() => setEdit(null)} className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment">Cancel</button>
                           </div>
                         </td>
                       </>
                     ) : (
                       <>
-                        <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{e.reason ?? '–'}</td>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-ink-60">{e.reason ?? '–'}</td>
                         <td className="px-3 py-1.5 whitespace-nowrap font-medium">{displayName(e.name, soldiers)}</td>
                         <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="flex gap-1 justify-end items-center">
