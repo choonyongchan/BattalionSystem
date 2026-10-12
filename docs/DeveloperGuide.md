@@ -1,6 +1,6 @@
 # Developer Guide
 
-BattalionSystem is a company admin dashboard for 40SAR: parade state, RSI, nominal roll, off/leave, duty roster and conducts. It is a client-only Next.js 16 app built as a static export (`output: 'export'`), backed by one Supabase project.
+BattalionSystem is a company admin dashboard for 40SAR: parade state, report sick, nominal roll, off/leave, duty roster and conducts. It is a client-only Next.js 16 app built as a static export (`output: 'export'`), backed by one Supabase project.
 
 ## Setup
 
@@ -57,7 +57,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `app/settings/` | `/settings` for Hercules |
 | `app/[company]/` | `/<company>/` and `/<company>/settings`. `company-param.ts` allowlists the param. |
 | `frontend/components/layout/` | `CompanyShell` (auth gate and nav), `GlobalNav`, `TabBar`, `CompanyContent` (tabs and `?tab=`) |
-| `frontend/components/<feature>/` | One folder per tab or feature: `parade`, `rsi`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
+| `frontend/components/<feature>/` | One folder per tab or feature: `parade`, `report-sick`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
 | `frontend/components/ui/` | shadcn components (`components.json` points here) |
 | `frontend/components/shared/` | Shared UI bits and style constants (`styles.ts`) |
 | `frontend/hooks/` | `useAuth`, `useSettings`, `useParadeData`, `useConfirmDelete` |
@@ -65,7 +65,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `backend/data/client.ts` | Supabase client and `tbl(company, table)` |
 | `backend/data/auth.ts` | Commander sign-in |
 | `backend/data/repositories/` | One class per table (see below) |
-| `backend/domain/<feature>/` | Pure functions: parade report, strength, duty points, RSI, validation, bulk import |
+| `backend/domain/<feature>/` | Pure functions: parade report, strength, duty points, report sick, validation, bulk import |
 | `shared/` | `types`, `companies`, `ranks`, `names`, `dates`, `utils` |
 
 ### Repositories
@@ -85,6 +85,7 @@ const { data, error } = await soldiers.list(true)
 | `StrengthOverrideRepository` | `{Company}_StrengthOverride` |
 | `OffLeaveRepository` | `{Company}_OffLeave` |
 | `ConductRepository` | `{Company}_Conducts` and `_ConductDecisions` |
+| `MedicalReviewRepository` | `{Company}_MedicalReviews` (NRIC and appointments for a 'Medical Review' exception; deleted with it) |
 | `SettingsRepository` | `{Company}_Settings` (validated with zod) |
 | `PublicHolidayRepository` | `PublicHolidays` (shared by all companies) |
 
@@ -112,7 +113,7 @@ The login lockout (3 tries, then 30 s) runs only in the browser. The real brute-
 2. Run `bun run scripts/sync-schema.ts`. This applies the whole file to the live project.
 3. Add new columns to `shared/types.ts` and the matching repository.
 
-The sync never drops anything. Remove tables or columns by hand, after backing them up (put backups in `backups/`, which is gitignored).
+The sync re-runs the whole file on live data, so `schema.sql` must change structure only. Never put an `UPDATE` or `DELETE` of existing rows in it. Do one-off data fixes by hand after checking which rows they touch, and back up first (put backups in `backups/`, which is gitignored). The sync never drops anything either: remove tables or columns by hand.
 
 ## Companies
 

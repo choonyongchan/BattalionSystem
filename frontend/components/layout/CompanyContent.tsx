@@ -7,7 +7,7 @@ import ParadeState from '@/frontend/components/parade/ParadeState'
 import DutyDashboard from '@/frontend/components/dashboard/DutyDashboard'
 import OffLeaveTracking from '@/frontend/components/off-leave/OffLeaveTracking'
 import ConductsTab from '@/frontend/components/conducts/ConductsTab'
-import RsiTab from '@/frontend/components/rsi/RsiTab'
+import ReportSickTab from '@/frontend/components/report-sick/ReportSickTab'
 import CompanyShell from './CompanyShell'
 import TabBar, { isTabId, type TabId } from './TabBar'
 
@@ -50,7 +50,7 @@ function Workspace({ company, label }: { company: Company; label: string }) {
         {tab === 'dashboard' && <DutyDashboard company={company} />}
         {tab === 'nominal-roll' && <NominalRoll company={company} />}
         {tab === 'parade-state' && <ParadeState company={company} companyLabel={label} />}
-        {tab === 'rsi' && <RsiTab company={company} />}
+        {tab === 'report-sick' && <ReportSickTab company={company} companyLabel={label} />}
         {tab === 'conducts' && <ConductsTab company={company} companyLabel={label} />}
         {tab === 'off-leave' && <OffLeaveTracking company={company} />}
       </main>

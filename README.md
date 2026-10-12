@@ -25,7 +25,15 @@ Tabs are grouped by what you are doing. The open tab is kept in the address bar 
 3. **Exceptions**: everyone not on parade, e.g. MC, leave, off, courses and statuses. Search, sort, edit inline, or add one with the form.
 4. **Generate**: choose the parade and press **Generate**. Copy the report text and paste it into WhatsApp. The report is always for today.
 
-**RSI**: key in who reported sick and why. Each entry also appears on the parade state and in conducts. Copy the generated RSI message.
+**Report Sick** has three kinds of entry. All of them print under REPORT SICK in the parade state.
+
+- **RSI** (report sick inside): who reported sick and why. Location defaults to KHMC; date and time default to now. Copy the RSI message. Its URTI or NON-URTI part is left out when it has no one.
+- **RSO** (report sick outside): the same, with no default location. RSO has no message.
+- **Medical Review**: rank and name, coy, NRIC, diagnosis, last and next medical appointment, memo (Yes/No) and remarks. Copy the medical review message.
+
+RSI and RSO also fall the soldier out of conducts. A medical review shows there only as a note.
+
+NRICs are stored in the database. Anyone with the company password can see them, so keep the password to people who need it.
 
 ### Personnel
 

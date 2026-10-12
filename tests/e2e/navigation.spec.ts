@@ -30,10 +30,10 @@ test.describe('Site navigation', () => {
     const password = process.env.TEST_SUPABASE_PASSWORD
     test.skip(!password || password === 'YOUR_TEST_PASSWORD', 'TEST_SUPABASE_PASSWORD not configured in .env.test')
 
-    await page.goto('/test/?tab=rsi')
+    await page.goto('/test/?tab=report-sick')
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('tab', { name: 'RSI' })).toHaveAttribute('aria-selected', 'true', { timeout: 15000 })
+    await expect(page.getByRole('tab', { name: 'Report Sick' })).toHaveAttribute('aria-selected', 'true', { timeout: 15000 })
 
     await page.getByRole('tab', { name: 'Conducts' }).click()
     await expect(page).toHaveURL(/tab=conducts/)

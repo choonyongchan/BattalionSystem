@@ -49,6 +49,18 @@ export interface ConductDecision {
   reason: string | null
 }
 
+/** Detail for a 'Medical Review' exception; the exception carries soldier, date and diagnosis. */
+export interface MedicalReview {
+  exception_id: number
+  nric: string
+  coy: string
+  /** Most recent / next medical appointment, "YYYY-MM-DD". */
+  last_ma: string | null
+  next_ma: string | null
+  memo: boolean
+  remarks: string | null
+}
+
 export interface OffLeave {
   name: string
   off: number

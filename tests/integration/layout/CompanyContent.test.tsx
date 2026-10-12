@@ -30,12 +30,12 @@ describe('CompanyContent signed in', () => {
   afterAll(() => supabase.auth.signOut())
 
   it('groups the six tabs and opens the tab named in ?tab=', async () => {
-    window.history.replaceState(null, '', '/test/?tab=rsi')
+    window.history.replaceState(null, '', '/test/?tab=report-sick')
     renderApp()
-    const rsi = await screen.findByRole('tab', { name: 'RSI' }, { timeout: 10000 })
+    const rsi = await screen.findByRole('tab', { name: 'Report Sick' }, { timeout: 10000 })
     await waitFor(() => expect(rsi).toHaveAttribute('aria-selected', 'true'))
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(
-      ['Parade State', 'RSI', 'Nominal Roll', 'Off/Leave', 'Duty Dashboard', 'Conducts'],
+      ['Parade State', 'Report Sick', 'Nominal Roll', 'Off/Leave', 'Duty Dashboard', 'Conducts'],
     )
   })
 

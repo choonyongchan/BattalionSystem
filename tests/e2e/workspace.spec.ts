@@ -16,7 +16,7 @@ test.describe('Workspace tabs', () => {
   })
 
   test('RSI lists the day\'s report sick in the generated message', async ({ page }) => {
-    await page.getByRole('tab', { name: 'RSI' }).click()
+    await page.getByRole('tab', { name: 'Report Sick' }).click()
     await expect(page.getByText('TAN RONG XIAN').first()).toBeVisible({ timeout: 10000 })
   })
 

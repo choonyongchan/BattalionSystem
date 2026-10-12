@@ -105,10 +105,10 @@ const CONFIRM_TYPES = new Set(['LD', 'RMJ'])
 const RMJ_RE = /\bRMJ\b/i
 
 /**
- * True for a report sick.
- * By scope, not type: a report sick is typed URTI or Report Sick (non-URTI)
+ * True for a report sick (RSI or RSO), which always falls the soldier out.
+ * By scope, as it is typed URTI or Report Sick; a medical review is only a note.
  */
-const isReportSick = (e: Exception) => e.scope === 'Report Sick'
+const isReportSick = (e: Exception) => e.scope === 'Report Sick' && exceptionType(e) !== 'Medical Review'
 
 /** The reason to print for an exception, else its type. */
 function describe(e: Exception): string {

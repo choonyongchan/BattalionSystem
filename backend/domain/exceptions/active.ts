@@ -11,7 +11,7 @@ export const SCOPE_TYPES: Record<ExceptionScope, readonly string[]> = {
   'Att C': ['MC'],
   Status: ['LD', 'RMJ', 'Excuse'],
   // URTI is split out for the RSI report; 'Report Sick' is the non-URTI rest
-  'Report Sick': ['Report Sick', 'URTI'],
+  'Report Sick': ['Report Sick', 'URTI', 'Medical Review'],
   MA: ['MA'],
   'Off/Leave': ['Leave', 'Off'],
   'Guard Duty': ['Guard Duty'],
@@ -25,7 +25,7 @@ export function scopeOfType(type: string): ExceptionScope {
 }
 
 /**
- * Stored type, else the same guess the DB backfill makes (supabase/schema.sql)
+ * Stored type, else a guess from scope and reason (the old one-off DB backfill's rule)
  * — rows written by the pre-type app still arrive without one.
  */
 export function exceptionType(e: Exception): string {

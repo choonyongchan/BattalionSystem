@@ -78,6 +78,13 @@ type ConductDecisionsTable = {
   Relationships: []
 }
 
+type MedicalReviewsTable = {
+  Row:           { exception_id: number; nric: string; coy: string; last_ma: string | null; next_ma: string | null; memo: boolean; remarks: string | null }
+  Insert:        { exception_id: number; nric: string; coy: string; last_ma?: string | null; next_ma?: string | null; memo?: boolean; remarks?: string | null }
+  Update:        { nric?: string; coy?: string; last_ma?: string | null; next_ma?: string | null; memo?: boolean; remarks?: string | null }
+  Relationships: []
+}
+
 type PublicHolidaysTable = {
   Row:           { date: string; name: string }
   Insert:        { date: string; name?: string }
@@ -92,7 +99,8 @@ type CompanyTables =
   { [C in Company as `${Capitalize<C>}_Settings`]:      SettingsTable    } &
   { [C in Company as `${Capitalize<C>}_OffLeave`]:      OffLeaveTable    } &
   { [C in Company as `${Capitalize<C>}_Conducts`]:      ConductsTable    } &
-  { [C in Company as `${Capitalize<C>}_ConductDecisions`]: ConductDecisionsTable }
+  { [C in Company as `${Capitalize<C>}_ConductDecisions`]: ConductDecisionsTable } &
+  { [C in Company as `${Capitalize<C>}_MedicalReviews`]: MedicalReviewsTable }
 
 type Database = {
   public: {

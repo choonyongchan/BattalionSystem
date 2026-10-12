@@ -2,7 +2,8 @@
 -- Each company gets prefixed tables: {Company}_NominalRoll, _Exceptions, _Duty,
 -- _StrengthOverride, _Settings, _OffLeave.
 -- Run scripts/sync-schema.ts to apply to the hercules project.
--- Safe to re-run (IF NOT EXISTS, ON CONFLICT DO NOTHING).
+-- Safe to re-run (IF NOT EXISTS, ON CONFLICT DO NOTHING). Structure only: never
+-- UPDATE or DELETE existing rows here, as every sync re-runs the whole file on live data.
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
@@ -42,7 +43,6 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN reason DROP NOT NULL', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN start DROP NOT NULL', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ALTER COLUMN "end" DROP NOT NULL', c);
-    EXECUTE format('UPDATE public."%s_Exceptions" SET counts_as_absence = false WHERE scope = ANY(''{Status,Report Sick,Guard Duty,Others}''::text[]) AND counts_as_absence = true', c);
     EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_exceptions_name_scope_idx" ON public."%s_Exceptions" (name, scope)', c, c);
 
     EXECUTE format('
@@ -177,22 +177,6 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_Exceptions" ADD COLUMN IF NOT EXISTS revoked_at timestamptz', c);
     EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_exceptions_soldier_idx" ON public."%s_Exceptions" (soldier_id)', c, c);
 
-    EXECUTE format('
-      UPDATE public."%s_Exceptions" e SET soldier_id = n.id
-      FROM public."%s_NominalRoll" n
-      WHERE e.soldier_id IS NULL AND n.name = e.name', c, c);
-    EXECUTE format($f$
-      UPDATE public."%s_Exceptions" SET type = CASE
-        WHEN scope = 'Att C' THEN 'MC'
-        WHEN scope = 'Status' AND (reason ~* '\mLD\M' OR reason ~* 'light\s*duty') THEN 'LD'
-        WHEN scope = 'Status' AND reason ~* '\mRMJ\M' THEN 'RMJ'
-        WHEN scope = 'Status' THEN 'Excuse'
-        WHEN scope = 'Off/Leave' AND reason ~* 'leave' THEN 'Leave'
-        WHEN scope = 'Off/Leave' THEN 'Off'
-        ELSE scope
-      END
-      WHERE type IS NULL$f$, c);
-
     -- ── Conduct tracking ──────────────────────────────────────────────────
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_Conducts" (
@@ -233,6 +217,29 @@ BEGIN
       c, c, c, c);
     EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_ConductDecisions" ON public."%s_ConductDecisions"
+       FOR ALL TO authenticated
+       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
+       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
+      c, c, c, c);
+
+    -- ── Medical review details ────────────────────────────────────────────
+    -- The review itself is a 'Report Sick' exception typed 'Medical Review', so it
+    -- prints in the parade state; NRIC and appointment details live here, apart
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_MedicalReviews" (
+        exception_id bigint PRIMARY KEY REFERENCES public."%s_Exceptions" (id) ON DELETE CASCADE,
+        nric         text NOT NULL,
+        coy          text NOT NULL,
+        last_ma      date,
+        next_ma      date,
+        memo         boolean NOT NULL DEFAULT false,
+        remarks      text
+      )', c, c);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_MedicalReviews" TO authenticated', c);
+    EXECUTE format('ALTER TABLE public."%s_MedicalReviews" ENABLE ROW LEVEL SECURITY', c);
+    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_MedicalReviews" ON public."%s_MedicalReviews"', c, c);
+    EXECUTE format(
+      'CREATE POLICY "authenticated can manage %s_MedicalReviews" ON public."%s_MedicalReviews"
        FOR ALL TO authenticated
        USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
        WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',

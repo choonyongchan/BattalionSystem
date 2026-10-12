@@ -180,6 +180,16 @@ describe('generateParadeReport — record line details', () => {
     expect(report).not.toContain('Excuse RMJ (100126-200126) OUT')
   })
 
+  it('prints RSO with OUT and a medical review, both under REPORT SICK', () => {
+    const exceptions: Exception[] = [
+      { id: 1, ...FIXTURE_EXCEPTIONS[1], in_out: 'OUT' },  // Report Sick — TAN RONG XIAN, as RSO
+      { id: 2, ...FIXTURE_EXCEPTIONS[1], name: 'LIM ZHEN HAO', soldier_id: null, type: 'Medical Review', reason: 'Revoke FLEGS Status' },
+    ]
+    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    expect(report).toContain('1. LCP TAN RONG XIAN - Flu (150126) OUT')
+    expect(report).toMatch(/REPORT SICK: \d+\n(.*\n)*1\. CPL LIM ZHEN HAO - Revoke FLEGS Status \(150126\)/)
+  })
+
   it('appends @ location only for scopes that print it (MA, Others)', () => {
     const exceptions: Exception[] = [
       { id: 1, ...FIXTURE_EXCEPTIONS[2], location: 'CGH' },  // MA — LIM ZHEN HAO

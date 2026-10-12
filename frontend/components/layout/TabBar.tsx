@@ -2,11 +2,11 @@
 
 import { Fragment, useRef, type KeyboardEvent } from 'react'
 
-export type TabId = 'parade-state' | 'rsi' | 'nominal-roll' | 'off-leave' | 'dashboard' | 'conducts'
+export type TabId = 'parade-state' | 'report-sick' | 'nominal-roll' | 'off-leave' | 'dashboard' | 'conducts'
 
 /** Tabs grouped by workflow: what a commander does daily, people admin, then planning. */
 export const TAB_GROUPS: { name: string; tabs: { id: TabId; label: string }[] }[] = [
-  { name: 'Daily', tabs: [{ id: 'parade-state', label: 'Parade State' }, { id: 'rsi', label: 'RSI' }] },
+  { name: 'Daily', tabs: [{ id: 'parade-state', label: 'Parade State' }, { id: 'report-sick', label: 'Report Sick' }] },
   { name: 'Personnel', tabs: [{ id: 'nominal-roll', label: 'Nominal Roll' }, { id: 'off-leave', label: 'Off/Leave' }] },
   { name: 'Duty & training', tabs: [{ id: 'dashboard', label: 'Duty Dashboard' }, { id: 'conducts', label: 'Conducts' }] },
 ]

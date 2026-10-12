@@ -12,7 +12,7 @@ import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { REASON_HINTS, soldierDropdownProps } from './parade-ui'
 import { THEME } from '@/frontend/theme'
 
-// Guard Duty is added in the Duties tab; new report sicks are keyed in the RSI tab
+// Guard Duty is added in the Duties tab; new report sicks are keyed in the Report Sick tab
 const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty' && s !== 'Report Sick')
 
 /** Blank form for a new exception dated `date`. */
@@ -104,7 +104,7 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
             </button>
           ))}
         </div>
-        <p className="text-xs text-ink-60 mt-1">Report sick → RSI tab</p>
+        <p className="text-xs text-ink-60 mt-1">Report sick → Report Sick tab</p>
       </div>
 
       {form.scope === 'Status' ? (

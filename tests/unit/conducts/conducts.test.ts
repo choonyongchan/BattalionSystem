@@ -130,6 +130,11 @@ describe('classifyConduct', () => {
     expect(p['FLEGS GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Eczema' })
   })
 
+  it('a medical review is only a note: the soldier still takes part', () => {
+    const mr = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Report Sick', type: 'Medical Review', reason: 'Knee review', start: today, end: today })]
+    expect(byName(classifyConduct(C(), SOLDIERS, mr, [], today))['FIT GUY']).toMatchObject({ kind: 'in-excused', note: 'Knee review' })
+  })
+
   it('a hard fall-out cannot be overridden by a decision', () => {
     const can: ConductDecision = { id: 'd4', conduct_id: 'c1', soldier_id: 'mc', participating: true, reason: null }
     expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today))['MC GUY'].kind).toBe('out-auto')
