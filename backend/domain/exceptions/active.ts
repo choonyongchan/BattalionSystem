@@ -1,5 +1,6 @@
 import type { Exception, Soldier } from '@/shared/types'
 import type { ExceptionScope } from './exception-validation'
+import { daysBetween, offsetDate } from '@/shared/dates'
 
 /**
  * The fine-grained kinds within each parade section. `scope` decides where a
@@ -16,12 +17,6 @@ export const SCOPE_TYPES: Record<ExceptionScope, readonly string[]> = {
   'Off/Leave': ['Leave', 'Off'],
   'Guard Duty': ['Guard Duty'],
   Others: ['Others', 'Course'],
-}
-
-/** The parade section a fine-grained type prints under; unknown types go to Others. */
-export function scopeOfType(type: string): ExceptionScope {
-  for (const [scope, types] of Object.entries(SCOPE_TYPES)) if (types.includes(type)) return scope as ExceptionScope
-  return 'Others'
 }
 
 /**
@@ -123,15 +118,6 @@ const NEVER_MERGED = new Set(['Report Sick', 'URTI', 'Guard Duty'])
 /** "3D MC" → "MC": the day count is one row's length, not the exception's identity. */
 const DAYS_PREFIX = /^\s*\d+\s*D\s+/i
 
-/** The ISO date one day after `iso`. */
-const addDay = (iso: string) => {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString().slice(0, 10)
-}
-/** Whole days from ISO date `a` to `b`. */
-const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000)
-
 /** Rows with the same key belong to one run: same soldier, scope, absence and reason. */
 function runKey(e: Exception): string {
   const reason = (e.reason ?? '').replace(DAYS_PREFIX, '').trim().toUpperCase()
@@ -169,7 +155,7 @@ export function mergeRuns(exceptions: Exception[]): Exception[] {
     const flush = () => out.push(foldRun(run, end))
     for (const e of sorted.slice(1)) {
       // An open-ended run swallows everything after it
-      if (end === null || e.start! <= addDay(end)) {
+      if (end === null || e.start! <= offsetDate(end, 1)) {
         run.push(e)
         if (end !== null && (e.end === null || e.end > end)) end = e.end
       } else {

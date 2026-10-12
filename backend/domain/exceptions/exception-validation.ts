@@ -1,17 +1,22 @@
 import type { Exception, Soldier } from '@/shared/types'
+import { compareNullableISO } from '@/shared/dates'
 
+/** Every exception scope: the parade-state section a row prints under (plus Guard Duty). */
 export const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
 export type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
+/** Scopes recorded against one day rather than a range. */
 export const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
-// Scopes that carry an optional IN/OUT (of camp) marker in the new parade-state format.
+/** Scopes that carry an optional IN/OUT (of camp) marker in the parade state. */
 export const IN_OUT_SCOPES: ExceptionScope[] = ['Att C', 'Report Sick', 'MA', 'Others']
 
-// Scopes that print an optional "@ <location>" suffix in the new parade-state format.
+/** Scopes that print an optional "@ <location>" suffix in the parade state. */
 export const LOCATION_PRINT_SCOPES: ExceptionScope[] = ['MA', 'Others']
 
+/** The add-exception form's fields. */
 export type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string; location: string; in_out: '' | 'IN' | 'OUT' }
+/** One STATUS row of the add form; STATUS can add several reasons at once. */
 export type StatusRow = { start: string; end: string; reason: string }
 
 /** True for an empty or "HH:MM" time. */
@@ -19,16 +24,6 @@ export function isValidTime(t: string): boolean {
   if (!t) return true
   const m = t.match(/^(\d{2}):(\d{2})$/)
   return !!m && +m[1] <= 23 && +m[2] <= 59
-}
-
-/** True when the add form can be submitted: soldier picked, STATUS reasons unique, time valid. */
-export function isExceptionValid(exForm: ExForm, statusRows: StatusRow[]): boolean {
-  if (!exForm.name) return false
-  if (exForm.scope === 'Status') {
-    const reasons = statusRows.map((r) => r.reason.trim().toLowerCase()).filter((r) => r)
-    return new Set(reasons).size === reasons.length
-  }
-  return isValidTime(exForm.time)
 }
 
 /** Field errors for the add-exception form. */
@@ -39,12 +34,11 @@ export function validateAddEx(exForm: ExForm): Record<string, boolean> {
   return errors
 }
 
-/** True when the edited exception can be saved. */
-export function isEditExceptionValid(editEx: Exception | null): boolean {
-  if (!editEx) return false
-  if (!editEx.name) return false
-  if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) return false
-  return true
+/** True when the add form can be submitted: no field errors, and STATUS reasons are unique. */
+export function isExceptionValid(exForm: ExForm, statusRows: StatusRow[]): boolean {
+  if (Object.keys(validateAddEx(exForm)).length) return false
+  const reasons = exForm.scope === 'Status' ? statusRows.map((r) => r.reason.trim().toLowerCase()).filter(Boolean) : []
+  return new Set(reasons).size === reasons.length
 }
 
 /** Field errors for an edited exception. */
@@ -55,6 +49,9 @@ export function validateEditEx(editEx: Exception | null): Record<string, boolean
   if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
   return errors
 }
+
+/** True when the edited exception can be saved. */
+export const isEditExceptionValid = (editEx: Exception | null): boolean => Object.keys(validateEditEx(editEx)).length === 0
 
 /** The value an exception sorts by for a table column. */
 export function exceptionSortValue(
@@ -71,12 +68,8 @@ export function exceptionSortValue(
 }
 
 /** Orders by end date, open-ended first. */
-export function compareExceptionOrder(a: Exception, b: Exception): number {
-  if (!a.end && !b.end) return 0
-  if (!a.end) return -1
-  if (!b.end) return 1
-  return new Date(a.end).getTime() - new Date(b.end).getTime()
-}
+export const compareExceptionOrder = (a: Exception, b: Exception): number => compareNullableISO(a.end, b.end)
+
 
 /** Groups entries by soldier name in first-seen order, each group sorted by end date. */
 export function groupExceptionsByPerson(entries: Exception[]): Exception[][] {

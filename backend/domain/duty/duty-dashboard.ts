@@ -1,9 +1,10 @@
 import type { Soldier, DutyEntry } from '@/shared/types'
+import type { RankRule } from '@/shared/ranks'
 import { splitDutyNames } from '@/shared/names'
 import { isEligible, isEligibleForGuardDuty } from './duty-rules'
-import { resolveDayType } from '@/backend/domain/settings/settings'
-import type { DayType } from '@/backend/domain/settings/settings'
+import { resolveDayType, type DayType } from '@/backend/domain/settings/settings'
 
+/** The points settings: base weight per duty, multiplier per day type, exact "<DutyType>:<DayType>" overrides. */
 export interface WeightSettings {
   baseWeights: Record<string, number>
   dayMultipliers: Record<DayType, number>
@@ -11,48 +12,34 @@ export interface WeightSettings {
 }
 
 /**
- * Sums duty points per soldier name. Per duty: an exact override for "<DutyType>:<DayType>"
- * wins if present, otherwise points = baseWeight(dutyType) Ã— dayMultiplier(dayType), both
- * defaulting to 1 when unset. Pass dutyType to total only that duty type (e.g. COS points).
+ * Each soldier's share of each duty's points. Per duty: an exact override for
+ * "<DutyType>:<DayType>" wins, else baseWeight(dutyType) × dayMultiplier(dayType),
+ * both defaulting to 1. A two-name duty splits its points evenly.
  */
-export function computePoints(
-  duties: DutyEntry[],
-  weightSettings: WeightSettings,
-  holidays: Set<string>,
-  dutyType?: string,
-): Record<string, number> {
-  const acc: Record<string, number> = {}
+function* dutyShares(duties: DutyEntry[], w: WeightSettings, holidays: Set<string>) {
   for (const d of duties) {
-    if (dutyType && d.duty_type !== dutyType) continue
     const dt = resolveDayType(d.date, holidays)
-    const key = `${d.duty_type}:${dt}`
-    const points = weightSettings.exceptions[key]
-      ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
+    const points = w.exceptions[`${d.duty_type}:${dt}`] ?? (w.baseWeights[d.duty_type] ?? 1) * (w.dayMultipliers[dt] ?? 1)
     const names = splitDutyNames(d.name)
-    const share = points / names.length
-    for (const name of names) acc[name] = (acc[name] ?? 0) + share
+    for (const name of names) yield { name, dutyType: d.duty_type, share: points / names.length }
+  }
+}
+
+/** Duty points per soldier name; pass `dutyType` to total only that duty (e.g. COS points). */
+export function computePoints(duties: DutyEntry[], w: WeightSettings, holidays: Set<string>, dutyType?: string): Record<string, number> {
+  const acc: Record<string, number> = {}
+  for (const { name, dutyType: dt, share } of dutyShares(duties, w, holidays)) {
+    if (!dutyType || dt === dutyType) acc[name] = (acc[name] ?? 0) + share
   }
   return acc
 }
 
 /** Points per soldier per duty type, for the dashboard columns. */
-export function computePointsByDutyType(
-  duties: DutyEntry[],
-  weightSettings: WeightSettings,
-  holidays: Set<string>,
-): Record<string, Record<string, number>> {
+export function computePointsByDutyType(duties: DutyEntry[], w: WeightSettings, holidays: Set<string>): Record<string, Record<string, number>> {
   const acc: Record<string, Record<string, number>> = {}
-  for (const d of duties) {
-    const dt = resolveDayType(d.date, holidays)
-    const key = `${d.duty_type}:${dt}`
-    const points = weightSettings.exceptions[key]
-      ?? (weightSettings.baseWeights[d.duty_type] ?? 1) * (weightSettings.dayMultipliers[dt] ?? 1)
-    const names = splitDutyNames(d.name)
-    const share = points / names.length
-    for (const name of names) {
-      acc[name] ??= {}
-      acc[name][d.duty_type] = (acc[name][d.duty_type] ?? 0) + share
-    }
+  for (const { name, dutyType, share } of dutyShares(duties, w, holidays)) {
+    acc[name] ??= {}
+    acc[name][dutyType] = (acc[name][dutyType] ?? 0) + share
   }
   return acc
 }
@@ -62,8 +49,8 @@ export function getEligibleForDuty(
   dutyTypes: string[],
   soldiers: Soldier[],
   eligibilityOverrides: Record<string, string[]>,
-  rankRuleOverrides: Record<string, { from: string; to: string }>,
-  guardDutyRankOverrides: Record<string, { from: string; to: string }> = {},
+  rankRuleOverrides: Record<string, RankRule>,
+  guardDutyRankOverrides: Record<string, RankRule> = {},
 ): Soldier[] {
   return soldiers.filter((s) => dutyTypes.some((dt) =>
     dt === 'Guard Duty' ? isEligibleForGuardDuty(s, guardDutyRankOverrides) : isEligible(dt, s, eligibilityOverrides, rankRuleOverrides),

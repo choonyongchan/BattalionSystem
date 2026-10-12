@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import type { Company } from '@/shared/companies'
-import { ALL_DUTY_TYPES, MULTI_NAME_DUTY_TYPES } from '@/shared/companies'
 import type { DutyEntry, Soldier } from '@/shared/types'
 import { DUTY_NAME_SEP, EXTERNAL_DUTY_PERSON, displayName, splitDutyNames } from '@/shared/names'
 import { dayHeaderLabel, offsetDate, todaySGDate, weekDates } from '@/shared/dates'
-import type { AppSettings } from '@/backend/domain/settings/settings'
+import { rosterDutyTypes, type AppSettings } from '@/backend/domain/settings/settings'
 import { eligibleSoldiers } from '@/backend/domain/duty/duty-rules'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
@@ -21,8 +19,7 @@ const EXTERNAL_PERSONNEL: Soldier = { rank: '', name: EXTERNAL_DUTY_PERSON, plat
 type EditDuty = { duty_type: string; name: string; name2: string }
 
 /** Week picker, the day's duty roster (inline edit) and Guard Duty. */
-export default function DutiesSection({ company, date, setDate, settings, data }: {
-  company: Company
+export default function DutiesSection({ date, setDate, settings, data }: {
   date: string
   setDate: (iso: string) => void
   settings: AppSettings | undefined
@@ -33,7 +30,7 @@ export default function DutiesSection({ company, date, setDate, settings, data }
   const [saving, setSaving] = useState(false)
   const confirm = useConfirmDelete<string>()
 
-  const dutyTypes = company === 'hercules' ? [...ALL_DUTY_TYPES, 'Duty Clerk'] : ALL_DUTY_TYPES
+  const dutyTypes = settings ? rosterDutyTypes(settings) : []
   const editInputClass = `w-full min-w-[6rem] border border-hairline rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${THEME.focusRing}`
 
   /** Soldiers eligible for a duty; Duty Clerk may also take an external partner. */
@@ -82,7 +79,7 @@ export default function DutiesSection({ company, date, setDate, settings, data }
                             onChange={(name) => setEditDuty({ ...editDuty, name })}
                             inputClass={editInputClass}
                           />
-                          {MULTI_NAME_DUTY_TYPES.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
+                          {settings?.multi_name_duty_types.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
                             <SearchDropdown
                               {...soldierDropdownProps}
                               items={personnelFor(editDuty.duty_type, editDuty.name === EXTERNAL_DUTY_PERSON)}
@@ -158,13 +155,14 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
 }) {
   const today = todaySGDate()
   return (
-    <div className="flex items-center justify-center gap-2">
-      <button onClick={() => setDate(today)} className="px-3 py-2 text-sm text-ink-60 hover:text-ink border border-hairline rounded-lg transition-colors">
+    // Phones: controls on one row, the week as a full-width row under them; md+: one row
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <button onClick={() => setDate(today)} className="min-h-11 px-3 text-sm text-ink-60 hover:text-ink border border-hairline rounded-lg bg-white transition-colors">
         Today
       </button>
-      <button onClick={() => setDate(offsetDate(date, -7))} aria-label="Previous week" className="px-3 py-2 text-ink-60 hover:text-ink text-lg transition-colors">←</button>
+      <button onClick={() => setDate(offsetDate(date, -7))} aria-label="Previous week" className="min-h-11 min-w-11 text-ink-60 hover:text-ink text-lg transition-colors">←</button>
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1">
+      <div className="order-last grid basis-full grid-cols-7 gap-1 sm:gap-2 md:order-none md:basis-auto md:flex-1">
         {weekDates(date).map((iso) => {
           const label = dayHeaderLabel(iso)
           const isSelected = iso === date
@@ -176,11 +174,13 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
               key={iso}
               onClick={() => setDate(iso)}
               aria-pressed={isSelected}
-              className={`text-left rounded-lg border p-1.5 sm:p-2 transition-colors ${isSelected ? `${THEME.buttonBg} border-transparent text-white` : iso === today ? 'bg-parchment border-hairline' : 'bg-white border-hairline hover:bg-parchment'}`}
+              className={`min-h-14 text-left rounded-lg border p-1.5 sm:p-2 transition-colors ${isSelected ? `${THEME.buttonBg} border-transparent text-white` : iso === today ? 'bg-parchment border-hairline' : 'bg-white border-hairline hover:bg-parchment'}`}
             >
               <div className={`text-[10px] sm:text-xs font-medium ${isSelected ? 'text-white/80' : 'text-ink-60'}`}>{label.weekday}</div>
               <div className={`text-xs sm:text-sm font-semibold mb-1 ${isSelected ? 'text-white' : 'text-ink-80'}`}>{label.day}</div>
-              <div className="space-y-0.5">
+              {/* Phones show a dot for a day with duties; the names need a wider cell */}
+              {dayDuties.length > 0 && <span aria-hidden className={`block size-1.5 rounded-full sm:hidden ${isSelected ? 'bg-white' : 'bg-ink-60'}`} />}
+              <div className="hidden space-y-0.5 sm:block">
                 {dayDuties.map(({ dt, entry }) => (
                   <div key={dt} className={`text-[9px] sm:text-[11px] leading-tight truncate ${isSelected ? 'text-white/90' : 'text-ink-60'}`}>
                     <span className="font-medium">{dt}</span> {displayName(entry!.name, soldiers)}
@@ -195,13 +195,13 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
         })}
       </div>
 
-      <button onClick={() => setDate(offsetDate(date, 7))} aria-label="Next week" className="px-3 py-2 text-ink-60 hover:text-ink text-lg transition-colors">→</button>
+      <button onClick={() => setDate(offsetDate(date, 7))} aria-label="Next week" className="min-h-11 min-w-11 text-ink-60 hover:text-ink text-lg transition-colors">→</button>
       <input
         type="date"
         value={date}
         aria-label="Duty date"
         onChange={(e) => setDate(e.target.value)}
-        className={`border border-hairline rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`}
+        className={`min-h-11 min-w-0 flex-1 bg-white border border-hairline rounded-lg px-3 text-base focus:outline-none focus:ring-2 md:flex-none ${THEME.focusRing}`}
       />
     </div>
   )

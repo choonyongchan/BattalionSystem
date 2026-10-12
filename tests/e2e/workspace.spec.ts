@@ -39,7 +39,8 @@ test.describe('Workspace tabs', () => {
     await page.getByLabel('Date', { exact: true }).fill('2026-01-15')
     await page.getByRole('button', { name: 'Create conduct' }).click()
     await expect(page.getByText('ROUTE MARCH').first()).toBeVisible({ timeout: 10000 })
-    // CHONG KAH WAI is on Att C that day, so he falls out automatically
-    await expect(page.getByText(/CHONG KAH WAI/).first()).toBeVisible()
+    // LCP TAN RONG XIAN reported sick that day, so he falls out automatically; SSG CHONG KAH WAI (Att C) is a commander and not listed
+    await expect(page.getByText(/TAN RONG XIAN/).first()).toBeVisible()
+    await expect(page.getByText(/CHONG KAH WAI/)).toHaveCount(0)
   })
 })

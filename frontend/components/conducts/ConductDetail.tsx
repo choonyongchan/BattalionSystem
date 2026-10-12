@@ -7,7 +7,9 @@ import {
   conductBlocks, conductDateRange, conductTimeRange, generateConductState, generatePlatoonConductState,
   needsDecision, type Participation,
 } from '@/backend/domain/conducts/conducts'
+import MessageBox from '@/frontend/components/shared/MessageBox'
 
+/** The writes a conduct's calls make. */
 export interface DecisionActions {
   decide: (soldierId: string, participating: boolean, reason: string | null) => Promise<void>
   undo: (decisionId: string) => Promise<void>
@@ -30,7 +32,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
   const [blockKey, setBlockKey] = useState<string>('ALL')
   const [search, setSearch] = useState('')
   const [fallingOut, setFallingOut] = useState<{ id: string; reason: string } | null>(null)
-  const [copied, setCopied] = useState(false)
+
 
   const q = search.trim().toLowerCase()
   const shown = parts.filter((p) =>
@@ -46,12 +48,6 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
     ? generatePlatoonConductState(conduct, parts, block)
     : generateConductState(companyLabel, conduct, parts, platoons, includeHQ)
 
-  /** Copies the conduct state text to the clipboard. */
-  async function copy() {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   /** Formats a participant as "<4D> <rank> <name>". */
   const who = (p: Participation) => `${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name}`
@@ -84,7 +80,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
       {pending.length > 0 && (
         <section className="border border-amber-300 bg-amber-50 rounded-card p-3 space-y-2">
           <h3 className="text-sm font-semibold text-amber-800">Needs a call ({pending.length})</h3>
-          <p className="text-xs text-amber-700">LD / RMJ — falling out until a commander confirms.</p>
+          <p className="text-xs text-amber-700">Falling out until a commander confirms.</p>
           <ul className="space-y-2">
             {pending.map((p) => (
               <li key={p.soldier.id} className="flex items-center gap-2 bg-white rounded-lg p-2">
@@ -161,17 +157,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
         </ul>
       </section>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink">
-            Conduct state – {block ? block.label : 'whole company'}
-          </h3>
-          <button onClick={copy} className="px-3 py-1.5 bg-ink text-white text-xs font-medium rounded-lg">
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
-        </div>
-        <pre className="bg-parchment border border-hairline rounded-card p-3 text-xs whitespace-pre-wrap font-mono">{text}</pre>
-      </section>
+      <MessageBox title={`Conduct state – ${block ? block.label : 'whole company'}`} text={text} />
     </div>
   )
 }

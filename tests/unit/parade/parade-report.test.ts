@@ -8,7 +8,6 @@ import type { Exception, Soldier } from '@/shared/types'
 
 const BASE_INPUT = {
   date: FIXTURE_DATE,
-  companyLabel: 'Test',
   soldiers: FIXTURE_SOLDIERS,
   paradeTimeStr: '09:30',
   duties: FIXTURE_DUTIES,
@@ -88,14 +87,7 @@ describe('generateParadeReport — company-level strength', () => {
     expect(report).toContain('COMPANY: 0/0')
   })
 
-  it('strength override changes the displayed company total', () => {
-    const report = generateParadeReport(
-      { ...BASE_INPUT, activeExceptions: [], strengthOverrides: { Total: { Officer: 5 } } },
-      FIXTURE_PARADE_CONFIG,
-    )
-    expect(report).toContain('COMPANY: 15/15')
-    expect(report).toContain('OFFICER: 5/5')
-  })
+
 })
 
 describe('generateParadeReport — COY HQ block', () => {

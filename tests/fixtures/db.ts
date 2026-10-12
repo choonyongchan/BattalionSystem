@@ -3,7 +3,7 @@ import { supabase } from '@/backend/data/client'
 import { FIXTURE_SOLDIERS } from './soldiers'
 import { FIXTURE_EXCEPTIONS } from './exceptions'
 import { FIXTURE_DUTIES } from './duties'
-import { FIXTURE_SETTINGS } from './config'
+import { RESET_SETTINGS } from './config'
 import { FIXTURE_OFF_LEAVE } from './off-leave'
 
 // Use service key if it looks real; otherwise fall back to the authenticated singleton
@@ -24,7 +24,6 @@ export async function truncateTestDb() {
     db.from('Test_Exceptions').delete().gte('id', 0),
     db.from('Test_NominalRoll').delete().neq('name', ''),
     db.from('Test_OffLeave').delete().neq('name', ''),
-    db.from('Test_StrengthOverride').delete().neq('platoon', ''),
     // Never PublicHolidays: it is battalion-wide live data, not a Test_ table
   ]
   const results = await Promise.all(ops)
@@ -39,7 +38,7 @@ export async function seedTestDb() {
     db.from('Test_Exceptions').insert(FIXTURE_EXCEPTIONS),
     db.from('Test_Duty').insert(FIXTURE_DUTIES),
     db.from('Test_OffLeave').insert(FIXTURE_OFF_LEAVE),
-    db.from('Test_Settings').update(FIXTURE_SETTINGS).eq('id', 1),
+    db.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1),
   ])
   const failed = ops.find(r => r.error)
   if (failed?.error) throw new Error(`seedTestDb failed: ${failed.error.message}`)

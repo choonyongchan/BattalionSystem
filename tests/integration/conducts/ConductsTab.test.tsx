@@ -1,5 +1,6 @@
+import { renderWithQuery } from '@/tests/fixtures/render'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConductsTab from '@/frontend/components/conducts/ConductsTab'
 import { supabase } from '@/backend/data/client'
@@ -19,10 +20,10 @@ beforeAll(async () => {
   await seedTestDb()
 
   // Fixture exceptions are dated in the past — add two running today, linked by soldier_id
-  const { data: roll } = await supabase.from('Test_NominalRoll').select('id, name').in('name', ['CHONG KAH WAI', 'GOH RONG HAO'])
+  const { data: roll } = await supabase.from('Test_NominalRoll').select('id, name').in('name', ['TAN RONG XIAN', 'GOH RONG HAO'])
   const idOf = (name: string) => roll!.find((r) => r.name === name)!.id
   const { error: exErr } = await supabase.from('Test_Exceptions').insert([
-    { name: 'CHONG KAH WAI', soldier_id: idOf('CHONG KAH WAI'), scope: 'Att C', type: 'MC', reason: 'CONDUCT TEST MC', start: today, end: today, counts_as_absence: true },
+    { name: 'TAN RONG XIAN', soldier_id: idOf('TAN RONG XIAN'), scope: 'Att C', type: 'MC', reason: 'CONDUCT TEST MC', start: today, end: today, counts_as_absence: true },
     { name: 'GOH RONG HAO', soldier_id: idOf('GOH RONG HAO'), scope: 'Status', type: 'LD', reason: 'CONDUCT TEST LD', start: today, end: today, counts_as_absence: false },
   ])
   if (exErr) throw new Error(exErr.message)
@@ -36,11 +37,11 @@ afterAll(async () => {
 
 describe('ConductsTab', () => {
   it('falls out the MC automatically and asks for a call on the LD, which ✓ Can settles', async () => {
-    render(<ConductsTab company="test" companyLabel="Test" />)
+    renderWithQuery(<ConductsTab company="test" companyLabel="Test" />)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'IPPT TEST' })).toBeInTheDocument(), { timeout: 10000 })
 
     const outSection = screen.getByText(/^Fall out –/).closest('section')!
-    expect(within(outSection).getByText(/CHONG KAH WAI/)).toBeInTheDocument()
+    expect(within(outSection).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
     expect(within(outSection).getByText('CONDUCT TEST MC · auto')).toBeInTheDocument()
 
     const pending = screen.getByText(/^Needs a call/).closest('section')!
@@ -55,6 +56,8 @@ describe('ConductsTab', () => {
     expect(data).toEqual([{ participating: true }])
 
     expect(screen.getByText(/TEST COY CONDUCT STATE/)).toBeInTheDocument()
-    expect(screen.getByText(/CHONG KAH WAI — CONDUCT TEST MC/)).toBeInTheDocument()
+    expect(screen.getByText(/TAN RONG XIAN — CONDUCT TEST MC/)).toBeInTheDocument()
+    // Troopers only: commanders are not listed anywhere
+    expect(screen.queryByText(/CHONG KAH WAI/)).not.toBeInTheDocument()
   })
 })

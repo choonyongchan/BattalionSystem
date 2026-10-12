@@ -1,19 +1,15 @@
 'use client'
 
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useFieldArray, Controller, type UseFormReturn } from 'react-hook-form'
 import { z } from 'zod'
-import { toast } from 'sonner'
 import type { Company } from '@/shared/companies'
-import { pointsDutyTypes } from '@/shared/companies'
-import { DAY_TYPES, DAY_TYPE_LABELS } from '@/backend/domain/settings/settings'
+import { DAY_TYPES, DAY_TYPE_LABELS, pointsDutyTypes } from '@/backend/domain/settings/settings'
 import type { AppSettings, DayType } from '@/backend/domain/settings/settings'
-import { useSaveSettingsMutation } from '@/frontend/hooks/useSettings'
 import { hasDuplicateExceptionRows } from '@/backend/domain/duty/duty-weights-validation'
 import { Input } from '@/frontend/components/ui/input'
 import { Label } from '@/frontend/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
-import { THEME } from '@/frontend/theme'
+import SettingsForm from './SettingsForm'
 
 const FormSchema = z.object({
   duty_base_weights: z.record(z.string(), z.number().nonnegative()),
@@ -48,35 +44,36 @@ function rowsToExceptions(rows: FormValues['exceptionRows']): Record<string, num
 
 /** Settings: duty base weights, day multipliers and per-day overrides. */
 export default function DutyWeightsSection({ company, settings }: { company: Company; settings: AppSettings }) {
-  const dutyTypes = pointsDutyTypes(company)
-  const { register, control, handleSubmit, formState: { isDirty, errors } } = useForm<FormValues>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      // A duty type with no stored weight (e.g. Duty Clerk, added later) starts at 1, as computePoints assumes
-      duty_base_weights: { ...Object.fromEntries(dutyTypes.map((dt) => [dt, 1])), ...settings.duty_base_weights },
-      duty_day_multipliers: settings.duty_day_multipliers,
-      exceptionRows: exceptionsToRows(settings.duty_weight_exceptions),
-    },
-  })
-  const { fields, append, remove } = useFieldArray({ control, name: 'exceptionRows' })
-  const saveMutation = useSaveSettingsMutation(company)
-
-  /** Saves the duty weight settings. */
-  function onSubmit(values: FormValues) {
-    saveMutation.mutate({
-      duty_base_weights: values.duty_base_weights,
-      duty_day_multipliers: values.duty_day_multipliers,
-      duty_weight_exceptions: rowsToExceptions(values.exceptionRows),
-    }, {
-      onSuccess: () => toast.success('Duty weights saved'),
-      onError: () => toast.error('Failed to save duty weights'),
-    })
-  }
-
+  const dutyTypes = pointsDutyTypes(settings)
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pb-4">
-      <p className="text-xs text-ink-60">Points awarded per duty type. A day multiplier applies on top; an exception below overrides both.</p>
+    <SettingsForm<FormValues>
+      company={company}
+      title="Duty Weights"
+      description="Points awarded per duty type. A day multiplier applies on top; an exception below overrides both."
+      schema={FormSchema}
+      defaultValues={{
+        // A duty type with no stored weight (e.g. one added later) starts at 1, as computePoints assumes
+        duty_base_weights: { ...Object.fromEntries(dutyTypes.map((dt) => [dt, 1])), ...settings.duty_base_weights },
+        duty_day_multipliers: settings.duty_day_multipliers,
+        exceptionRows: exceptionsToRows(settings.duty_weight_exceptions),
+      }}
+      toSettings={(v) => ({
+        duty_base_weights: v.duty_base_weights,
+        duty_day_multipliers: v.duty_day_multipliers,
+        duty_weight_exceptions: rowsToExceptions(v.exceptionRows),
+      })}
+    >
+      {(form) => <WeightFields form={form} dutyTypes={dutyTypes} />}
+    </SettingsForm>
+  )
+}
 
+/** The weight inputs; a component of its own so useFieldArray runs inside the form. */
+function WeightFields({ form, dutyTypes }: { form: UseFormReturn<FormValues>; dutyTypes: string[] }) {
+  const { register, control, formState: { errors } } = form
+  const { fields, append, remove } = useFieldArray({ control, name: 'exceptionRows' })
+  return (
+    <>
       <div>
         <Label className="text-xs text-ink-60 mb-2 block">Base weight per duty type</Label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -157,14 +154,6 @@ export default function DutyWeightsSection({ company, settings }: { company: Com
           )}
         </div>
       </div>
-
-      <button
-        type="submit"
-        disabled={saveMutation.isPending || !isDirty}
-        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${THEME.buttonBg} ${THEME.buttonHoverBg} disabled:opacity-50`}
-      >
-        {saveMutation.isPending ? 'Saving…' : 'Save Duty Weights'}
-      </button>
-    </form>
+    </>
   )
 }

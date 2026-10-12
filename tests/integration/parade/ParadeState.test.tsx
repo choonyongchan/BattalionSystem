@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -43,7 +43,7 @@ async function generateReport() {
 }
 
 function presentCount() {
-  const ta = document.querySelector('textarea') as HTMLTextAreaElement
+  const ta = { value: document.querySelector('pre')?.textContent ?? '' }
   return Number(ta.value.match(/COMPANY: (\d+)\//)![1])
 }
 
@@ -51,7 +51,7 @@ function renderParadeState() {
   const client = new QueryClient()
   return render(
     <QueryClientProvider client={client}>
-      <ParadeState company="test" companyLabel="Test" />
+      <ParadeState company="test" />
     </QueryClientProvider>,
   )
 }
@@ -111,7 +111,7 @@ describe('ParadeState', () => {
     await generateReport()
 
     await waitFor(() => {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      const textarea = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
   })
@@ -122,7 +122,7 @@ describe('ParadeState', () => {
     await generateReport()
 
     await waitFor(() => {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      const textarea = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
 
@@ -204,7 +204,7 @@ describe('ParadeState', () => {
 
     await generateReport()
     await waitFor(() => {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      const textarea = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(textarea.value).toContain('COMPANY: 9/13')
     }, { timeout: 5000 })
   })
@@ -214,7 +214,7 @@ describe('ParadeState', () => {
     await generateReport()
 
     await waitFor(() => {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      const textarea = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(textarea.value).toContain('CDO: LTA LEE JUN WEI')
     }, { timeout: 5000 })
   })
@@ -249,7 +249,7 @@ describe('ParadeState', () => {
     // Generate report — present drops from 9 to 8
     await generateReport()
     await waitFor(() => {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+      const textarea = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(textarea.value).toContain('COMPANY: 8/13')
     }, { timeout: 5000 })
   })
@@ -314,7 +314,7 @@ describe('ParadeState', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Generate Parade State' }))
     await waitFor(() => {
       expect(presentCount()).toBe(before - 1)
-      expect((document.querySelector('textarea') as HTMLTextAreaElement).value).toMatch(/Excuse Stay-In/i)
+      expect(({ value: document.querySelector('pre')?.textContent ?? '' }).value).toMatch(/Excuse Stay-In/i)
     }, { timeout: 5000 })
   }, 30000)
 
@@ -323,7 +323,7 @@ describe('ParadeState', () => {
     await renderOnFixtureDate()
     await generateReport()
     const reportBeforeNav = await waitFor(() => {
-      const ta = document.querySelector('textarea') as HTMLTextAreaElement
+      const ta = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(ta.value).toContain('COMPANY:')
       return ta.value
     }, { timeout: 10000 })
@@ -334,7 +334,7 @@ describe('ParadeState', () => {
     await setParadeDate('2026-01-17')
     await generateReport()
     await waitFor(() => {
-      const ta = document.querySelector('textarea') as HTMLTextAreaElement
+      const ta = { value: document.querySelector('pre')?.textContent ?? '' }
       expect(ta.value).toBe(reportBeforeNav)
     }, { timeout: 10000 })
   }, 30000)

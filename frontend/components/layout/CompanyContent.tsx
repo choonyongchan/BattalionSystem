@@ -47,11 +47,11 @@ function Workspace({ company, label }: { company: Company; label: string }) {
   return (
     <>
       <TabBar active={tab} onSelect={select} />
-      <main id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-6 sm:px-6">
+      <main id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mx-auto w-full max-w-screen-2xl flex-1 px-4 pt-4 pb-safe-nav sm:px-6 md:py-6">
         {tab === 'overview' && <OverviewTab company={company} />}
         {tab === 'dashboard' && <DutyDashboard company={company} />}
         {tab === 'nominal-roll' && <NominalRoll company={company} />}
-        {tab === 'parade-state' && <ParadeState company={company} companyLabel={label} />}
+        {tab === 'parade-state' && <ParadeState company={company} />}
         {tab === 'report-sick' && <ReportSickTab company={company} companyLabel={label} />}
         {tab === 'conducts' && <ConductsTab company={company} companyLabel={label} />}
         {tab === 'off-leave' && <OffLeaveTracking company={company} />}

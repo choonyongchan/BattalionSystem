@@ -1,14 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
-import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
-import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
-import type { DutyEntry, Exception, Soldier } from '@/shared/types'
+import { useMemo, useState } from 'react'
+import type { Soldier } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { soldierKeyOf } from '@/backend/domain/exceptions/active'
+import { isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
+import { isCommander } from '@/shared/ranks'
 import { buildBunks, generateBunkMessage, strength, NO_REASON } from '@/backend/domain/overview/bunks'
-import { useSettingsQuery } from '@/frontend/hooks/useSettings'
+import { combine, useDuties, useExceptions, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
 import { todaySGDate } from '@/shared/dates'
 import MessageBox from '@/frontend/components/shared/MessageBox'
 
@@ -19,43 +17,34 @@ const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:
  * untick anyone else who is out to mark them ❌️. The message lists only who is out.
  */
 export default function OverviewTab({ company }: { company: Company }) {
-  const [date, setDate] = useState(todaySGDate())
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
-  const [exceptions, setExceptions] = useState<Exception[]>([])
-  const [duties, setDuties] = useState<DutyEntry[]>([])
+  const [date, setDateState] = useState(todaySGDate())
+  const soldiersQ = useSoldiers(company)
+  const exceptionsQ = useExceptions(company)
+  const dutiesQ = useDuties(company, date, date)
+  const settingsQ = useSettingsQuery(company)
+  const { loading, error } = combine(soldiersQ, exceptionsQ, dutiesQ, settingsQ)
+  const settings = settingsQ.data
+  const soldiers = useMemo(() => soldiersQ.data ?? [], [soldiersQ.data])
+  const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
+  const duties = useMemo(() => dutiesQ.data ?? [], [dutiesQ.data])
   const [markedOut, setMarkedOut] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { data: settings } = useSettingsQuery(company)
   const paradeTimes = settings?.parade_times ?? {}
-  const [parade, setParade] = useState('Last Parade')
+  const [chosenParade, setParade] = useState<string | null>(null)
+  const parade = chosenParade ?? settings?.overview.default_parade ?? ''
   const [time, setTime] = useState<string | null>(null)
 
-  useEffect(() => {
-    /** Loads the roll, exceptions and the day's duties. */
-    async function load() {
-      const [rollRes, exRes, dutyRes] = await Promise.all([
-        new SoldierRepository(company).list(),
-        new ExceptionRepository(company).list(),
-        new DutyRepository(company).listOn(date),
-      ])
-      const err = rollRes.error ?? exRes.error ?? dutyRes.error
-      setError(err ? err.message : null)
-      setSoldiers(rollRes.data)
-      setExceptions(exRes.data)
-      setDuties(dutyRes.data)
-      setLoading(false)
-    }
-    load()
-  }, [company, date])
-
+  /** Changes the date; hand-marked absences belong to one day, so they reset. */
+  function setDate(d: string) {
+    setDateState(d)
+    setMarkedOut(new Set())
+  }
   const groups = useMemo(
-    () => buildBunks(soldiers, exceptions, duties, date, markedOut),
-    [soldiers, exceptions, duties, date, markedOut],
+    () => buildBunks(soldiers, exceptions, duties, date, markedOut, settings?.overview.out_scopes ?? []),
+    [soldiers, exceptions, duties, date, markedOut, settings],
   )
   const paradeTime = time ?? paradeTimes[parade] ?? ''
   const counted = groups.reduce((n, g) => n + g.bunks.reduce((m, b) => m + b.members.length, 0), 0)
-  const uncounted = soldiers.filter((s) => s.on_strength !== false).length - counted
+  const uncounted = soldiers.filter((s) => isOnStrength(s) && !isCommander(s)).length - counted
 
   /** Ticks or unticks a soldier with no keyed reason. */
   function toggle(s: Soldier) {
@@ -66,14 +55,14 @@ export default function OverviewTab({ company }: { company: Company }) {
     setMarkedOut(next)
   }
 
-  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading || !settings) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-base font-semibold text-ink">Overview</h2>
         <p className="text-xs text-ink-60">
-          Strength by bunk. Untick anyone out of the bunk without a reason keyed.
+          Trooper strength by bunk. Untick anyone out of the bunk without a reason keyed.
           {uncounted > 0 && ` ${uncounted} soldier${uncounted === 1 ? '' : 's'} with no bunk or 4D not counted.`}
         </p>
       </div>
@@ -126,7 +115,7 @@ export default function OverviewTab({ company }: { company: Company }) {
         </section>
       ))}
 
-      {groups.length > 0 && <MessageBox title="Strength message" text={generateBunkMessage(parade, date, paradeTime, groups)} />}
+      {groups.length > 0 && <MessageBox title="Strength message" text={generateBunkMessage(settings.overview.message_title, parade, date, paradeTime, groups)} />}
     </div>
   )
 }

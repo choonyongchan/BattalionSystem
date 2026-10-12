@@ -5,7 +5,6 @@ import {
   compareExceptionOrder, groupExceptionsByPerson,
 } from '@/backend/domain/exceptions/exception-validation'
 import type { ExForm } from '@/backend/domain/exceptions/exception-validation'
-import { strWarn, anyMismatch } from '@/backend/domain/parade/strength'
 import type { Exception, Soldier } from '@/shared/types'
 
 describe('isValidTime', () => {
@@ -128,24 +127,5 @@ describe('groupExceptionsByPerson', () => {
   it('single-entry groups are unaffected', () => {
     const entries: Exception[] = [{ ...baseException, id: 1, name: 'AMOS LEE' }]
     expect(groupExceptionsByPerson(entries)).toEqual([entries])
-  })
-})
-
-describe('strWarn / anyMismatch', () => {
-  const computedStrength = { HQ: { Officer: 2 }, '1': { Officer: 1 } }
-
-  it('no override means no warning', () => {
-    expect(strWarn('HQ', 'Officer', {}, computedStrength)).toBeNull()
-  })
-  it('override matching computed strength means no warning', () => {
-    expect(strWarn('HQ', 'Officer', { HQ: { Officer: '2' } }, computedStrength)).toBeNull()
-  })
-  it('override mismatching computed strength warns', () => {
-    expect(strWarn('HQ', 'Officer', { HQ: { Officer: '5' } }, computedStrength)).toContain('has 2')
-  })
-  it('anyMismatch is true if any platoon/rank pair mismatches', () => {
-    const overrides = { HQ: { Officer: '2' }, '1': { Officer: '99' } }
-    expect(anyMismatch(['HQ', '1'], ['Officer'], overrides, computedStrength)).toBe(true)
-    expect(anyMismatch(['HQ'], ['Officer'], overrides, computedStrength)).toBe(false)
   })
 })

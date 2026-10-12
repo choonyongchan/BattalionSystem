@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import DutyDashboard from '@/frontend/components/dashboard/DutyDashboard'
 import { supabase } from '@/backend/data/client'
 import { truncateTestDb, seedTestDb } from '@/tests/fixtures/db'
-import { DEFAULT_SETTINGS } from '@/backend/domain/settings/settings'
+import { RESET_SETTINGS } from '@/tests/fixtures/config'
 
 beforeAll(async () => {
   const { error } = await supabase.auth.signInWithPassword({
@@ -19,7 +19,7 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await supabase.from('Test_Settings').update(DEFAULT_SETTINGS).eq('id', 1)
+  await supabase.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1)
   await supabase.auth.signOut()
 })
 
@@ -71,7 +71,7 @@ describe('DutyDashboard', () => {
 
   it('a custom duty_base_weights value from Settings is reflected in the leaderboard', async () => {
     await supabase.from('Test_Settings').update({
-      duty_base_weights: { ...DEFAULT_SETTINGS.duty_base_weights, CDO: 3 },
+      duty_base_weights: { ...RESET_SETTINGS.duty_base_weights, CDO: 3 },
     }).eq('id', 1)
 
     renderDashboard()
@@ -79,6 +79,6 @@ describe('DutyDashboard', () => {
 
     await waitFor(() => expect(pointsFor('LEE JUN WEI')).toBe('3'))
 
-    await supabase.from('Test_Settings').update(DEFAULT_SETTINGS).eq('id', 1)
+    await supabase.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1)
   })
 })

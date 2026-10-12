@@ -3,17 +3,16 @@ import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
 import { OffLeaveRepository } from '@/backend/data/repositories/OffLeaveRepository'
-import { StrengthOverrideRepository } from '@/backend/data/repositories/StrengthOverrideRepository'
 import { ConductRepository } from '@/backend/data/repositories/ConductRepository'
 import { SettingsRepository } from '@/backend/data/repositories/SettingsRepository'
-import { DEFAULT_SETTINGS } from '@/backend/domain/settings/settings'
+import { RESET_SETTINGS } from '@/tests/fixtures/config'
 import { resetTestDb } from '@/tests/fixtures/db'
 import { FIXTURE_DATE } from '@/tests/fixtures/exceptions'
 
 // Real round trips against the Test_* tables, seeded with the dummy fixtures
 beforeAll(resetTestDb, 30000)
 afterAll(async () => {
-  await new SettingsRepository('test').save(DEFAULT_SETTINGS)
+  await new SettingsRepository('test').save(RESET_SETTINGS)
   await resetTestDb()
 }, 30000)
 
@@ -97,18 +96,6 @@ describe('OffLeaveRepository', () => {
     expect((await repo.list()).data.find((r) => r.name === 'ONG JUN SHENG')).toMatchObject({ off: 2, leave: 3 })
     await repo.remove('ONG JUN SHENG')
     expect((await repo.list()).data.some((r) => r.name === 'ONG JUN SHENG')).toBe(false)
-  })
-})
-
-describe('StrengthOverrideRepository', () => {
-  const repo = new StrengthOverrideRepository('test')
-
-  it('sets, changes and clears an override', async () => {
-    await repo.upsert({ platoon: 'HQ', rank_type: 'Officer', value: 2 })
-    await repo.upsert({ platoon: 'HQ', rank_type: 'Officer', value: 3 })
-    expect((await repo.list()).data).toEqual([expect.objectContaining({ platoon: 'HQ', rank_type: 'Officer', value: 3 })])
-    await repo.remove('HQ', 'Officer')
-    expect((await repo.list()).data).toHaveLength(0)
   })
 })
 

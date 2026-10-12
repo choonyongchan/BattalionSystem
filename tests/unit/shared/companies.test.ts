@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { COMPANIES, DISABLED_COMPANIES, companyHref, PARADE_CONFIG, pointsDutyTypes } from '@/shared/companies'
-import { getRankType, DEFAULT_RANK_RULES, DUTY_ELIGIBILITY } from '@/shared/ranks'
+import { DISABLED_COMPANIES, companyHref } from '@/shared/companies'
+import { getRankType, RANK_ORDER, VALID_RANKS, isCommander } from '@/shared/ranks'
 import { displayName } from '@/shared/names'
 
 describe('DISABLED_COMPANIES', () => {
@@ -28,24 +28,23 @@ describe('getRankType', () => {
   })
 })
 
-describe('DEFAULT_RANK_RULES / DUTY_ELIGIBILITY', () => {
-  it('has a default rank rule for every duty type', () => {
-    Object.keys(DUTY_ELIGIBILITY).forEach((dutyType) => {
-      expect(DEFAULT_RANK_RULES[dutyType], dutyType).toBeDefined()
-    })
+describe('RANK_ORDER', () => {
+  it('ranks every valid rank, so none is left out of eligibility or seniority', () => {
+    for (const r of VALID_RANKS) expect(RANK_ORDER, r).toContain(r)
+  })
+
+  it('places ME ranks beside their equivalents', () => {
+    const at = (r: string) => RANK_ORDER.indexOf(r)
+    expect(at('ME1')).toBe(at('3SG') + 1)
+    expect(at('ME4')).toBe(at('LTA') + 1)
+    expect(at('ME8')).toBe(at('SLTC') + 1)
+  })
+
+  it('isCommander is everyone but enlistees', () => {
+    expect(isCommander({ rank: '3SG' })).toBe(true)
+    expect(isCommander({ rank: 'CFC' })).toBe(false)
   })
 })
-
-describe('PARADE_CONFIG', () => {
-  it('every company\'s visibleDutyTypes are valid DUTY_ELIGIBILITY keys', () => {
-    COMPANIES.forEach((company) => {
-      PARADE_CONFIG[company].visibleDutyTypes.forEach((dt) => {
-        expect(DUTY_ELIGIBILITY[dt], `${company}: ${dt}`).toBeDefined()
-      })
-    })
-  })
-})
-
 describe('displayName', () => {
   const soldiers = [{ rank: 'CPL', name: 'TAN AH KOW', platoon: '1' }]
   it('prefixes the rank when the soldier is found', () => {
@@ -53,13 +52,5 @@ describe('displayName', () => {
   })
   it('falls back to the bare name when not found', () => {
     expect(displayName('UNKNOWN', soldiers)).toBe('UNKNOWN')
-  })
-})
-
-describe('pointsDutyTypes', () => {
-  it('adds Duty Clerk for Hercules only, with Guard Duty last', () => {
-    expect(pointsDutyTypes('hercules')).toEqual(['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'Duty Clerk', 'Guard Duty'])
-    expect(pointsDutyTypes('stallion')).not.toContain('Duty Clerk')
-    expect(pointsDutyTypes('stallion').at(-1)).toBe('Guard Duty')
   })
 })

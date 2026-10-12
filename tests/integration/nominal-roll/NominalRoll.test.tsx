@@ -1,5 +1,6 @@
+import { renderWithQuery } from '@/tests/fixtures/render'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NominalRoll from '@/frontend/components/nominal-roll/NominalRoll'
 import { supabase } from '@/backend/data/client'
@@ -22,7 +23,7 @@ afterAll(async () => {
 
 describe('NominalRoll', () => {
   it('renders fixture soldiers after load', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
 
     await waitFor(() => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
@@ -34,7 +35,7 @@ describe('NominalRoll', () => {
   })
 
   it('adds a new soldier using default PTE rank and shows them in the list', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
     await userEvent.click(screen.getByRole('button', { name: '+ Add' }))
@@ -53,11 +54,11 @@ describe('NominalRoll', () => {
       .select('*')
       .eq('name', 'NEW_RECRUIT_TEST')
     expect(data).toHaveLength(1)
-    expect(data![0].rank).toBe('PTE')
+    expect((data![0] as { rank: string }).rank).toBe('PTE')
   })
 
   it('deletes a soldier and removes them from list and DB', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 
     // Delete ONG JUN SHENG (REC in Pl 4 — the only REC in the fixture)

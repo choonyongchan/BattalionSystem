@@ -1,5 +1,5 @@
 import type { Exception, MedicalReview } from '@/shared/types'
-import type { Company } from '@/shared/companies'
+import { wordsRegex } from '@/shared/names'
 import { exceptionType, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
 import { ddmmyy, pad2 } from '@/shared/dates'
 
@@ -10,14 +10,9 @@ import { ddmmyy, pad2 } from '@/shared/dates'
  * `type` carries the URTI split and marks a 'Medical Review'.
  */
 
-/** Default location for an RSI. */
-export const RSI_LOCATION = 'KHMC'
-
 // ponytail: keyword heuristic for the default only; the URTI toggle overrides it per entry
-const URTI_RE = /\b(urti|flu|cough\w*|sore\s*throat|phlegm|runny\s*nose|blocked\s*nose|sneez\w*|fever|cold)\b/i
-
-/** True when a reason looks like an upper respiratory tract infection. */
-export const isUrti = (reason: string): boolean => URTI_RE.test(reason)
+/** True when a reason names any of the URTI keywords from Settings > Report Sick. */
+export const isUrti = (reason: string, keywords: string[]): boolean => wordsRegex(keywords).test(reason)
 
 /** True when a report sick is typed URTI. */
 export const isUrtiException = (e: Exception): boolean => exceptionType(e) === 'URTI'
@@ -31,9 +26,6 @@ export const isRso = (e: Exception): boolean => e.in_out === 'OUT' && !isMedical
 /** True for a report sick inside (RSI); older rows without in/out count as RSI. */
 export const isRsi = (e: Exception): boolean => !isRso(e) && !isMedicalReview(e)
 
-/** "HQ COY" for Hercules (the battalion's HQ company), else "<NAME> COY". */
-export const rsiCompanyLabel = (company: Company): string =>
-  company === 'hercules' ? 'HQ COY' : `${company.toUpperCase()} COY`
 
 /** "<rank> <name>" off the roll, so a rename shows through; else the stored name. */
 function rankName(e: Exception, idx: SoldierIndex): string {
@@ -54,16 +46,17 @@ function section(title: string, entries: Exception[], idx: SoldierIndex): string
 }
 
 /**
- * RSI message; RSO and medical reviews are left out. `time` is "HH:MM" or "HHMM".
+ * RSI message; RSO and medical reviews are left out. `time` is "HH:MM" or "HHMM";
+ * `headerLabel` is Settings > Report Sick, e.g. "HQ COY".
  * Empty sections are dropped, so a day with no RSI is the header alone.
  */
-export function generateRsiReport(date: string, time: string, company: Company, entries: Exception[], idx: SoldierIndex): string {
+export function generateRsiReport(date: string, time: string, headerLabel: string, entries: Exception[], idx: SoldierIndex): string {
   const rsi = entries.filter(isRsi)
   const sections = [
     section('URTI', rsi.filter(isUrtiException), idx),
     section('NON-URTI', rsi.filter((e) => !isUrtiException(e)), idx),
   ].filter((s) => s.length)
-  const header = `${ddmmyy(date)} ${rsiCompanyLabel(company)} 40SAR ${time.replace(':', '')}HRS`
+  const header = `${ddmmyy(date)} ${headerLabel} 40SAR ${time.replace(':', '')}HRS`
   return [header, ...sections.flatMap((s, i) => [...(i ? [''] : []), ...s])].join('\n')
 }
 

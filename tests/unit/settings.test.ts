@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { AppSettingsSchema, DEFAULT_SETTINGS, mergeSettings, resolveDayType } from '@/backend/domain/settings/settings'
+import { AppSettingsSchema, defaultSettings, mergeSettings, pointsDutyTypes, rosterDutyTypes, resolveDayType } from '@/backend/domain/settings/settings'
+
+const DEFAULT_SETTINGS = defaultSettings('test')
 
 const VALID_SETTINGS = {
+  ...DEFAULT_SETTINGS,
   duty_base_weights: { CDO: 2, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1 },
   duty_day_multipliers: { MonThurs: 1, Friday: 0.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 },
   duty_weight_exceptions: { 'COS:PublicHoliday': 5 },
@@ -36,27 +39,49 @@ describe('AppSettingsSchema', () => {
   })
 })
 
+describe('defaultSettings', () => {
+  it('keeps the old per-company behaviour: Hercules rosters a Duty Clerk, its HQ sits out of conducts, RSI says HQ COY', () => {
+    const herc = defaultSettings('hercules')
+    expect(rosterDutyTypes(herc)).toEqual(['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'Duty Clerk'])
+    expect(pointsDutyTypes(herc).at(-1)).toBe('Guard Duty')
+    expect(herc.conducts.include_hq).toBe(false)
+    expect(herc.report_sick.header_label).toBe('HQ COY')
+    const stallion = defaultSettings('stallion')
+    expect(rosterDutyTypes(stallion)).toEqual(['CDO', 'CDS', 'COS', 'PDS1', 'PDS2', 'PDS3', 'PDS4'])
+    expect(stallion.conducts.include_hq).toBe(true)
+    expect(stallion.report_sick.header_label).toBe('STALLION COY')
+  })
+
+  it('every default passes its own schema', () => {
+    expect(AppSettingsSchema.safeParse(defaultSettings('hercules')).success).toBe(true)
+  })
+})
+
 describe('mergeSettings', () => {
+  it('falls back per company when a newer column is null', () => {
+    expect(mergeSettings({ platoons: null }, 'hercules').platoons.map((p) => p.key)).toEqual(['SIG', 'OPR+ASA', 'MED'])
+  })
+
   it('returns the input unchanged when every field is valid', () => {
-    expect(mergeSettings(VALID_SETTINGS)).toEqual(VALID_SETTINGS)
+    expect(mergeSettings(VALID_SETTINGS, 'test')).toEqual(VALID_SETTINGS)
   })
 
   it('falls back to DEFAULT_SETTINGS wholesale when given null', () => {
-    expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS)
+    expect(mergeSettings(null, 'test')).toEqual(DEFAULT_SETTINGS)
   })
 
   it('falls back to DEFAULT_SETTINGS wholesale when given undefined', () => {
-    expect(mergeSettings(undefined)).toEqual(DEFAULT_SETTINGS)
+    expect(mergeSettings(undefined, 'test')).toEqual(DEFAULT_SETTINGS)
   })
 
   it('falls back to DEFAULT_SETTINGS for missing keys in a partial object', () => {
-    const result = mergeSettings({})
+    const result = mergeSettings({}, 'test')
     expect(result).toEqual(DEFAULT_SETTINGS)
   })
 
   it('falls back per-key: a malformed field is replaced with its default, valid fields are kept', () => {
     const raw = { ...VALID_SETTINGS, duty_base_weights: 'garbage' }
-    const result = mergeSettings(raw)
+    const result = mergeSettings(raw, 'test')
     expect(result.duty_base_weights).toEqual(DEFAULT_SETTINGS.duty_base_weights)
     expect(result.duty_weight_exceptions).toEqual(VALID_SETTINGS.duty_weight_exceptions)
     expect(result.parade_times).toEqual(VALID_SETTINGS.parade_times)

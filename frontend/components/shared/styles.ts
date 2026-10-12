@@ -10,10 +10,10 @@ export function fieldInputClass(hasError: boolean, focusRing: string, extra = ''
 }
 
 /** Red "Yes" button shown while a delete awaits confirmation. */
-export const CONFIRM_BTN = 'px-2 py-1 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm'
+export const CONFIRM_BTN = 'inline-flex min-h-11 items-center px-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm md:min-h-8 md:px-2 md:text-xs'
 
-/** Quiet icon button (edit ✎ / delete ✕). */
-export const ICON_BTN = 'text-gray-400 hover:text-gray-600 transition-colors text-base px-2 py-1'
+/** Quiet icon button (edit ✎ / delete ✕); a full 44px tap target on phones. */
+export const ICON_BTN = 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 active:bg-gray-100 transition-colors text-base md:min-h-8 md:min-w-8'
 
 /** Quiet icon button that turns red on hover, for destructive actions. */
-export const ICON_BTN_DANGER = 'text-gray-400 hover:text-red-500 transition-colors text-base px-2 py-1'
+export const ICON_BTN_DANGER = 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-500 hover:text-red-500 active:bg-red-50 transition-colors text-base md:min-h-8 md:min-w-8'

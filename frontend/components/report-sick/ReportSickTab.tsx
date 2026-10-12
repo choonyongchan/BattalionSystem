@@ -1,17 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
+import { useMemo, useState } from 'react'
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import { MedicalReviewRepository } from '@/backend/data/repositories/MedicalReviewRepository'
-import type { Exception, MedicalReview, Soldier } from '@/shared/types'
+import type { Exception, Soldier } from '@/shared/types'
 import type { Company } from '@/shared/companies'
 import { isActiveOn, isOnStrength, soldierIndex, soldierOf } from '@/backend/domain/exceptions/active'
 import {
-  RSI_LOCATION, generateMedicalReviewReport, generateRsiReport,
+  generateMedicalReviewReport, generateRsiReport,
   isMedicalReview, isRsi, isRso, isUrti, isUrtiException,
 } from '@/backend/domain/report-sick/report-sick'
-import { useSettingsQuery } from '@/frontend/hooks/useSettings'
+import { combine, useExceptions, useMedicalReviews, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
 import { todaySGDate } from '@/shared/dates'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
@@ -29,16 +28,17 @@ const KINDS: { id: Kind; label: string }[] = [
 ]
 const IS_KIND: Record<Kind, (e: Exception) => boolean> = { rsi: isRsi, rso: isRso, review: isMedicalReview }
 
-type SickForm = { name: string; reason: string; urti: boolean; urtiTouched: boolean; location: string }
+/** location null = untouched: shows and saves the kind's default (Settings > Report Sick for RSI). */
+type SickForm = { name: string; reason: string; urti: boolean; urtiTouched: boolean; location: string | null }
 type ReviewForm = { name: string; coy: string; nric: string; diagnosis: string; lastMa: string; nextMa: string; memo: boolean; remarks: string }
 
-const sickForm = (kind: Kind): SickForm => ({ name: '', reason: '', urti: false, urtiTouched: false, location: kind === 'rsi' ? RSI_LOCATION : '' })
+const SICK_FORM: SickForm = { name: '', reason: '', urti: false, urtiTouched: false, location: null }
 const reviewForm = (coy: string): ReviewForm => ({ name: '', coy, nric: '', diagnosis: '', lastMa: '', nextMa: '', memo: false, remarks: '' })
 
 const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
 
 /**
- * Report Sick tab: RSI (inside, default KHMC), RSO (outside) and medical reviews. Each is a
+ * Report Sick tab: RSI (inside, default location from Settings), RSO (outside) and medical reviews. Each is a
  * 'Report Sick' exception, so the parade state and conducts pick it up as is. RSI and
  * medical reviews each get a message to copy; RSO has none.
  */
@@ -46,47 +46,23 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   const [kind, setKind] = useState<Kind>('rsi')
   const [date, setDate] = useState(todaySGDate())
   const [time, setTime] = useState(nowSGTime())
-  const [allSoldiers, setAllSoldiers] = useState<Soldier[]>([])
-  const [exceptions, setExceptions] = useState<Exception[]>([])
-  const [reviews, setReviews] = useState<MedicalReview[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sick, setSick] = useState<SickForm>(sickForm('rsi'))
+  const soldiersQ = useSoldiers(company)
+  const exceptionsQ = useExceptions(company, 'Report Sick')
+  const reviewsQ = useMedicalReviews(company)
+  const settingsQ = useSettingsQuery(company)
+  const { run, busy, error: writeError } = useWrite(company)
+  const { loading, error: loadError } = combine(soldiersQ, exceptionsQ, reviewsQ, settingsQ)
+  const error = writeError ?? loadError
+  const settings = settingsQ.data
+  const allSoldiers = useMemo(() => soldiersQ.data ?? [], [soldiersQ.data])
+  const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
+  const reviews = useMemo(() => reviewsQ.data ?? [], [reviewsQ.data])
+  const [sick, setSick] = useState<SickForm>(SICK_FORM)
   const [review, setReview] = useState<ReviewForm>(reviewForm(companyLabel.toUpperCase()))
-  const { data: settings } = useSettingsQuery(company)
   const delConfirm = useConfirmDelete<number>()
   const exceptionRepo = new ExceptionRepository(company)
   const reviewRepo = new MedicalReviewRepository(company)
-
-  useEffect(() => { load() }, [company])
-
-  /** Loads the roll, the company's report-sick exceptions and the review details. */
-  async function load() {
-    const [rollRes, exRes, mrRes] = await Promise.all([
-      new SoldierRepository(company).list(),
-      exceptionRepo.list('Report Sick'),
-      reviewRepo.list(),
-    ])
-    const err = rollRes.error ?? exRes.error ?? mrRes.error
-    if (err) setError(err.message)
-    setAllSoldiers(rollRes.data)
-    setExceptions(exRes.data)
-    setReviews(mrRes.data)
-    setLoading(false)
-  }
-
-  /** Runs a write with a busy flag; shows its error or reloads. Returns true on success. */
-  async function run(fn: () => PromiseLike<{ error: { message: string } | null }>): Promise<boolean> {
-    setBusy(true)
-    setError(null)
-    const { error } = await fn()
-    if (error) setError(error.message)
-    else await load()
-    setBusy(false)
-    return !error
-  }
-
+  const location = sick.location ?? (kind === 'rsi' ? settings?.report_sick.default_location ?? '' : '')
   const soldiers = useMemo(() => allSoldiers.filter(isOnStrength), [allSoldiers])
   const idx = useMemo(() => soldierIndex(allSoldiers), [allSoldiers])
   const onDate = useMemo(
@@ -97,7 +73,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   const reviewById = useMemo(() => new Map(reviews.map((r) => [r.exception_id, r])), [reviews])
 
   const message =
-    kind === 'rsi' ? { title: 'RSI message', text: generateRsiReport(date, time, company, onDate, idx) }
+    kind === 'rsi' ? { title: 'RSI message', text: generateRsiReport(date, time, settings?.report_sick.header_label ?? '', onDate, idx) }
     : kind === 'review' ? {
       title: 'Medical review message',
       text: generateMedicalReviewReport(
@@ -109,7 +85,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   /** Switches between RSI, RSO and medical review, resetting the sick form's default location. */
   function switchKind(k: Kind) {
     setKind(k)
-    setSick(sickForm(k))
+    setSick(SICK_FORM)
   }
 
   /** Fields shared by every report-sick exception written from this tab. */
@@ -135,9 +111,9 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
       type: sick.urti ? 'URTI' : 'Report Sick',
       reason,
       in_out: kind === 'rso' ? 'OUT' : 'IN',
-      location: sick.location.trim() || null,
+      location: location.trim() || null,
     }))
-    if (ok) setSick(sickForm(kind))
+    if (ok) setSick(SICK_FORM)
   }
 
   /** Adds a medical review for the picked soldier on the selected date. */
@@ -164,7 +140,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   /** Deletes an entry; a review's details go with it. */
   const remove = (e: Exception) => run(() => exceptionRepo.remove(e.id))
 
-  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading || !settings) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
   /** "<4D> <rank> <name>", or the stored name. */
   const who = (e: Exception) => {
@@ -258,10 +234,10 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
             value={sick.reason}
             onChange={(e) => {
               const reason = e.target.value
-              setSick({ ...sick, reason, urti: sick.urtiTouched ? sick.urti : isUrti(reason) })
+              setSick({ ...sick, reason, urti: sick.urtiTouched ? sick.urti : isUrti(reason, settings.report_sick.urti_keywords) })
             }}
           />
-          <input className={input} placeholder="Location" aria-label="Location" value={sick.location} onChange={(e) => setSick({ ...sick, location: e.target.value })} />
+          <input className={input} placeholder="Location" aria-label="Location" value={location} onChange={(e) => setSick({ ...sick, location: e.target.value })} />
           <label className="flex items-center gap-2 text-sm text-ink-80">
             <input type="checkbox" className="h-4 w-4" checked={sick.urti} onChange={(e) => setSick({ ...sick, urti: e.target.checked, urtiTouched: true })} />
             URTI

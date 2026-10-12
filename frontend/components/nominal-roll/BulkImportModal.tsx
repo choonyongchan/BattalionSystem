@@ -13,11 +13,14 @@ const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/1IjFwbLWLSnoMelF92I
 /** Modal to import soldiers from a CSV, with per-row validation before upsert. */
 export default function BulkImportModal({
   company,
+  platoons,
   soldiers,
   onClose,
   onImported,
 }: {
   company: Company
+  /** Platoon keys the company accepts, HQ included. */
+  platoons: string[]
   soldiers: Soldier[]
   onClose: () => void
   onImported: () => void
@@ -36,7 +39,7 @@ export default function BulkImportModal({
     reader.onload = (ev) => {
       const text = ev.target?.result as string
       const rows = parseCSV(text)
-      const result = validateAndTransform(rows, soldiers, company)
+      const result = validateAndTransform(rows, soldiers, platoons)
       setValid(result.valid)
       setErrors(result.errors)
       setImportResult(null)

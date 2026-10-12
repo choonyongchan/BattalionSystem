@@ -1,5 +1,6 @@
-﻿import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { renderWithQuery } from '@/tests/fixtures/render'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import NominalRoll from '@/frontend/components/nominal-roll/NominalRoll'
 import { supabase } from '@/backend/data/client'
@@ -35,13 +36,13 @@ function makeTemplateCSV(rows: string) {
 
 describe('Bulk Import', () => {
   it('shows Bulk Import button', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     expect(screen.getByRole('button', { name: /bulk import/i })).toBeInTheDocument()
   })
 
   it('opens modal on click', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -49,7 +50,7 @@ describe('Bulk Import', () => {
   })
 
   it('shows validation errors for bad CSV', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
@@ -65,7 +66,7 @@ describe('Bulk Import', () => {
   })
 
   it('shows preview with valid rows, marking existing soldier as overwrite', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
@@ -83,7 +84,7 @@ describe('Bulk Import', () => {
   })
 
   it('imports soldiers and closes the modal on success', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 
@@ -108,7 +109,7 @@ describe('Bulk Import', () => {
   }, 30000)
 
   it('blocks entire import when any row has an error (all-or-nothing)', async () => {
-    render(<NominalRoll company="test" />)
+    renderWithQuery(<NominalRoll company="test" />)
     await waitForLoad()
     await userEvent.click(screen.getByRole('button', { name: /bulk import/i }))
 

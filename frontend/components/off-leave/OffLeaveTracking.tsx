@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState, type KeyboardEvent } from 'react'
-import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
+import { useState, type KeyboardEvent } from 'react'
 import { OffLeaveRepository } from '@/backend/data/repositories/OffLeaveRepository'
-import type { Soldier, OffLeave } from '@/shared/types'
 import type { Company } from '@/shared/companies'
+import { combine, useOffLeave, useSoldiers, useWrite } from '@/frontend/hooks/queries'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { isValidAmount, sortOffLeaveByRank } from '@/backend/domain/off-leave/off-leave'
@@ -23,58 +22,29 @@ const isValidBalance = (v: string) => v !== '' && (Number(v) === 0 || isValidAmo
 /** Off/Leave tab: per-soldier off and leave balances with add, edit and delete. */
 export default function OffLeaveTracking({ company }: { company: Company }) {
 
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
-  const [records, setRecords] = useState<OffLeave[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const soldiersQ = useSoldiers(company)
+  const recordsQ = useOffLeave(company)
+  const { run, busy, error: writeError } = useWrite(company)
+  const { loading, error: loadError } = combine(soldiersQ, recordsQ)
+  const error = writeError ?? loadError
+  const soldiers = soldiersQ.data ?? []
+  const records = recordsQ.data ?? []
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [submitting, setSubmitting] = useState(false)
   const [editRow, setEditRow] = useState<{ name: string; off: string; leave: string } | null>(null)
-  const [savingEdit, setSavingEdit] = useState(false)
   const [deletingName, setDeletingName] = useState<string | null>(null)
   const nameConfirm = useConfirmDelete<string>()
-
-  useEffect(() => {
-    setLoading(true)
-    load()
-  }, [company])
-
   const offLeaveRepo = new OffLeaveRepository(company)
-
-  /**
-   * Loads soldiers and balances; refreshes in place so edits keep the scroll position.
-   * Refreshes in place so edits keep the scroll position
-   */
-  async function load() {
-    setError(null)
-    const [soldiersRes, recordsRes] = await Promise.all([
-      new SoldierRepository(company).list(),
-      offLeaveRepo.list(),
-    ])
-    const err = soldiersRes.error ?? recordsRes.error
-    if (err) setError(err.message)
-    setSoldiers(soldiersRes.data)
-    setRecords(recordsRes.data)
-    setLoading(false)
-  }
-
   /** Adds the form's amount to the soldier's off or leave balance. */
   async function addRecord() {
     const amount = Number(form.amount)
     if (!form.name || !isValidAmount(amount)) return
-    setSubmitting(true)
     const cur = records.find((r) => r.name === form.name) ?? { name: form.name, off: 0, leave: 0 }
-    const { error } = await offLeaveRepo.upsert({ ...cur, [form.kind]: cur[form.kind] + amount })
-    if (error) {
-      setError(error.message)
-    } else {
+    if (await run(() => offLeaveRepo.upsert({ ...cur, [form.kind]: cur[form.kind] + amount }))) {
       setForm(EMPTY_FORM)
       setShowForm(false)
-      await load()
     }
-    setSubmitting(false)
   }
 
   const editValid = !!editRow && isValidBalance(editRow.off) && isValidBalance(editRow.leave)
@@ -82,23 +52,13 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
   /** Saves the edited off and leave balances. */
   async function updateRecord() {
     if (!editRow || !editValid) return
-    setSavingEdit(true)
-    const { error } = await offLeaveRepo.update(editRow.name, Number(editRow.off), Number(editRow.leave))
-    if (error) {
-      setError(error.message)
-    } else {
-      setEditRow(null)
-      await load()
-    }
-    setSavingEdit(false)
+    if (await run(() => offLeaveRepo.update(editRow.name, Number(editRow.off), Number(editRow.leave)))) setEditRow(null)
   }
 
   /** Deletes a soldier's balance row. */
   async function deleteRecord(name: string) {
     setDeletingName(name)
-    const { error } = await offLeaveRepo.remove(name)
-    if (error) setError(error.message)
-    else await load()
+    await run(() => offLeaveRepo.remove(name))
     setDeletingName(null)
   }
 
@@ -213,10 +173,10 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
 
           <button
             onClick={addRecord}
-            disabled={submitting || !form.name || !isValidAmount(Number(form.amount))}
+            disabled={busy || !form.name || !isValidAmount(Number(form.amount))}
             className={`w-full py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
           >
-            {submitting ? 'Adding...' : 'Add Off/Leave'}
+            {busy ? 'Adding...' : 'Add Off/Leave'}
           </button>
         </div>
       )}
@@ -279,10 +239,10 @@ export default function OffLeaveTracking({ company }: { company: Company }) {
                             <div className="flex gap-1 justify-end">
                               <button
                                 onClick={updateRecord}
-                                disabled={savingEdit || !editValid}
+                                disabled={busy || !editValid}
                                 className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}
                               >
-                                {savingEdit ? '…' : 'Save'}
+                                {busy ? '…' : 'Save'}
                               </button>
                               <button
                                 onClick={() => setEditRow(null)}

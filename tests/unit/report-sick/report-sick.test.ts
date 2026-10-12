@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { isUrti, generateRsiReport, generateMedicalReviewReport, rsiCompanyLabel } from '@/backend/domain/report-sick/report-sick'
+import { isUrti, generateRsiReport, generateMedicalReviewReport } from '@/backend/domain/report-sick/report-sick'
+import { defaultSettings } from '@/backend/domain/settings/settings'
 import { soldierIndex } from '@/backend/domain/exceptions/active'
 import type { Exception, MedicalReview, Soldier } from '@/shared/types'
 
@@ -15,21 +16,22 @@ const SOLDIERS: Soldier[] = [
   { id: 'c', rank: 'PTE', name: 'NICHOLAS CHIA', platoon: 'HQ', four_d: null },
 ]
 const idx = soldierIndex(SOLDIERS)
+const KEYWORDS = defaultSettings('hercules').report_sick.urti_keywords
 
 describe('isUrti', () => {
   it('reads upper-respiratory symptoms as URTI, the rest not', () => {
-    expect(isUrti('Flu and phlegm')).toBe(true)
-    expect(isUrti('Flu, Cough, and Sore Throat.')).toBe(true)
-    expect(isUrti('Coughing')).toBe(true)
-    expect(isUrti('Eczema')).toBe(false)
-    expect(isUrti('Headache and Nausea')).toBe(false)
-    expect(isUrti('Influenza-like')).toBe(false)
+    expect(isUrti('Flu and phlegm', KEYWORDS)).toBe(true)
+    expect(isUrti('Flu, Cough, and Sore Throat.', KEYWORDS)).toBe(true)
+    expect(isUrti('Coughing', KEYWORDS)).toBe(true)
+    expect(isUrti('Eczema', KEYWORDS)).toBe(false)
+    expect(isUrti('Headache and Nausea', KEYWORDS)).toBe(false)
+    expect(isUrti('Influenza-like', KEYWORDS)).toBe(false)
   })
 })
 
 describe('generateRsiReport', () => {
   it('prints the template, numbering each section from 01', () => {
-    const text = generateRsiReport('2026-10-08', '08:50', 'hercules', [
+    const text = generateRsiReport('2026-10-08', '08:50', 'HQ COY', [
       rs('a', 'URTI', 'Flu and phlegm'),
       rs('b', 'Report Sick', 'Eczema'),
       rs('c', 'Report Sick', 'Adapting Issues'),
@@ -53,11 +55,11 @@ describe('generateRsiReport', () => {
   })
 
   it('is the header alone when no one reported sick inside', () => {
-    expect(generateRsiReport('2026-10-08', '0850', 'stallion', [], idx)).toBe('081026 STALLION COY 40SAR 0850HRS')
+    expect(generateRsiReport('2026-10-08', '0850', 'STALLION COY', [], idx)).toBe('081026 STALLION COY 40SAR 0850HRS')
   })
 
   it('drops an empty section and leaves out RSO and medical reviews', () => {
-    const text = generateRsiReport('2026-10-08', '0850', 'stallion', [
+    const text = generateRsiReport('2026-10-08', '0850', 'STALLION COY', [
       rs('a', 'Report Sick', 'Eczema', 'IN'),
       rs('b', 'URTI', 'Flu', 'OUT'),
       rs('c', 'Medical Review', 'Revoke FLEGS Status'),
@@ -65,9 +67,9 @@ describe('generateRsiReport', () => {
     expect(text).toBe(['081026 STALLION COY 40SAR 0850HRS', 'NON-URTI', 'S/N: 01', 'R/N: 1108 PTE HO WEI KANG', 'REASON: Eczema'].join('\n'))
   })
 
-  it('labels Hercules as HQ COY', () => {
-    expect(rsiCompanyLabel('hercules')).toBe('HQ COY')
-    expect(rsiCompanyLabel('braves')).toBe('BRAVES COY')
+  it('defaults the header to HQ COY for Hercules, else <NAME> COY', () => {
+    expect(defaultSettings('hercules').report_sick.header_label).toBe('HQ COY')
+    expect(defaultSettings('braves').report_sick.header_label).toBe('BRAVES COY')
   })
 })
 

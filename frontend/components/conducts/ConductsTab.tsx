@@ -1,15 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
-import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
+import { useMemo, useState } from 'react'
 import { ConductRepository } from '@/backend/data/repositories/ConductRepository'
-import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
+import type { Conduct } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { PARADE_CONFIG } from '@/shared/companies'
-import { classifyConduct, conductDateRange, conductEnd, conductIncludesHQ, conductSoldiers, nearestConduct } from '@/backend/domain/conducts/conducts'
+import { classifyConduct, conductDateRange, conductEnd, conductSoldiers, nearestConduct } from '@/backend/domain/conducts/conducts'
 import { todaySGDate } from '@/shared/dates'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
+import { combine, useConductDecisions, useConducts, useExceptions, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
 import ConductDetail from './ConductDetail'
 
 type Form = { id: string | null; name: string; date: string; end_date: string; start_time: string; end_time: string }
@@ -21,58 +19,31 @@ type Form = { id: string | null; name: string; date: string; end_date: string; s
  */
 export default function ConductsTab({ company, companyLabel }: { company: Company; companyLabel: string }) {
   const today = todaySGDate()
-  const platoons = PARADE_CONFIG[company].platoons
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
-  const [exceptions, setExceptions] = useState<Exception[]>([])
-  const [conducts, setConducts] = useState<Conduct[]>([])
-  const [decisions, setDecisions] = useState<ConductDecision[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const soldiersQ = useSoldiers(company)
+  const exceptionsQ = useExceptions(company)
+  const conductsQ = useConducts(company)
+  const decisionsQ = useConductDecisions(company)
+  const settingsQ = useSettingsQuery(company)
+  const { run, busy, error: writeError } = useWrite(company)
+  const { loading, error: loadError } = combine(soldiersQ, exceptionsQ, conductsQ, decisionsQ, settingsQ)
+  const error = writeError ?? loadError
+  const conducts = conductsQ.data ?? []
+  const settings = settingsQ.data
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [form, setForm] = useState<Form | null>(null)
   const [showPast, setShowPast] = useState(false)
   const delConfirm = useConfirmDelete<string>()
   const conductRepo = new ConductRepository(company)
-
-  useEffect(() => { load() }, [company])
-
-  /** Loads the roll, exceptions, conducts and decisions for the company. */
-  async function load() {
-    const [rollRes, exRes, cRes, dRes] = await Promise.all([
-      new SoldierRepository(company).list(),
-      new ExceptionRepository(company).list(),
-      conductRepo.list(),
-      conductRepo.listDecisions(),
-    ])
-    const err = rollRes.error ?? exRes.error ?? cRes.error ?? dRes.error
-    if (err) setError(err.message)
-    setSoldiers(rollRes.data)
-    setExceptions(exRes.data)
-    setConducts(cRes.data)
-    setDecisions(dRes.data)
-    setLoading(false)
-  }
-
-  /** Runs a write with a busy flag; shows its error or reloads. Returns true on success. */
-  async function run(fn: () => PromiseLike<{ error: { message: string } | null }>): Promise<boolean> {
-    setBusy(true)
-    setError(null)
-    const { error } = await fn()
-    if (error) setError(error.message)
-    else await load()
-    setBusy(false)
-    return !error
-  }
-
   const upcoming = conducts.filter((c) => conductEnd(c) >= today)
   const past = conducts.filter((c) => conductEnd(c) < today).reverse()
   const selected =
     conducts.find((c) => c.id === selectedId) ?? nearestConduct(upcoming.length ? upcoming : conducts, new Date())
 
   const parts = useMemo(
-    () => (selected ? classifyConduct(selected, conductSoldiers(company, soldiers), exceptions, decisions, today) : []),
-    [selected, company, soldiers, exceptions, decisions, today],
+    () => (selected && settings
+      ? classifyConduct(selected, conductSoldiers(soldiersQ.data ?? [], settings.conducts.include_hq), exceptionsQ.data ?? [], decisionsQ.data ?? [], today, settings.conducts.needs_call_types)
+      : []),
+    [selected, settings, soldiersQ.data, exceptionsQ.data, decisionsQ.data, today],
   )
 
   /** Creates or updates the conduct in the form, then selects it. */
@@ -107,7 +78,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     },
   }
 
-  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading || !settings) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
 
   const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
   /** Renders a selectable chip for one conduct. */
@@ -127,7 +98,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-ink">Conducts</h2>
-          <p className="text-xs text-ink-60">Fall-outs come from exceptions automatically; LD / RMJ need a call.</p>
+          <p className="text-xs text-ink-60">Troopers only. Fall-outs come from exceptions automatically; {settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.</p>
         </div>
         <button
           onClick={() => setForm(form ? null : { id: null, name: '', date: today, end_date: '', start_time: '', end_time: '' })}
@@ -188,7 +159,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
               <button className="px-2.5 py-1.5 text-xs border border-danger/30 text-danger rounded-lg" onClick={() => delConfirm.request(selected.id)}>Delete</button>
             )}
           </div>
-          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={platoons} includeHQ={conductIncludesHQ(company)} busy={busy} actions={actions} />
+          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={settings.platoons} includeHQ={settings.conducts.include_hq} busy={busy} actions={actions} />
         </div>
       )}
     </div>

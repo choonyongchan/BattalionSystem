@@ -24,12 +24,17 @@ export function displayName(name: string, soldiers: Soldier[]): string {
   return splitDutyNames(name).map((n) => displayOneName(n, soldiers)).join(DUTY_NAME_SEP)
 }
 
-/**
- * Like displayName, but drops an external partner from the printed text.
- * Like displayName, but for duty entries: omits an EXTERNAL_DUTY_PERSON partner from the
- * printed Parade State text (used only for internal record-keeping/points, not shown to reader).
- */
+/** Like displayName, but drops an EXTERNAL_DUTY_PERSON partner, who only counts for points. */
 export function displayDutyName(name: string, soldiers: Soldier[]): string {
   const filtered = splitDutyNames(name).filter((n) => n !== EXTERNAL_DUTY_PERSON).join(DUTY_NAME_SEP)
   return displayName(filtered, soldiers)
+}
+
+/**
+ * Case-insensitive whole-word match for any of `words`; spaces inside a word match any
+ * whitespace ("sore throat" ~ "sore  throat"). Matches nothing when `words` is empty.
+ */
+export function wordsRegex(words: string[]): RegExp {
+  const alts = words.map((w) => w.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')).filter(Boolean)
+  return alts.length ? new RegExp(`\\b(?:${alts.join('|')})\\b`, 'i') : /(?!)/
 }

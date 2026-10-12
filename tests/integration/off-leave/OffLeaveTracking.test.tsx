@@ -1,5 +1,6 @@
+import { renderWithQuery } from '@/tests/fixtures/render'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import OffLeaveTracking from '@/frontend/components/off-leave/OffLeaveTracking'
 import { supabase } from '@/backend/data/client'
@@ -21,7 +22,7 @@ afterAll(async () => {
 })
 
 async function renderLoaded() {
-  render(<OffLeaveTracking company="test" />)
+  renderWithQuery(<OffLeaveTracking company="test" />)
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
 }
 

@@ -24,6 +24,7 @@ export class MedicalReviewRepository extends CompanyRepository {
 
   /** Creates the review's exception, then its details; removes the exception if the details fail. */
   async add(exception: ExceptionFields, details: MedicalReviewFields): Promise<WriteResult> {
+    // ponytail: no transaction; move both inserts into an RPC if partial writes ever show up
     const exceptions = () => supabase.from(tbl(this.company, 'Exceptions'))
     const { data, error } = await exceptions().insert(exception).select('id').single()
     if (error) return { error }

@@ -1,6 +1,6 @@
 /**
- * The one accent set from DESIGN.md: Action Blue for every interactive element, a
- * scale-down press instead of hover colours, and the focus-blue ring.
+ * The one accent set: gray-900 for every interactive element (the old Hercules theme), a
+ * scale-down press instead of hover colours, and the amber focus ring.
  */
 export const THEME = {
   activeBorder: 'border-action',

@@ -1,6 +1,6 @@
 import type { Soldier } from '@/shared/types'
-import { getRankType, RANKS_BY_TYPE } from '@/shared/ranks'
-import { RANK_ORDER, sortValue } from './nominal-roll-validation'
+import { getRankType, RANKS_BY_TYPE, RANK_INDEX } from '@/shared/ranks'
+import { sortValue } from './nominal-roll-validation'
 
 export type SoldierSortKey = 'four_d' | 'platoon' | 'rank' | 'name'
 export type SortDir = 'asc' | 'desc'
@@ -25,7 +25,7 @@ export function sortSoldiers(soldiers: Soldier[], key: SoldierSortKey | null, di
     if (!key) {
       return (a.four_d ?? '').localeCompare(b.four_d ?? '')
         || (a.platoon ?? '').localeCompare(b.platoon ?? '')
-        || ((RANK_ORDER[b.rank] ?? 99) - (RANK_ORDER[a.rank] ?? 99))
+        || ((RANK_INDEX[b.rank] ?? 99) - (RANK_INDEX[a.rank] ?? 99))
         || a.name.localeCompare(b.name)
     }
     const va = sortValue(a, key)

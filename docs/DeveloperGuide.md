@@ -60,7 +60,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `frontend/components/<feature>/` | One folder per tab or feature: `overview`, `parade`, `report-sick`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
 | `frontend/components/ui/` | shadcn components (`components.json` points here) |
 | `frontend/components/shared/` | Shared UI bits and style constants (`styles.ts`) |
-| `frontend/hooks/` | `useAuth`, `useSettings`, `useParadeData`, `useConfirmDelete` |
+| `frontend/hooks/` | `useAuth`, `queries` (React Query hooks keyed `[company, ...]`, `useWrite`), `useParadeData`, `useConfirmDelete` |
 | `frontend/theme.ts` | The single accent theme (Action Blue) |
 | `backend/data/client.ts` | Supabase client and `tbl(company, table)` |
 | `backend/data/auth.ts` | Commander sign-in |
@@ -82,7 +82,6 @@ const { data, error } = await soldiers.list(true)
 | `SoldierRepository` | `{Company}_NominalRoll` |
 | `ExceptionRepository` | `{Company}_Exceptions` |
 | `DutyRepository` | `{Company}_Duty` |
-| `StrengthOverrideRepository` | `{Company}_StrengthOverride` |
 | `OffLeaveRepository` | `{Company}_OffLeave` |
 | `ConductRepository` | `{Company}_Conducts` and `_ConductDecisions` |
 | `MedicalReviewRepository` | `{Company}_MedicalReviews` (NRIC and appointments for a 'Medical Review' exception; deleted with it) |
@@ -125,7 +124,7 @@ The sync re-runs the whole file on live data, so `schema.sql` must change struct
 | `PRIMARY_COMPANY` | `hercules`. Served at `/` instead of `/hercules/`. |
 | `DISABLED_COMPANIES` | archer, braves, cougar, stallion. Their pages show "Not available yet". Their data is kept. |
 | `HIDDEN_COMPANIES` | `test`. Works at `/test/` for tests but is not listed anywhere. |
-| `PARADE_CONFIG` | Per-company platoons and duty types shown on the parade state. |
+| `defaultSettings(company)` | Per-company defaults (platoons, duty roster, Report Sick, conducts, overview); edited on the Settings page. |
 
 To **re-enable a company**, remove it from `DISABLED_COMPANIES`. It then works at `/<company>/`. Its tables and auth user already exist.
 

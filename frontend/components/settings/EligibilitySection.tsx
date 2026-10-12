@@ -1,135 +1,77 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
 import type { Company } from '@/shared/companies'
-import { ALL_DUTY_TYPES } from '@/shared/companies'
-import { RANK_ORDER, DEFAULT_RANK_RULES } from '@/shared/ranks'
-import type { AppSettings } from '@/backend/domain/settings/settings'
-import { useSaveSettingsMutation, useNominalRollQuery } from '@/frontend/hooks/useSettings'
-import { isRankRangeInvalid } from '@/backend/domain/duty/duty-rules'
+import { rosterDutyTypes, type AppSettings } from '@/backend/domain/settings/settings'
+import { useSoldiers } from '@/frontend/hooks/queries'
+import { isRankRangeInvalid, rankRuleFor } from '@/backend/domain/duty/duty-rules'
+import { isOnStrength } from '@/backend/domain/exceptions/active'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
-import { THEME } from '@/frontend/theme'
+import SettingsForm from './SettingsForm'
+import RankRangePicker from './RankRangePicker'
 
-type FormValues = {
-  eligibility_name_overrides: AppSettings['eligibility_name_overrides']
-  eligibility_rank_overrides: AppSettings['eligibility_rank_overrides']
-}
+type FormValues = Pick<AppSettings, 'eligibility_name_overrides' | 'eligibility_rank_overrides'>
 
-/** Settings: who may do each duty, by rank range and named overrides. */
+/** Settings: who may do each rostered duty, by rank range and named overrides. */
 export default function EligibilitySection({ company, settings }: { company: Company; settings: AppSettings }) {
-  const { data: soldiers = [] } = useNominalRollQuery(company)
-  const { watch, setValue, handleSubmit, formState: { isDirty } } = useForm<FormValues>({
-    defaultValues: {
-      eligibility_name_overrides: settings.eligibility_name_overrides,
-      eligibility_rank_overrides: settings.eligibility_rank_overrides,
-    },
-  })
-  const nameOverrides = watch('eligibility_name_overrides')
-  const rankOverrides = watch('eligibility_rank_overrides')
-  const saveMutation = useSaveSettingsMutation(company)
-
-  /** Adds a named soldier override for a duty. */
-  function addName(dt: string, name: string) {
-    if (!name) return
-    const existing = nameOverrides[dt] ?? []
-    if (existing.includes(name)) return
-    setValue('eligibility_name_overrides', { ...nameOverrides, [dt]: [...existing, name] }, { shouldDirty: true })
-  }
-  /** Removes a named soldier override for a duty. */
-  function removeName(dt: string, name: string) {
-    setValue(
-      'eligibility_name_overrides',
-      { ...nameOverrides, [dt]: (nameOverrides[dt] ?? []).filter((n) => n !== name) },
-      { shouldDirty: true },
-    )
-  }
-  /** Sets one end of a duty's rank range. */
-  function setRankRule(dt: string, from: string, to: string) {
-    setValue('eligibility_rank_overrides', { ...rankOverrides, [dt]: { from, to } }, { shouldDirty: true })
-  }
-
-  const invalidDutyTypes = ALL_DUTY_TYPES.filter((dt) =>
-    isRankRangeInvalid(rankOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }),
-  )
-
-  /** Saves the eligibility settings. */
-  function onSubmit(values: FormValues) {
-    if (invalidDutyTypes.length > 0) return
-    saveMutation.mutate({
-      eligibility_name_overrides: values.eligibility_name_overrides,
-      eligibility_rank_overrides: values.eligibility_rank_overrides,
-    }, {
-      onSuccess: () => toast.success('Eligibility overrides saved'),
-      onError: () => toast.error('Failed to save eligibility overrides'),
-    })
-  }
+  const soldiers = (useSoldiers(company).data ?? []).filter(isOnStrength)
+  const dutyTypes = rosterDutyTypes(settings)
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-4">
-      <p className="text-xs text-ink-60">
-        Precedence: a name-list override (if non-empty) wins; otherwise the rank-range override applies.
-      </p>
-      {ALL_DUTY_TYPES.map((dt) => {
-        const names = nameOverrides[dt] ?? []
-        const rule = rankOverrides[dt] ?? DEFAULT_RANK_RULES[dt] ?? { from: 'REC', to: 'ME8' }
-        const rangeInvalid = isRankRangeInvalid(rule)
-        return (
-          <div key={dt} className="border border-hairline rounded-lg p-3 space-y-3">
-            <p className="text-sm font-semibold text-ink">{dt}</p>
-
-            <div>
-              <p className="text-xs text-ink-60 mb-1">Name overrides (takes precedence)</p>
-              <div className="flex flex-wrap gap-1 mb-2">
-                {names.map((n) => (
-                  <span key={n} className="inline-flex items-center gap-1 bg-parchment text-ink-80 text-xs px-2 py-1 rounded-lg">
-                    {n}
-                    <button type="button" onClick={() => removeName(dt, n)} className="text-ink-60 hover:text-danger">×</button>
-                  </span>
-                ))}
+    <SettingsForm<FormValues>
+      company={company}
+      title="Eligibility Overrides"
+      description="Precedence: a name-list override (if non-empty) wins; otherwise the rank range applies."
+      defaultValues={{
+        eligibility_name_overrides: settings.eligibility_name_overrides,
+        eligibility_rank_overrides: settings.eligibility_rank_overrides,
+      }}
+      invalid={(v) => dutyTypes.some((dt) => isRankRangeInvalid(rankRuleFor(dt, v.eligibility_rank_overrides)))}
+    >
+      {({ watch, setValue }) => {
+        const nameOverrides = watch('eligibility_name_overrides')
+        const rankOverrides = watch('eligibility_rank_overrides')
+        /** Replaces one duty's name override list. */
+        const setNames = (dt: string, names: string[]) =>
+          setValue('eligibility_name_overrides', { ...nameOverrides, [dt]: names }, { shouldDirty: true })
+        return dutyTypes.map((dt) => {
+          const names = nameOverrides[dt] ?? []
+          return (
+            <div key={dt} className="border border-hairline rounded-lg p-3 space-y-3">
+              <p className="text-sm font-semibold text-ink">{dt}</p>
+              <div>
+                <p className="text-xs text-ink-60 mb-1">Name overrides (takes precedence)</p>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {names.map((n) => (
+                    <span key={n} className="inline-flex items-center gap-1 bg-parchment text-ink-80 text-xs px-2 py-1 rounded-lg">
+                      {n}
+                      <button type="button" onClick={() => setNames(dt, names.filter((x) => x !== n))} className="text-ink-60 hover:text-danger">×</button>
+                    </span>
+                  ))}
+                </div>
+                <SearchDropdown
+                  key={`${dt}-${names.length}`}
+                  items={soldiers}
+                  value=""
+                  getKey={(s) => s.name}
+                  getLabel={(s) => `${s.rank} ${s.name}`}
+                  matches={(s, q) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
+                  renderOption={(s) => <span>{s.rank} {s.name}</span>}
+                  onChange={(name) => name && !names.includes(name) && setNames(dt, [...names, name])}
+                  inputClass="w-full border border-hairline rounded-lg px-3 py-2 text-sm"
+                  placeholder="Add soldier..."
+                />
               </div>
-              <SearchDropdown
-                key={`${dt}-${names.length}`}
-                items={soldiers}
-                value=""
-                getKey={(s) => s.name}
-                getLabel={(s) => `${s.rank} ${s.name}`}
-                matches={(s, q) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
-                renderOption={(s) => <span>{s.rank} {s.name}</span>}
-                onChange={(name) => addName(dt, name)}
-                inputClass="w-full border border-hairline rounded-lg px-3 py-2 text-sm"
-                placeholder="Add soldier..."
-              />
-            </div>
-
-            <div>
-              <p className="text-xs text-ink-60 mb-1">Rank-range override</p>
-              <div className="flex items-center gap-2">
-                <Select value={rule.from} onValueChange={(v) => v && setRankRule(dt, v, rule.to)}>
-                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{RANK_ORDER.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
-                <span className="text-xs text-ink-60">–</span>
-                <Select value={rule.to} onValueChange={(v) => v && setRankRule(dt, rule.from, v)}>
-                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{RANK_ORDER.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
+              <div>
+                <p className="text-xs text-ink-60 mb-1">Rank range</p>
+                <RankRangePicker
+                  rule={rankRuleFor(dt, rankOverrides)}
+                  onChange={(rule) => setValue('eligibility_rank_overrides', { ...rankOverrides, [dt]: rule }, { shouldDirty: true })}
+                />
               </div>
-              {rangeInvalid && (
-                <p className="text-xs text-danger mt-1">&quot;From&quot; rank must not come after &quot;to&quot; rank.</p>
-              )}
             </div>
-          </div>
-        )
-      })}
-      <button
-        type="submit"
-        disabled={saveMutation.isPending || !isDirty || invalidDutyTypes.length > 0}
-        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${THEME.buttonBg} ${THEME.buttonHoverBg} disabled:opacity-50`}
-      >
-        {saveMutation.isPending ? 'Saving…' : 'Save Eligibility Overrides'}
-      </button>
-    </form>
+          )
+        })
+      }}
+    </SettingsForm>
   )
 }

@@ -1,109 +1,60 @@
 import type { Soldier, Exception, DutyEntry } from '@/shared/types'
 import { displayDutyName } from '@/shared/names'
-import type { ParadeStateConfig } from '@/shared/companies'
-import { getRankType, RANK_TYPES, RANK_ORDER } from '@/shared/ranks'
-import { STD_SCOPES } from '@/shared/companies'
-import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES } from '@/backend/domain/exceptions/exception-validation'
+import { STD_SCOPES, type PlatoonBlock } from '@/shared/companies'
+import { getRankType, RANK_TYPES, RANK_INDEX } from '@/shared/ranks'
+import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES, type ExceptionScope } from '@/backend/domain/exceptions/exception-validation'
 import { exceptionSoldierKey, isOnStrength, isRevoked, mergeRuns, soldierIndex, soldierKeyOf, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
-import { ddmmyy } from '@/shared/dates'
+import { BASE_DUTY_TYPES } from '@/backend/domain/settings/settings'
+import { compareNullableISO, ddmmyy } from '@/shared/dates'
 
-/** Compares ISO dates, nulls first. */
-function compareOptionalDate(a: string | null, b: string | null): number {
-  if (!a && !b) return 0
-  if (!a) return -1
-  if (!b) return 1
-  return new Date(a).getTime() - new Date(b).getTime()
+/** What the report prints for a company: its name and the platoon blocks under COY HQ. */
+export interface ParadeConfig {
+  companyName: string
+  platoons: PlatoonBlock[]
 }
 
-/** Orders by end date, then start date (nulls first), then seniority, then name. */
-function sortExceptions(exceptions: Exception[], idx: SoldierIndex): Exception[] {
-  return [...exceptions].sort((a, b) => {
-    const endDiff = compareOptionalDate(a.end, b.end)
-    if (endDiff !== 0) return endDiff
-    const startDiff = compareOptionalDate(a.start, b.start)
-    if (startDiff !== 0) return startDiff
-    const rankA = soldierOf(a, idx)?.rank ?? ''
-    const rankB = soldierOf(b, idx)?.rank ?? ''
-    const rankDiff = RANK_ORDER.indexOf(rankB) - RANK_ORDER.indexOf(rankA)
-    if (rankDiff !== 0) return rankDiff
-    return a.name.localeCompare(b.name)
-  })
-}
-
+/** The data one parade state is built from. */
 export interface ParadeReportInput {
+  /** ISO date of the parade. */
   date: string
-  companyLabel: string
+  /** The whole roll, posted-out included, so their exceptions can be dropped too. */
   soldiers: Soldier[]
+  /** Exceptions active on `date`. */
   activeExceptions: Exception[]
+  /** "HH:MM", or '' when unset. */
   paradeTimeStr: string
+  /** That day's duty roster. */
   duties: DutyEntry[]
-  strengthOverrides?: Record<string, Record<string, number>>
-  generatedAt?: Date
-  allExceptions?: Exception[]
   paradeType?: 'First Parade' | 'Last Parade'
 }
 
 const SECTION_SEP = '================================'
 const BLOCK_SEP   = '--------------------------------'
 
-const RANK_LABELS: Record<string, string> = { Officer: 'OFFICER', WOSPEC: 'WOSPEC', Enlistee: 'ENLISTEE' }
-
-
-
-/** A platoon's strength for one rank type: the override if set, else the roll count. */
-function platTotal(soldiers: Soldier[], plt: string, rt: string, overrides: Record<string, Record<string, number>>) {
-  return overrides[plt]?.[rt] ?? soldiers.filter((s) => s.platoon === plt && getRankType(s.rank) === rt).length
+/** Orders by end date, then start date (nulls first), then seniority, then name. */
+function sortExceptions(exceptions: Exception[], idx: SoldierIndex): Exception[] {
+  /** Seniority of an exception's soldier; -1 when unknown. */
+  const seniority = (e: Exception) => RANK_INDEX[soldierOf(e, idx)?.rank ?? ''] ?? -1
+  return [...exceptions].sort((a, b) =>
+    compareNullableISO(a.end, b.end)
+    || compareNullableISO(a.start, b.start)
+    || seniority(b) - seniority(a)
+    || a.name.localeCompare(b.name))
 }
 
-/** A platoon's present count for one rank type: strength minus absentees. */
-function platPresent(
-  soldiers: Soldier[], plt: string, rt: string,
-  absentKeys: Set<string>, overrides: Record<string, Record<string, number>>,
-) {
-  const total  = platTotal(soldiers, plt, rt, overrides)
-  const absent = soldiers.filter((s) => s.platoon === plt && getRankType(s.rank) === rt && absentKeys.has(soldierKeyOf(s))).length
-  return total - absent
-}
-
-/** Company total and present counts per rank type, with overrides applied. */
-function computeStrength(soldiers: Soldier[], absentKeys: Set<string>, overrides: Record<string, Record<string, number>>) {
-  const compTotal: Record<string, number> = {}
-  const compPresent: Record<string, number> = {}
-  for (const rt of RANK_TYPES) {
-    compTotal[rt]   = overrides['Total']?.[rt] ?? soldiers.filter((s) => getRankType(s.rank) === rt).length
-    const absent    = soldiers.filter((s) => absentKeys.has(soldierKeyOf(s)) && getRankType(s.rank) === rt).length
-    compPresent[rt] = compTotal[rt] - absent
+/** "present/total" overall and per rank type for some soldiers. */
+function strength(soldiers: Soldier[], absentKeys: Set<string>) {
+  /** Present and total among `group`. */
+  const count = (group: Soldier[]) => {
+    const absent = group.filter((s) => absentKeys.has(soldierKeyOf(s))).length
+    return `${group.length - absent}/${group.length}`
   }
-  const total   = RANK_TYPES.reduce((s, rt) => s + compTotal[rt], 0)
-  const present = RANK_TYPES.reduce((s, rt) => s + compPresent[rt], 0)
-  return { compTotal, compPresent, total, present }
+  return { all: count(soldiers), byType: RANK_TYPES.map((rt) => [rt, count(soldiers.filter((s) => getRankType(s.rank) === rt))] as const) }
 }
-
-/** Groups exceptions by their soldier's platoon; unmatched soldiers go under HQ. */
-function groupByPlatoon(exceptions: Exception[], idx: SoldierIndex): Record<string, Exception[]> {
-  const result: Record<string, Exception[]> = { HQ: [], '1': [], '2': [], '3': [], '4': [] }
-  for (const e of exceptions) {
-    // An exception whose soldier can't be found still prints, under COY HQ
-    const plt = soldierOf(e, idx)?.platoon ?? 'HQ'
-    ;(result[plt] ?? (result[plt] = [])).push(e)
-  }
-  return result
-}
-
-/** Present / total per platoon. */
-function computePlatoonTotals(
-  soldiers: Soldier[], plt: string, absentSet: Set<string>, overrides: Record<string, Record<string, number>>,
-) {
-  const pltTotal   = RANK_TYPES.reduce((s, rt) => s + platTotal(soldiers, plt, rt, overrides), 0)
-  const pltPresent = RANK_TYPES.reduce((s, rt) => s + platPresent(soldiers, plt, rt, absentSet, overrides), 0)
-  return { pltTotal, pltPresent }
-}
-
-// ── Exception line formatting ────────────────────────────────────────────
 
 /** Date suffix, e.g. "(010326-030326)", "(SINCE 010326)", or one date (plus MA time) for single-day scopes. */
 function formatDates(e: Exception): string {
-  if (SINGLE_DATE_SCOPES.includes(e.scope as (typeof SINGLE_DATE_SCOPES)[number])) {
+  if (SINGLE_DATE_SCOPES.includes(e.scope as ExceptionScope)) {
     const d = e.end ?? e.start
     if (!d) return ''
     let s = ddmmyy(d)
@@ -131,98 +82,54 @@ function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex): string
   const identity = soldier ? `${soldier.rank} ${soldier.name}` : e.name
   const parts = [formatDescription(e), formatDates(e)].filter(Boolean).join(' ')
   let line = `${n + 1}. ${fourD ? `${fourD} ` : ''}${identity} - ${parts}`
-  if (IN_OUT_SCOPES.includes(e.scope as (typeof IN_OUT_SCOPES)[number]) && e.in_out) line += ` ${e.in_out}`
-  if (LOCATION_PRINT_SCOPES.includes(e.scope as (typeof LOCATION_PRINT_SCOPES)[number]) && e.location) line += ` @ ${e.location}`
+  if (IN_OUT_SCOPES.includes(e.scope as ExceptionScope) && e.in_out) line += ` ${e.in_out}`
+  if (LOCATION_PRINT_SCOPES.includes(e.scope as ExceptionScope) && e.location) line += ` @ ${e.location}`
   return line
 }
 
-// ── Unified renderer ─────────────────────────────────────────────────────
-
-/** Renders the parade state text: header, duties, strength, then each platoon block. */
-function generateReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  const { date, soldiers, activeExceptions, paradeTimeStr, duties } = input
-  const overrides   = input.strengthOverrides ?? {}
-  const dateCompact = ddmmyy(date)
-  const idx         = soldierIndex(soldiers)
-  const absentKeys  = new Set(activeExceptions.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
-  const { compTotal, compPresent, total, present } = computeStrength(soldiers, absentKeys, overrides)
-  const dutyMap = Object.fromEntries(duties.map((d) => [d.duty_type, d.name ?? '']))
-  const exByPlt = groupByPlatoon(activeExceptions, idx)
-
-  const lines: string[] = []
-  lines.push(`40 SAR ${config.companyName} COMPANY`)
-  lines.push(`${(input.paradeType ?? 'First Parade').toUpperCase()} STATE`)
-  lines.push(`DATE: ${dateCompact} TIME: ${paradeTimeStr ? paradeTimeStr.replace(':', '') : ''}`)
-
-  /** Display name of today's holder of a duty, or '-'. */
-  const dutyName = (type: string) => displayDutyName(dutyMap[type] ?? '', soldiers) || '-'
-  ;['CDO', 'CDS', 'COS'].filter((t) => config.visibleDutyTypes.includes(t)).forEach((t) => lines.push(`${t}: ${dutyName(t)}`))
-  config.platoons.forEach((p, i) => {
-    const type = `PDS${i + 1}`
-    if (!config.visibleDutyTypes.includes(type)) return
-    lines.push(`${p.pdsLabel}: ${dutyName(type)}`)
-  })
-
-  lines.push(SECTION_SEP)
-  lines.push(`COMPANY: ${present}/${total}`)
-  for (const rt of RANK_TYPES) lines.push(`${RANK_LABELS[rt]}: ${compPresent[rt]}/${compTotal[rt]}`)
-  lines.push(SECTION_SEP)
-
-  /** Appends one platoon block's strength and exception sections. */
-  function renderBlock(pltKey: string, label: string) {
-    const group      = exByPlt[pltKey] ?? []
-    const pltAbsent  = new Set(group.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
-    const { pltTotal, pltPresent } = computePlatoonTotals(soldiers, pltKey, pltAbsent, overrides)
-
-    lines.push(`${label}: ${pltPresent}/${pltTotal}`)
-    for (const rt of RANK_TYPES) {
-      lines.push(`${RANK_LABELS[rt]}: ${platPresent(soldiers, pltKey, rt, pltAbsent, overrides)}/${platTotal(soldiers, pltKey, rt, overrides)}`)
-    }
-    for (const { key, label: scopeLabel } of STD_SCOPES) {
-      const scopeGroup = group.filter((e) => e.scope === key)
-      lines.push(`${scopeLabel}: ${scopeGroup.length}`)
-      scopeGroup.forEach((e, n) => lines.push(formatExceptionLine(e, n, idx)))
-    }
-  }
-
-  renderBlock('HQ', 'COY HQ')
-  config.platoons.forEach((p) => {
-    lines.push(BLOCK_SEP)
-    renderBlock(p.key, p.label)
-  })
-
-  return lines.join('\n')
-}
-
-// ── Dispatch ──────────────────────────────────────────────────────────────
-
 /**
- * Renders the parade-state text report for a company, using the single
- * battalion-wide format shared by every company (see parade_state_template_new.md).
- *
- * @param input - Report data (soldiers, exceptions, duties, strength overrides).
- * @param config - Per-company parade-state config (company name, platoon blocks, visible duty types).
- * @returns The fully formatted report as a newline-joined string.
+ * Renders the parade-state text in the battalion-wide format (see parade_state_template_new.md):
+ * header, duties, company strength, then COY HQ and each platoon block with its exceptions.
+ * Posted-out soldiers and their exceptions drop out; revoked rows drop and back-to-back runs merge.
  */
-export function generateParadeReport(input: ParadeReportInput, config: ParadeStateConfig): string {
-  // Posted-out soldiers drop out of strength, and so do their exceptions
+export function generateParadeReport(input: ParadeReportInput, config: ParadeConfig): string {
   const allIdx = soldierIndex(input.soldiers)
   const soldiers = input.soldiers.filter(isOnStrength)
   const idx = soldierIndex(soldiers)
-  /** Drops revoked rows and merges back-to-back ones. */
-  const live = (list: Exception[]) => {
-    const kept = list.filter((e) => {
-      if (isRevoked(e)) return false
-      const s = soldierOf(e, allIdx)
-      return !s || isOnStrength(s)
-    })
-    return sortExceptions(mergeRuns(kept), idx)
-  }
-  const sorted: ParadeReportInput = {
-    ...input,
-    soldiers,
-    activeExceptions: live(input.activeExceptions),
-    allExceptions: input.allExceptions ? live(input.allExceptions) : undefined,
-  }
-  return generateReport(sorted, config)
+  const active = sortExceptions(mergeRuns(input.activeExceptions.filter((e) => {
+    if (isRevoked(e)) return false
+    const s = soldierOf(e, allIdx)
+    return !s || isOnStrength(s)
+  })), idx)
+  const absentKeys = new Set(active.filter((e) => e.counts_as_absence).map((e) => exceptionSoldierKey(e, idx)))
+  const dutyMap = Object.fromEntries(input.duties.map((d) => [d.duty_type, d.name ?? '']))
+  /** Display name of today's holder of a duty, or '-'. */
+  const dutyName = (type: string) => displayDutyName(dutyMap[type] ?? '', soldiers) || '-'
+
+  const company = strength(soldiers, absentKeys)
+  const lines = [
+    `40 SAR ${config.companyName} COMPANY`,
+    `${(input.paradeType ?? 'First Parade').toUpperCase()} STATE`,
+    `DATE: ${ddmmyy(input.date)} TIME: ${input.paradeTimeStr.replace(':', '')}`,
+    ...BASE_DUTY_TYPES.map((t) => `${t}: ${dutyName(t)}`),
+    ...config.platoons.map((p, i) => `${p.pdsLabel}: ${dutyName(`PDS${i + 1}`)}`),
+    SECTION_SEP,
+    `COMPANY: ${company.all}`,
+    ...company.byType.map(([rt, s]) => `${rt.toUpperCase()}: ${s}`),
+    SECTION_SEP,
+  ]
+
+  const blocks = [{ key: 'HQ', label: 'COY HQ' }, ...config.platoons]
+  blocks.forEach(({ key, label }, i) => {
+    if (i > 0) lines.push(BLOCK_SEP)
+    // An exception whose soldier can't be found still prints, under COY HQ
+    const group = active.filter((e) => (soldierOf(e, idx)?.platoon ?? 'HQ') === key)
+    const block = strength(soldiers.filter((s) => s.platoon === key), absentKeys)
+    lines.push(`${label}: ${block.all}`, ...block.byType.map(([rt, s]) => `${rt.toUpperCase()}: ${s}`))
+    for (const { key: scope, label: scopeLabel } of STD_SCOPES) {
+      const scoped = group.filter((e) => e.scope === scope)
+      lines.push(`${scopeLabel}: ${scoped.length}`, ...scoped.map((e, n) => formatExceptionLine(e, n, idx)))
+    }
+  })
+  return lines.join('\n')
 }

@@ -9,7 +9,7 @@ import { useAuth } from '@/frontend/hooks/useAuth'
 import LandingHero from '@/frontend/components/auth/LandingHero'
 import GlobalNav from './GlobalNav'
 
-const NAV_BTN = 'inline-flex h-11 min-w-11 items-center justify-center px-2 text-white/80 hover:text-white'
+const NAV_BTN = 'inline-flex h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sand-ink/80 hover:text-sand-ink active:bg-black/5'
 
 /**
  * Commander-only page frame: the landing hero while signed out, otherwise the global nav
@@ -40,7 +40,7 @@ export default function CompanyShell({ company, label, children }: { company: Co
     <div className="flex min-h-screen flex-col">
       <GlobalNav title={`${label} Coy`} href={companyHref(company)}>
         <Link href={companyHref(company, 'settings')} aria-label="Settings" title="Settings" className={NAV_BTN}>
-          <Settings className="size-4" aria-hidden />
+          <Settings className="size-5" aria-hidden />
         </Link>
         <button onClick={signOut} className={NAV_BTN}>Sign Out</button>
       </GlobalNav>

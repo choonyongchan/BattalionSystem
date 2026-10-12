@@ -1,17 +1,8 @@
 import Papa from 'papaparse'
 import type { Soldier } from '@/shared/types'
-import type { Company } from '@/shared/companies'
 import { VALID_RANKS } from '@/shared/ranks'
-import { PARADE_CONFIG } from '@/shared/companies'
 
-const DEFAULT_VALID_PLATOONS = new Set(['HQ', '1', '2', '3', '4'])
-
-/** Platoon values a company accepts in a bulk import. */
-function validPlatoonsFor(company?: Company): Set<string> {
-  if (!company) return DEFAULT_VALID_PLATOONS
-  return new Set(['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)])
-}
-
+/** A CSV row that passed validation. */
 export interface ParsedRow {
   rank: string
   name: string
@@ -20,11 +11,13 @@ export interface ParsedRow {
   isOverwrite: boolean
 }
 
+/** One problem with one CSV row (1-based, as the spreadsheet numbers it). */
 export interface RowError {
   row: number
   message: string
 }
 
+/** Rows to import, or every error; one error blocks the whole import. */
 export interface ParseResult {
   valid: ParsedRow[]
   errors: RowError[]
@@ -42,9 +35,12 @@ export function parseCSV(text: string): string[][] {
   return data
 }
 
-/** Validates CSV rows into soldiers to upsert, flagging bad rows and overwrites of existing names. */
-export function validateAndTransform(rows: string[][], existing: Soldier[], company?: Company): ParseResult {
-  const validPlatoons = validPlatoonsFor(company)
+/**
+ * Validates CSV rows into soldiers to upsert, flagging bad rows and overwrites of existing names.
+ * @param platoons Platoon keys the company accepts, HQ included.
+ */
+export function validateAndTransform(rows: string[][], existing: Soldier[], platoons: string[]): ParseResult {
+  const validPlatoons = new Set(platoons)
   // Row 0 is the description/hint row from the Google Sheets template; row 1 is the header
   if (rows.length < 2) return { valid: [], errors: [{ row: 0, message: 'CSV is empty' }] }
 

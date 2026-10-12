@@ -19,6 +19,7 @@ const SOLDIERS = [
   S('f', 'CPL', 'JOHN SANTO', null, 'asa + medic bunk'),
   S('g', 'LCP', 'ZENG YI CHUN', null, 'ASA + MEDIC BUNK'),
   S('h', 'CPT', 'OC ONE', null),
+  S('j', '3SG', 'SGT IN BUNK', '1104'), // commanders are not counted, even with a bunk
   { ...S('i', 'PTE', 'POSTED OUT', '1104'), on_strength: false },
 ]
 const EXCEPTIONS = [
@@ -28,6 +29,7 @@ const EXCEPTIONS = [
   ex('e', 'Att C', 'MC', true),
   ex('d', 'Status', 'Excuse Boots', false), // a status keeps him in the bunk
 ]
+const OUT_SCOPES = ['Others', 'Guard Duty']
 const DUTIES: DutyEntry[] = [{ duty_type: 'COS', date: DAY, name: 'JOHN SANTO / ZENG YI CHUN' }]
 
 describe('bunkOf', () => {
@@ -40,7 +42,7 @@ describe('bunkOf', () => {
 })
 
 describe('buildBunks', () => {
-  const groups = buildBunks(SOLDIERS, EXCEPTIONS, DUTIES, DAY, new Set(['c']))
+  const groups = buildBunks(SOLDIERS, EXCEPTIONS, DUTIES, DAY, new Set(['c']), OUT_SCOPES)
 
   it('groups by platoon and bunk, standalone bunks last, no-bunk and posted-out left out', () => {
     expect(groups.map((g) => [g.platoon, g.bunks.map((b) => [b.label, b.members.length])])).toEqual([
@@ -65,8 +67,8 @@ describe('buildBunks', () => {
 
 describe('generateBunkMessage', () => {
   it('prints each bunk\'s strength and only who is out', () => {
-    const groups = buildBunks(SOLDIERS, EXCEPTIONS, [], DAY, new Set())
-    expect(generateBunkMessage('Last Parade', DAY, '21:30', groups)).toBe([
+    const groups = buildBunks(SOLDIERS, EXCEPTIONS, [], DAY, new Set(), OUT_SCOPES)
+    expect(generateBunkMessage('Strength CAA', 'Last Parade', DAY, '21:30', groups)).toBe([
       '*LAST PARADE STRENGTH CAA 111026 2130HRS*',
       '',
       '*PLT 1: 2/5*',

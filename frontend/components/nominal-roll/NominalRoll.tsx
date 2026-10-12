@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Exception, Soldier } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { PARADE_CONFIG } from '@/shared/companies'
 import { todaySGDate } from '@/shared/dates'
 import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
-import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
+import { combine, useExceptions, useRefresh, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
 import { exceptionSoldierKey, isActiveOn, isOnStrength, soldierIndex, soldierKeyOf } from '@/backend/domain/exceptions/active'
 import { filterSoldiers } from '@/backend/domain/nominal-roll/roster'
 import SoldierSheet from '@/frontend/components/soldier/SoldierSheet'
@@ -18,33 +17,23 @@ import { THEME } from '@/frontend/theme'
 
 /** Nominal Roll tab: search, add, bulk import, edit and delete soldiers; opens a soldier's sheet. */
 export default function NominalRoll({ company }: { company: Company }) {
-  const platoons = ['HQ', ...PARADE_CONFIG[company].platoons.map((p) => p.key)]
   const soldierRepo = useMemo(() => new SoldierRepository(company), [company])
-
+  const soldiersQ = useSoldiers(company)
+  const exceptionsQ = useExceptions(company)
+  const settingsQ = useSettingsQuery(company)
+  const { loading, error: loadError } = combine(soldiersQ, exceptionsQ, settingsQ)
+  const [writeError, setError] = useState<string | null>(null)
+  const error = writeError ?? loadError
+  // Refetch in place: a "Loading..." swap would unmount an open SoldierSheet and jump the scroll to the top
+  const load = useRefresh(company)
+  const platoons = ['HQ', ...(settingsQ.data?.platoons ?? []).map((p) => p.key)]
   // Everyone on the roll, posted-out included; `soldiers` below is who's on strength
-  const [allSoldiers, setAllSoldiers] = useState<Soldier[]>([])
-  const [exceptions, setExceptions] = useState<Exception[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const allSoldiers = useMemo(() => soldiersQ.data ?? [], [soldiersQ.data])
+  const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
   const [showPostedOut, setShowPostedOut] = useState(false)
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [panel, setPanel] = useState<'none' | 'add' | 'import' | 'deleteAll'>('none')
-
-  useEffect(() => {
-    setLoading(true)
-    load()
-  }, [company])
-
-  /** Refreshes in place — a "Loading..." swap would unmount an open SoldierSheet and jump the scroll to the top. */
-  async function load() {
-    setError(null)
-    const [rollRes, exRes] = await Promise.all([soldierRepo.list(true), new ExceptionRepository(company).list()])
-    if (rollRes.error) setError(rollRes.error.message)
-    else setAllSoldiers(rollRes.data)
-    setExceptions(exRes.data)
-    setLoading(false)
-  }
 
   const onStrength = allSoldiers.filter(isOnStrength)
   const soldiers = showPostedOut ? allSoldiers : onStrength
@@ -146,6 +135,7 @@ export default function NominalRoll({ company }: { company: Company }) {
       {panel === 'import' && (
         <BulkImportModal
           company={company}
+          platoons={platoons}
           soldiers={allSoldiers}
           onClose={() => setPanel('none')}
           onImported={async () => { await load(); setPanel('none') }}

@@ -8,7 +8,7 @@ import type { Company } from '@/shared/companies'
 import { EXCEPTION_SCOPES, SINGLE_DATE_SCOPES } from '@/backend/domain/exceptions/exception-validation'
 import type { ExceptionScope } from '@/backend/domain/exceptions/exception-validation'
 import { SCOPE_TYPES, exceptionType, isActiveOn, isRevoked } from '@/backend/domain/exceptions/active'
-import { useSettingsQuery } from '@/frontend/hooks/useSettings'
+import { useSettingsQuery } from '@/frontend/hooks/queries'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import { ddmmyy, todaySGDate } from '@/shared/dates'
 

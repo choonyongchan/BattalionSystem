@@ -1,26 +1,30 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
-import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
-import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
+import { useState, useMemo } from 'react'
 import type { Soldier, DutyEntry } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { pointsDutyTypes } from '@/shared/companies'
+import { isOnStrength, isRevoked } from '@/backend/domain/exceptions/active'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/backend/domain/duty/duty-rules'
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/backend/domain/duty/duty-dashboard'
-import { useSettingsQuery, usePublicHolidaysQuery } from '@/frontend/hooks/useSettings'
-import { resolveDayType } from '@/backend/domain/settings/settings'
+import { combine, useDuties, useExceptions, usePublicHolidaysQuery, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
+import { pointsDutyTypes, resolveDayType } from '@/backend/domain/settings/settings'
 import { THEME } from '@/frontend/theme'
 
 /** Duty points leaderboard: who has done which duties, weighted by settings. */
 export default function DutyDashboard({ company }: { company: Company }) {
-
-  const dutyTypes = pointsDutyTypes(company)
-
-  const [soldiers, setSoldiers] = useState<Soldier[]>([])
-  const [duties, setDuties] = useState<DutyEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  const soldiersQ = useSoldiers(company)
+  const dutiesQ = useDuties(company)
+  const guardQ = useExceptions(company, 'Guard Duty')
+  const settingsQ = useSettingsQuery(company)
+  const { loading, error } = combine(soldiersQ, dutiesQ, guardQ, settingsQ)
+  const settings = settingsQ.data
+  const dutyTypes = useMemo(() => (settings ? pointsDutyTypes(settings) : []), [settings])
+  const soldiers = useMemo(() => (soldiersQ.data ?? []).filter(isOnStrength), [soldiersQ.data])
+  // Guard duties live in Exceptions; they count on their (single) date
+  const duties = useMemo<DutyEntry[]>(() => [
+    ...(dutiesQ.data ?? []),
+    ...(guardQ.data ?? []).filter((e) => !isRevoked(e)).map((e) => ({ duty_type: 'Guard Duty', date: e.end ?? e.start ?? '', name: e.name })),
+  ], [dutiesQ.data, guardQ.data])
   const [filter, setFilter] = useState('all')
   const [dayFilter, setDayFilter] = useState<'all' | 'weekday' | 'weekend'>('all')
   const [sortCol, setSortCol] = useState<string | null>(null)
@@ -36,32 +40,11 @@ export default function DutyDashboard({ company }: { company: Company }) {
     }
   }
 
-  const { data: settings } = useSettingsQuery(company)
   const { data: publicHolidays } = usePublicHolidaysQuery()
   const eligibilityOverrides = settings?.eligibility_name_overrides ?? {}
   const rankRuleOverrides = settings?.eligibility_rank_overrides ?? {}
   const guardDutyRankOverrides = settings?.guard_duty_rank_overrides ?? {}
   const holidays = useMemo(() => new Set((publicHolidays ?? []).map(h => h.date)), [publicHolidays])
-
-  useEffect(() => { load() }, [company])
-
-  /** Loads soldiers, roster duties and guard duties (stored as exceptions). */
-  async function load() {
-    setLoading(true)
-    const [{ data: sol }, { data: dut }, { data: gd }] = await Promise.all([
-      new SoldierRepository(company).list(),
-      new DutyRepository(company).list(),
-      new ExceptionRepository(company).list('Guard Duty'),
-    ])
-    setSoldiers(sol)
-    const guardDutyEntries: DutyEntry[] = gd.map((e) => ({
-      duty_type: 'Guard Duty',
-      date: e.end ?? e.start ?? '',
-      name: e.name,
-    }))
-    setDuties([...dut, ...guardDutyEntries])
-    setLoading(false)
-  }
 
   // ponytail: O(n) scan — battalion data is small; upgrade to RPC if duties > 10k rows
   const weightSettings = useMemo(() => ({
@@ -89,7 +72,7 @@ export default function DutyDashboard({ company }: { company: Company }) {
   const eligibleForDuty = useMemo(
     () => getEligibleForDuty(dutyTypes, soldiers, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [soldiers, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],
+    [dutyTypes, soldiers, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],
   )
 
   const visible = useMemo(
@@ -112,10 +95,11 @@ export default function DutyDashboard({ company }: { company: Company }) {
   }, [visible, filterPoints, filter, sortCol, sortDir, pointsByDutyType])
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
-  const dashboardContent = loading ? (
-    <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
-  ) : (
+  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+
+  return (
     <div className="space-y-6">
+            {error && <div role="alert" className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             {/* Day-type tabs */}
             <div className="flex border-b border-hairline">
@@ -228,10 +212,6 @@ export default function DutyDashboard({ company }: { company: Company }) {
                 </div>
               </div>
             </div>
-
-
     </div>
   )
-
-  return dashboardContent
 }

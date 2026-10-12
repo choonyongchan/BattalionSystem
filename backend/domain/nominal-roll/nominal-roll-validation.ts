@@ -1,7 +1,5 @@
 import type { Soldier } from '@/shared/types'
-import { ALL_RANKS, RANK_ORDER as CANONICAL_RANK_ORDER } from '@/shared/ranks'
-
-export const RANK_ORDER = Object.fromEntries(CANONICAL_RANK_ORDER.map((r, i) => [r, i]))
+import { ALL_RANKS, RANK_INDEX } from '@/shared/ranks'
 
 export interface EditRow {
   originalName: string
@@ -28,7 +26,7 @@ export function sortValue(s: Soldier, key: 'four_d' | 'platoon' | 'rank' | 'name
   switch (key) {
     case 'four_d': return (s.four_d ?? '').toLowerCase()
     case 'platoon': return (s.platoon ?? '').toLowerCase()
-    case 'rank': return RANK_ORDER[s.rank] ?? 99
+    case 'rank': return RANK_INDEX[s.rank] ?? 99
     case 'name': return s.name.toLowerCase()
   }
 }

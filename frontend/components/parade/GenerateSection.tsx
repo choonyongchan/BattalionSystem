@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import { track } from '@vercel/analytics'
 import type { Company } from '@/shared/companies'
-import { PARADE_CONFIG } from '@/shared/companies'
 import { todaySGDate } from '@/shared/dates'
 import { isActiveOn } from '@/backend/domain/exceptions/active'
 import { generateParadeReport } from '@/backend/domain/parade/parade-report'
-import { applyExcludeStayIn, sortExceptions } from '@/backend/domain/parade/exception-table'
-import { strengthInputsToNumbers } from '@/backend/domain/parade/strength'
+import { applyExcludeStayIn } from '@/backend/domain/parade/exception-table'
+import type { AppSettings } from '@/backend/domain/settings/settings'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import { PARADE_TYPES, type ParadeType } from './parade-ui'
 import { THEME } from '@/frontend/theme'
@@ -17,10 +16,9 @@ import { THEME } from '@/frontend/theme'
  * Parade options and the Generate button. The report is always for today, whatever duty
  * date is selected; the text is handed to `onGenerated`.
  */
-export default function GenerateSection({ company, companyLabel, paradeTimes, data, onGenerated }: {
+export default function GenerateSection({ company, settings, data, onGenerated }: {
   company: Company
-  companyLabel: string
-  paradeTimes: Record<string, string>
+  settings: AppSettings
   data: ParadeData
   onGenerated: (report: string, paradeType: ParadeType) => void
 }) {
@@ -31,19 +29,16 @@ export default function GenerateSection({ company, companyLabel, paradeTimes, da
   async function generate() {
     const today = todaySGDate()
     const { data: duties } = await data.repos.duties.listOn(today)
-    const active = sortExceptions(data.exceptions).filter((e) => isActiveOn(e, today))
+    const active = data.exceptions.filter((e) => isActiveOn(e, today))
     const report = generateParadeReport({
       date: today,
-      companyLabel,
       soldiers: data.allSoldiers,
       // Excluding stay-in = count them absent; their STATUS lines still print
       activeExceptions: applyExcludeStayIn(active, excludeStayIn),
-      paradeTimeStr: paradeTimes[paradeType] ?? '',
+      paradeTimeStr: settings.parade_times[paradeType] ?? '',
       duties,
-      strengthOverrides: strengthInputsToNumbers(data.strInputs),
-      allExceptions: data.exceptions,
       paradeType,
-    }, PARADE_CONFIG[company])
+    }, { companyName: company.toUpperCase(), platoons: settings.platoons })
     onGenerated(report, paradeType)
     track('parade_state_generated', { company, soldierCount: data.soldiers.length, date: today, paradeType, excludeStayIn })
   }

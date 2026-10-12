@@ -1,6 +1,7 @@
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
-import type { Company, PlatoonBlock } from '@/shared/companies'
-import { RANK_ORDER, getRankType } from '@/shared/ranks'
+import type { PlatoonBlock } from '@/shared/companies'
+import { RANK_INDEX, isCommander } from '@/shared/ranks'
+import { wordsRegex } from '@/shared/names'
 import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
 import { ddmmyy, pad2 } from '@/shared/dates'
 
@@ -70,9 +71,6 @@ export function nearestConduct(list: Conduct[], now: Date): Conduct | null {
   return best
 }
 
-/** Officers and WOSPECs — everyone who isn't an enlistee. */
-export const isCommander = (s: Soldier): boolean => getRankType(s.rank) !== 'Enlistee'
-
 export type ParticipationKind =
   /** No active exception. */
   | 'in'
@@ -100,9 +98,6 @@ export interface Participation {
   decision: ConductDecision | null
 }
 
-/** Types that need a commander's call before they count either way. */
-const CONFIRM_TYPES = new Set(['LD', 'RMJ'])
-const RMJ_RE = /\bRMJ\b/i
 
 /**
  * True for a report sick (RSI or RSO), which always falls the soldier out.
@@ -131,7 +126,7 @@ function hardOutReason(active: Exception[]): string | null {
 /** Orders soldiers most senior first, then by 4D, then name. */
 function compareSoldiers(a: Soldier, b: Soldier): number {
   return (
-    RANK_ORDER.indexOf(b.rank) - RANK_ORDER.indexOf(a.rank) ||
+    (RANK_INDEX[b.rank] ?? -1) - (RANK_INDEX[a.rank] ?? -1) ||
     (a.four_d ?? '').localeCompare(b.four_d ?? '', undefined, { numeric: true }) ||
     a.name.localeCompare(b.name)
   )
@@ -139,8 +134,10 @@ function compareSoldiers(a: Soldier, b: Soldier): number {
 
 /**
  * Sorts every on-strength soldier into taking part / falling out. Per soldier,
- * the first match wins: a hard exception; a stored decision; an LD/RMJ (out
- * pending a call); any other exception (in, with a note); else in.
+ * the first match wins: a hard exception; a stored decision; a needs-call type,
+ * by type or named in the reason (out pending a call); any other exception
+ * (in, with a note); else in.
+ * @param needsCallTypes Settings > Conducts, e.g. ['LD', 'RMJ'].
  */
 export function classifyConduct(
   conduct: Conduct,
@@ -148,8 +145,11 @@ export function classifyConduct(
   exceptions: Exception[],
   decisions: ConductDecision[],
   todayISO: string,
+  needsCallTypes: string[],
 ): Participation[] {
   const people = soldiers.filter(isOnStrength).sort(compareSoldiers)
+  const callTypes = new Set(needsCallTypes)
+  const callRe = wordsRegex(needsCallTypes)
   const active = buildActiveMap(exceptions, people, conductDay(conduct, todayISO))
   const decisionFor = new Map(decisions.filter((d) => d.conduct_id === conduct.id).map((d) => [d.soldier_id, d]))
 
@@ -173,7 +173,7 @@ export function classifyConduct(
       }
     }
 
-    if (soft.some((e) => CONFIRM_TYPES.has(exceptionType(e)) || RMJ_RE.test(e.reason ?? '')))
+    if (soft.some((e) => callTypes.has(exceptionType(e)) || callRe.test(e.reason ?? '')))
       return { soldier, kind: 'out-default', participating: false, reason: softReason, note: null, decision: null }
     if (soft.length) return { soldier, kind: 'in-excused', participating: true, reason: null, note: softReason, decision: null }
     return { soldier, kind: 'in', participating: true, reason: null, note: null, decision: null }
@@ -183,21 +183,15 @@ export function classifyConduct(
 /** The "needs a call" pile: pinged and not yet decided. */
 export const needsDecision = (parts: Participation[]): Participation[] => parts.filter((p) => p.kind === 'out-default')
 
-/** Companies whose COY HQ sits out of conducts entirely: not counted, not listed. */
-const HQ_EXCLUDED = new Set<Company>(['hercules'])
-/** Whether COY HQ takes part in conducts for this company. */
-export const conductIncludesHQ = (company: Company): boolean => !HQ_EXCLUDED.has(company)
+/** The roll a conduct is classified over: troopers only, less COY HQ when it sits out. */
+export const conductSoldiers = (soldiers: Soldier[], includeHQ: boolean): Soldier[] =>
+  soldiers.filter((s) => !isCommander(s) && (includeHQ || s.platoon !== 'HQ'))
 
-/** The roll a conduct is classified over — the whole company, less COY HQ where it sits out. */
-export const conductSoldiers = (company: Company, soldiers: Soldier[]): Soldier[] =>
-  conductIncludesHQ(company) ? soldiers : soldiers.filter((s) => s.platoon !== 'HQ')
-
-/** COY HQ first (unless it sits out), then the company's platoons — the same blocks as the parade state. */
-export function conductBlocks(platoons: PlatoonBlock[], includeHQ = true): { key: string; label: string }[] {
+/** COY HQ first (unless it sits out), then the company's platoons: the same blocks as the parade state. */
+export function conductBlocks(platoons: PlatoonBlock[], includeHQ: boolean): { key: string; label: string }[] {
   const blocks = platoons.map((p) => ({ key: p.key, label: p.label }))
   return includeHQ ? [{ key: 'HQ', label: 'COY HQ' }, ...blocks] : blocks
 }
-
 
 /** Title, date and time lines for a conduct state. */
 function headerLines(label: string, c: Conduct): string[] {
@@ -207,18 +201,10 @@ function headerLines(label: string, c: Conduct): string[] {
   return lines
 }
 
-/** Commander, trooper and overall in/total counts, plus the fall-out count. */
+/** In/total and fall-out counts, zero-padded. */
 function strengthLines(parts: Participation[]): string[] {
-  /** "in/total" for a group, zero-padded. */
-  const inOf = (g: Participation[]) => `${pad2(g.filter((p) => p.participating).length)}/${pad2(g.length)}`
-  const cdrs = parts.filter((p) => isCommander(p.soldier))
-  const troopers = parts.filter((p) => !isCommander(p.soldier))
-  return [
-    `COMMANDERS: ${inOf(cdrs)}`,
-    `TROOPERS: ${inOf(troopers)}`,
-    `OVERALL: ${inOf(parts)}`,
-    `FALL OUT: ${pad2(parts.filter((p) => !p.participating).length)}`,
-  ]
+  const out = parts.filter((p) => !p.participating).length
+  return [`OVERALL: ${pad2(parts.length - out)}/${pad2(parts.length)}`, `FALL OUT: ${pad2(out)}`]
 }
 
 /** Numbered fall-out lines with each reason. */
@@ -228,25 +214,19 @@ function fallOutLines(parts: Participation[]): string[] {
     .map((p, i) => `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name} — ${(p.reason ?? '').toUpperCase()}`)
 }
 
-/** The whole company's conduct state: strength, trooper fall-outs per block, commander fall-outs last. */
-export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[], platoons: PlatoonBlock[], includeHQ = true): string {
+/** The whole company's conduct state: strength, then fall-outs per block. */
+export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[], platoons: PlatoonBlock[], includeHQ: boolean): string {
   const lines = [...headerLines(`${companyLabel.toUpperCase()} COY`, c), '', ...strengthLines(parts)]
   for (const block of conductBlocks(platoons, includeHQ)) {
-    const out = fallOutLines(parts.filter((p) => p.soldier.platoon === block.key && !isCommander(p.soldier)))
+    const out = fallOutLines(parts.filter((p) => p.soldier.platoon === block.key))
     lines.push('', `${block.label}: ${pad2(out.length)}`, ...out)
   }
-  const cdrOut = fallOutLines(parts.filter((p) => isCommander(p.soldier)))
-  lines.push('', `COMMANDERS: ${pad2(cdrOut.length)}`, ...cdrOut)
   return lines.join('\n')
 }
 
-/** One block's conduct state — what each PDS sends up before it's collated. */
+/** One block's conduct state: what each PDS sends up before it's collated. */
 export function generatePlatoonConductState(c: Conduct, parts: Participation[], block: { key: string; label: string }): string {
   const mine = parts.filter((p) => p.soldier.platoon === block.key)
-  const lines = [...headerLines(block.label, c), '', ...strengthLines(mine)]
-  const out = fallOutLines(mine.filter((p) => !isCommander(p.soldier)))
-  if (out.length) lines.push('', ...out)
-  const cdrOut = fallOutLines(mine.filter((p) => isCommander(p.soldier)))
-  if (cdrOut.length) lines.push('', `COMMANDERS: ${pad2(cdrOut.length)}`, ...cdrOut)
-  return lines.join('\n')
+  const out = fallOutLines(mine)
+  return [...headerLines(block.label, c), '', ...strengthLines(mine), ...(out.length ? ['', ...out] : [])].join('\n')
 }

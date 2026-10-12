@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  SCOPE_TYPES, scopeOfType, exceptionType, isRevoked, isActiveOn,
+  SCOPE_TYPES, exceptionType, isRevoked, isActiveOn,
   soldierKeyOf, soldierIndex, exceptionSoldierKey, buildActiveMap, mergeRuns, isOnStrength, exceptionLinkFields } from '@/backend/domain/exceptions/active'
 import type { Exception, Soldier } from '@/shared/types'
 
@@ -16,10 +16,9 @@ const TAN: Soldier = { id: 'u-tan', rank: 'PTE', name: 'TAN AH KOW', platoon: '1
 const LIM: Soldier = { id: 'u-lim', rank: 'CPL', name: 'LIM BAH', platoon: '2' }
 
 describe('types and scopes', () => {
-  it('every scope offers at least one type, and each type maps back to its scope', () => {
-    for (const [scope, types] of Object.entries(SCOPE_TYPES)) {
+  it('every scope offers at least one type', () => {
+    for (const types of Object.values(SCOPE_TYPES)) {
       expect(types.length).toBeGreaterThan(0)
-      for (const t of types) expect(scopeOfType(t)).toBe(scope)
     }
   })
 

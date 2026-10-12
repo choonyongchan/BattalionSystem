@@ -162,8 +162,9 @@ describe('rank rule overrides', () => {
 // â”€â”€ Negative / edge cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe('edge cases', () => {
-  it('unknown duty type returns false', () => {
-    expect(isEligible('XYZ', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
+  it('a duty type with no rule (e.g. added in Settings) is open to any known rank', () => {
+    expect(isEligible('XYZ', s('LTA'), NO_OVERRIDES, NO_RANK_RULES)).toBe(true)
+    expect(isEligible('XYZ', s('BRIG'), NO_OVERRIDES, NO_RANK_RULES)).toBe(false)
   })
 
   it('soldier with unknown rank (not in RANK_ORDER) returns false', () => {
