@@ -1,5 +1,5 @@
 -- Unified schema for all companies in one Supabase project.
--- Each company gets prefixed tables: {Company}_NominalRoll, _Exceptions, _Duty, _Configuration,
+-- Each company gets prefixed tables: {Company}_NominalRoll, _Exceptions, _Duty,
 -- _StrengthOverride, _Settings, _OffLeave.
 -- Run scripts/sync-schema.ts to apply to the hercules project.
 -- Safe to re-run (IF NOT EXISTS, ON CONFLICT DO NOTHING).
@@ -55,21 +55,9 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_Duty" DROP CONSTRAINT IF EXISTS "%s_Duty_duty_type_check"', c, c);
     EXECUTE format('ALTER TABLE public."%s_Duty" ADD CONSTRAINT "%s_Duty_duty_type_check" CHECK (duty_type = ANY (ARRAY[''CDO'',''CDS'',''COS'',''PDS1'',''PDS2'',''PDS3'',''PDS4'',''Duty Clerk'']))', c, c);
 
-    -- Deprecated: superseded by "%s_Settings" below (typed jsonb singleton) and lib/settings.ts.
-    -- New code must NOT write to this table — see the matching @deprecated marker on
-    -- ConfigTable/Configuration in lib/supabase.ts. Left in place — this sync tool has no
-    -- DROP/rollback capability. Safe to drop manually once confidence is high.
-    EXECUTE format('
-      CREATE TABLE IF NOT EXISTS public."%s_Configuration" (
-        parade_type text NOT NULL,
-        time        text NOT NULL,
-        PRIMARY KEY (parade_type)
-      )', c);
-
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_NominalRoll"   TO authenticated', c);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Exceptions"    TO authenticated', c);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Duty"          TO authenticated', c);
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public."%s_Configuration" TO authenticated', c);
 
     EXECUTE format('
       CREATE TABLE IF NOT EXISTS public."%s_StrengthOverride" (
@@ -113,7 +101,6 @@ BEGIN
     EXECUTE format('ALTER TABLE public."%s_NominalRoll"       ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Exceptions"        ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Duty"              ENABLE ROW LEVEL SECURITY', c);
-    EXECUTE format('ALTER TABLE public."%s_Configuration"     ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_StrengthOverride"  ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_Settings"          ENABLE ROW LEVEL SECURITY', c);
     EXECUTE format('ALTER TABLE public."%s_OffLeave"          ENABLE ROW LEVEL SECURITY', c);
@@ -121,7 +108,6 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_NominalRoll"   ON public."%s_NominalRoll"',   c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Exceptions"    ON public."%s_Exceptions"',    c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Duty"          ON public."%s_Duty"',          c, c);
-    EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Configuration"     ON public."%s_Configuration"',     c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"', c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_Settings" ON public."%s_Settings"', c, c);
     EXECUTE format('DROP POLICY IF EXISTS "authenticated can manage %s_OffLeave" ON public."%s_OffLeave"', c, c);
@@ -148,13 +134,6 @@ BEGIN
       c, c, c, c);
 
     EXECUTE format(
-      'CREATE POLICY "authenticated can manage %s_Configuration" ON public."%s_Configuration"
-       FOR ALL TO authenticated
-       USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
-       WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
-      c, c, c, c);
-
-    EXECUTE format(
       'CREATE POLICY "authenticated can manage %s_StrengthOverride" ON public."%s_StrengthOverride"
        FOR ALL TO authenticated
        USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
@@ -174,12 +153,6 @@ BEGIN
        USING (auth.email() = lower(''%s'') || ''@40sar.internal'')
        WITH CHECK (auth.email() = lower(''%s'') || ''@40sar.internal'')',
       c, c, c, c);
-
-    EXECUTE format('
-      INSERT INTO public."%s_Configuration" (parade_type, time) VALUES
-        (''First Parade'', ''09:30:00''),
-        (''Last Parade'',  ''17:30:00'')
-      ON CONFLICT (parade_type) DO NOTHING', c);
 
     EXECUTE format('
       INSERT INTO public."%s_Settings" (id) VALUES (1)
