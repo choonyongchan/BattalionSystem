@@ -15,7 +15,12 @@ test.describe('Workspace tabs', () => {
     await expect(page.getByRole('tab', { name: 'Nominal Roll' })).toBeVisible({ timeout: 15000 })
   })
 
-  test('RSI lists the day\'s report sick in the generated message', async ({ page }) => {
+  test('Overview is the default tab', async ({ page }) => {
+    await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible({ timeout: 10000 })
+  })
+
+  test('Report Sick lists the day\'s RSI in the generated message', async ({ page }) => {
     await page.getByRole('tab', { name: 'Report Sick' }).click()
     await expect(page.getByText('TAN RONG XIAN').first()).toBeVisible({ timeout: 10000 })
   })

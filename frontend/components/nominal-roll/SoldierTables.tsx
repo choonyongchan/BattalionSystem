@@ -6,6 +6,7 @@ import type { Exception, Soldier } from '@/shared/types'
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import type { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
 import { isOnStrength } from '@/backend/domain/exceptions/active'
+import { bunkOf } from '@/backend/domain/overview/bunks'
 import { validateEdit, type EditRow } from '@/backend/domain/nominal-roll/nominal-roll-validation'
 import { groupByRankType, RANK_SECTIONS, sortSoldiers, type SoldierSortKey, type SortDir } from '@/backend/domain/nominal-roll/roster'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
@@ -78,6 +79,7 @@ export default function SoldierTables({ company, platoons, soldiers, repo, activ
       name: newName,
       platoon: edit.platoon,
       four_d: edit.four_d.trim() || null,
+      bunk: edit.bunk?.trim().toUpperCase() || null,
     })
     // Exceptions are linked by soldier_id now, but they also carry the name as text —
     // keep it in step so every screen (and rows written before the link) reads the new name
@@ -128,6 +130,7 @@ export default function SoldierTables({ company, platoons, soldiers, repo, activ
                           </button>
                         </th>
                       ))}
+                      <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Bunk</th>
                       <th />
                     </tr>
                   </thead>
@@ -155,6 +158,9 @@ export default function SoldierTables({ company, platoons, soldiers, repo, activ
                                 <input type="text" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} onKeyDown={keys} className={editClass('name')} />
                               </td>
                               <td className="px-2 py-1">
+                                <input type="text" aria-label="Bunk" value={edit.bunk ?? ''} onChange={(e) => setEdit({ ...edit, bunk: e.target.value })} onKeyDown={keys} placeholder={bunkOf({ ...s, bunk: null }) ?? 'e.g. ASA + MEDIC BUNK'} className={editClass('bunk')} />
+                              </td>
+                              <td className="px-2 py-1">
                                 <div className="flex gap-1 justify-end">
                                   <button onClick={save} disabled={saving} className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}>
                                     {saving ? '…' : 'Save'}
@@ -172,12 +178,13 @@ export default function SoldierTables({ company, platoons, soldiers, repo, activ
                                 <button onClick={() => onOpen(s)} className="text-left hover:underline">{s.name}</button>
                                 {!isOnStrength(s) && <span className="ml-2 text-xs text-danger">posted out</span>}
                               </td>
+                              <td className={`px-3 py-1.5 whitespace-nowrap text-xs ${s.bunk ? 'text-ink-80' : 'text-ink-60'}`}>{bunkOf(s) ?? '–'}</td>
                               <td className="px-3 py-1.5 whitespace-nowrap">
                                 <div className="flex gap-1 justify-end items-center">
                                   <button
                                     onClick={() => confirming
                                       ? confirm.resolve(() => remove(s.name))
-                                      : (setEdit({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '' }), setErrors({}))}
+                                      : (setEdit({ originalName: s.name, rank: s.rank, name: s.name, platoon: s.platoon, four_d: s.four_d ?? '', bunk: s.bunk ?? '' }), setErrors({}))}
                                     disabled={deletingName === s.name}
                                     className={confirming
                                       ? 'px-2 py-1 bg-danger hover:bg-danger active:bg-danger text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50'

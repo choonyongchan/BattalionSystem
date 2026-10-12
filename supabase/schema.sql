@@ -167,6 +167,8 @@ BEGIN
     END IF;
     -- false = posted out: hidden from strength and the roll, history kept
     EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS on_strength boolean NOT NULL DEFAULT true', c);
+    -- Bunk label for soldiers whose 4D does not give it (e.g. ''ASA + MEDIC BUNK''); null = read off the 4D
+    EXECUTE format('ALTER TABLE public."%s_NominalRoll" ADD COLUMN IF NOT EXISTS bunk text', c);
 
     -- SET NULL, not CASCADE: clearing the roll before a bulk re-import must not
     -- wipe exceptions — they fall back to matching by name (see soldierKey()).

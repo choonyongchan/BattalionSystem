@@ -8,10 +8,11 @@ import DutyDashboard from '@/frontend/components/dashboard/DutyDashboard'
 import OffLeaveTracking from '@/frontend/components/off-leave/OffLeaveTracking'
 import ConductsTab from '@/frontend/components/conducts/ConductsTab'
 import ReportSickTab from '@/frontend/components/report-sick/ReportSickTab'
+import OverviewTab from '@/frontend/components/overview/OverviewTab'
 import CompanyShell from './CompanyShell'
 import TabBar, { isTabId, type TabId } from './TabBar'
 
-const DEFAULT_TAB: TabId = 'dashboard'
+const DEFAULT_TAB: TabId = 'overview'
 
 /** Reads the tab from ?tab= so a tab can be bookmarked or shared. */
 function tabFromUrl(): TabId {
@@ -47,6 +48,7 @@ function Workspace({ company, label }: { company: Company; label: string }) {
     <>
       <TabBar active={tab} onSelect={select} />
       <main id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mx-auto w-full max-w-screen-2xl flex-1 px-4 py-6 sm:px-6">
+        {tab === 'overview' && <OverviewTab company={company} />}
         {tab === 'dashboard' && <DutyDashboard company={company} />}
         {tab === 'nominal-roll' && <NominalRoll company={company} />}
         {tab === 'parade-state' && <ParadeState company={company} companyLabel={label} />}

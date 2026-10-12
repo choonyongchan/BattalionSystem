@@ -9,6 +9,8 @@ export interface EditRow {
   name: string
   platoon: string
   four_d: string
+  /** Bunk label when the 4D does not give it. */
+  bunk?: string
 }
 
 /** Field errors for an edited nominal roll row. */

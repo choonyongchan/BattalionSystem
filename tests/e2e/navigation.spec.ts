@@ -40,6 +40,6 @@ test.describe('Site navigation', () => {
 
     // Arrow keys move between tabs (WAI-ARIA tabs pattern)
     await page.keyboard.press('ArrowRight')
-    await expect(page.getByRole('tab', { name: 'Parade State' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
   })
 })

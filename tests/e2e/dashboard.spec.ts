@@ -6,7 +6,7 @@ test.describe('Duty Dashboard workflow', () => {
     const hasRealCreds = !!password && password !== 'YOUR_TEST_PASSWORD'
     test.skip(!hasRealCreds, 'TEST_SUPABASE_PASSWORD not configured in .env.test')
 
-    await page.goto('/test/') // Dashboard is the default tab
+    await page.goto('/test/?tab=dashboard')
     await page.getByPlaceholder('Password').fill(password!)
     await page.keyboard.press('Enter')
     await expect(page.getByText('Duty Breakdown')).toBeVisible({ timeout: 15000 })

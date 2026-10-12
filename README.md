@@ -10,13 +10,20 @@ Open the site. The landing page has the commander sign-in. Enter the company pas
 
 After 3 wrong passwords the form locks for 30 seconds.
 
-Once you are signed in, the same page becomes the workspace. **Sign Out** is at the top right.
+Once you are signed in, the same page becomes the workspace, opening on **Overview**. **Sign Out** is at the top right.
 
 ## The workspace
 
-Tabs are grouped by what you are doing. The open tab is kept in the address bar (e.g. `?tab=rsi`), so you can bookmark or share a tab. Use the arrow keys to move between tabs.
+Tabs are grouped by what you are doing. The open tab is kept in the address bar (e.g. `?tab=report-sick`), so you can bookmark or share a tab. Use the arrow keys to move between tabs.
 
 ### Daily
+
+**Overview**: strength by bunk for a parade (Last Parade by default; pick the parade, date and time).
+
+- A soldier's bunk comes from their 4D (`1203` = PLT 1 BUNK 2), or from the **Bunk** field on the Nominal Roll (e.g. `ASA + MEDIC BUNK`). Soldiers with neither are not counted.
+- Someone is out of the bunk when they have an exception that counts as absent, an Others entry (e.g. Stay Out, Book In Next Day), Guard Duty, or a roster duty that day. The reason shows next to their name.
+- Untick anyone else who is out. They show as ❌️ until a reason is keyed. Ticks are not saved; they reset when you reload.
+- Copy the strength message. It lists each bunk's strength and only the people who are out.
 
 **Parade State** has four steps along the top:
 
@@ -39,6 +46,7 @@ NRICs are stored in the database. Anyone with the company password can see them,
 
 **Nominal Roll**: everyone in the company by platoon and rank.
 
+- Set a **Bunk** with the edit (✎) button when the 4D does not give it.
 - Add one soldier with the form, or bulk import a CSV from the Google Sheets template. The template needs the columns `4D`, `Rank`, `Name` and `Platoon`. Existing names are updated, not duplicated.
 - Click a soldier to open their sheet. It shows current, upcoming, past and revoked exceptions. From there you can add, edit, end today, revoke or delete an exception.
 

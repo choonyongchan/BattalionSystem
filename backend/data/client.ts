@@ -3,9 +3,9 @@ import type { Company } from '@/shared/companies'
 import { companyLabel } from '@/shared/companies'
 
 type NominalRollTable = {
-  Row:           { id: string; rank: string; name: string; platoon: string; four_d: string | null; on_strength: boolean }
-  Insert:        { id?: string; rank: string; name: string; platoon: string; four_d?: string | null; on_strength?: boolean }
-  Update:        { id?: string; rank?: string; name?: string; platoon?: string; four_d?: string | null; on_strength?: boolean }
+  Row:           { id: string; rank: string; name: string; platoon: string; four_d: string | null; on_strength: boolean; bunk: string | null }
+  Insert:        { id?: string; rank: string; name: string; platoon: string; four_d?: string | null; on_strength?: boolean; bunk?: string | null }
+  Update:        { id?: string; rank?: string; name?: string; platoon?: string; four_d?: string | null; on_strength?: boolean; bunk?: string | null }
   Relationships: []
 }
 type ExceptionsTable = {

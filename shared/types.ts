@@ -7,6 +7,8 @@ export interface Soldier {
   four_d?: string | null
   /** false = posted out: hidden from strength and the roll, history kept. Absent = on strength. */
   on_strength?: boolean
+  /** Bunk label when the 4D does not give it, e.g. "ASA + MEDIC BUNK". */
+  bunk?: string | null
 }
 
 export interface Exception {

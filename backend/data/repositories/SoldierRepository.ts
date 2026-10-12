@@ -3,7 +3,7 @@ import type { Soldier } from '@/shared/types'
 import { CompanyRepository, rows, type ListResult, type WriteResult } from './CompanyRepository'
 
 /** Editable fields of a nominal roll row. */
-export type SoldierFields = Pick<Soldier, 'rank' | 'name' | 'platoon'> & Partial<Pick<Soldier, 'four_d' | 'on_strength'>>
+export type SoldierFields = Pick<Soldier, 'rank' | 'name' | 'platoon'> & Partial<Pick<Soldier, 'four_d' | 'on_strength' | 'bunk'>>
 
 /** Reads and writes a company's nominal roll. */
 export class SoldierRepository extends CompanyRepository {

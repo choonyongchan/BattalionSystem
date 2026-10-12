@@ -1,6 +1,6 @@
 # Developer Guide
 
-BattalionSystem is a company admin dashboard for 40SAR: parade state, report sick, nominal roll, off/leave, duty roster and conducts. It is a client-only Next.js 16 app built as a static export (`output: 'export'`), backed by one Supabase project.
+BattalionSystem is a company admin dashboard for 40SAR: bunk overview, parade state, report sick, nominal roll, off/leave, duty roster and conducts. It is a client-only Next.js 16 app built as a static export (`output: 'export'`), backed by one Supabase project.
 
 ## Setup
 
@@ -57,7 +57,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `app/settings/` | `/settings` for Hercules |
 | `app/[company]/` | `/<company>/` and `/<company>/settings`. `company-param.ts` allowlists the param. |
 | `frontend/components/layout/` | `CompanyShell` (auth gate and nav), `GlobalNav`, `TabBar`, `CompanyContent` (tabs and `?tab=`) |
-| `frontend/components/<feature>/` | One folder per tab or feature: `parade`, `report-sick`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
+| `frontend/components/<feature>/` | One folder per tab or feature: `overview`, `parade`, `report-sick`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
 | `frontend/components/ui/` | shadcn components (`components.json` points here) |
 | `frontend/components/shared/` | Shared UI bits and style constants (`styles.ts`) |
 | `frontend/hooks/` | `useAuth`, `useSettings`, `useParadeData`, `useConfirmDelete` |
@@ -65,7 +65,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `backend/data/client.ts` | Supabase client and `tbl(company, table)` |
 | `backend/data/auth.ts` | Commander sign-in |
 | `backend/data/repositories/` | One class per table (see below) |
-| `backend/domain/<feature>/` | Pure functions: parade report, strength, duty points, report sick, validation, bulk import |
+| `backend/domain/<feature>/` | Pure functions: bunk overview, parade report, strength, duty points, report sick, validation, bulk import |
 | `shared/` | `types`, `companies`, `ranks`, `names`, `dates`, `utils` |
 
 ### Repositories

@@ -29,13 +29,13 @@ describe('CompanyContent signed in', () => {
   beforeAll(resetTestDb, 30000)
   afterAll(() => supabase.auth.signOut())
 
-  it('groups the six tabs and opens the tab named in ?tab=', async () => {
+  it('groups the seven tabs and opens the tab named in ?tab=', async () => {
     window.history.replaceState(null, '', '/test/?tab=report-sick')
     renderApp()
     const rsi = await screen.findByRole('tab', { name: 'Report Sick' }, { timeout: 10000 })
     await waitFor(() => expect(rsi).toHaveAttribute('aria-selected', 'true'))
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(
-      ['Parade State', 'Report Sick', 'Nominal Roll', 'Off/Leave', 'Duty Dashboard', 'Conducts'],
+      ['Overview', 'Parade State', 'Report Sick', 'Nominal Roll', 'Off/Leave', 'Duty Dashboard', 'Conducts'],
     )
   })
 
@@ -46,14 +46,14 @@ describe('CompanyContent signed in', () => {
     expect(window.location.search).toBe('?tab=conducts')
 
     await userEvent.keyboard('{ArrowRight}') // wraps from the last tab to the first
-    expect(screen.getByRole('tab', { name: 'Parade State' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Parade State' })).toHaveFocus()
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveFocus()
   })
 
-  it('falls back to the Duty Dashboard for an unknown ?tab=', async () => {
+  it('falls back to the Overview for an unknown ?tab=', async () => {
     window.history.replaceState(null, '', '/test/?tab=nope')
     renderApp()
-    const tab = await screen.findByRole('tab', { name: 'Duty Dashboard' }, { timeout: 10000 })
+    const tab = await screen.findByRole('tab', { name: 'Overview' }, { timeout: 10000 })
     expect(tab).toHaveAttribute('aria-selected', 'true')
   })
 })
