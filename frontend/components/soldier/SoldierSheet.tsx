@@ -26,7 +26,7 @@ type Form = { id: number | null; scope: ExceptionScope; type: string; reason: st
 /**
  * One soldier's exceptions in one place: what's running or coming up, what's
  * over, and what was revoked — with add, edit, end today, revoke and delete.
- * Rows are keyed to him by soldier_id (see lib/exceptions/active.ts).
+ * Rows are keyed to him by soldier_id (see backend/domain/exceptions/active.ts).
  */
 export default function SoldierSheet({ company, soldier, exceptions, onClose, onChanged }: {
   company: Company

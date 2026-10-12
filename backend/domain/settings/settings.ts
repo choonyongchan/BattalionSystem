@@ -71,7 +71,7 @@ export function mergeSettings(raw: Partial<Record<keyof AppSettings, unknown>> |
   return merged
 }
 
-/** Single source of truth for day-type classification, reused by lib/duty-dashboard.ts. */
+/** Single source of truth for day-type classification, reused by backend/domain/duty/duty-dashboard.ts. */
 export function resolveDayType(dateISO: string, holidays: Set<string>): DayType {
   if (holidays.has(dateISO)) return 'PublicHoliday'
   const date = parseISO(dateISO)

@@ -27,7 +27,6 @@ next-env.d.ts
 .vercel
 .env*
 .superpowers/
-docs/
 parade-state-example/
 graphify-out/
 backups/
