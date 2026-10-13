@@ -5,6 +5,11 @@ export function todaySGDate(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' })
 }
 
+/** Returns the current Singapore time as HH:MM. */
+export function nowSGTime(): string {
+  return new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit' })
+}
+
 /** Formats an ISO date for display, e.g. "05 Mar 26". */
 export function toSGDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'UTC' })

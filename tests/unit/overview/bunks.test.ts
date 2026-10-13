@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { applyExcludeStayIn } from '@/backend/domain/parade/exception-table'
 import { bunkOf, buildBunks, generateBunkMessage } from '@/backend/domain/overview/bunks'
 import type { DutyEntry, Exception, Soldier } from '@/shared/types'
 
@@ -65,6 +66,16 @@ describe('buildBunks', () => {
   })
 })
 
+describe('present despite a reason', () => {
+  const groups = buildBunks(SOLDIERS, EXCEPTIONS, [], DAY, new Set(), OUT_SCOPES, new Set(['a']))
+
+  it('counts the soldier in, flags the reason, and lists them in the message', () => {
+    const kai = groups[0].bunks[0].members.find((m) => m.soldier.name === 'KAI YANG')!
+    expect(kai).toMatchObject({ reasons: [], flagged: ['Stay Out'] })
+    expect(generateBunkMessage('t', 'LAST PARADE', DAY, '21:30', groups)).toContain('*⚠️ PRESENT DESPITE REASON*\n`1101 PTE KAI YANG - Stay Out`')
+  })
+})
+
 describe('generateBunkMessage', () => {
   it('prints each bunk\'s strength and only who is out', () => {
     const groups = buildBunks(SOLDIERS, EXCEPTIONS, [], DAY, new Set(), OUT_SCOPES)
@@ -74,13 +85,24 @@ describe('generateBunkMessage', () => {
       '*PLT 1: 2/5*',
       '',
       '*PLT 1 BUNK 1 (1/3)*',
-      '1101 PTE KAI YANG - Stay Out',
-      '1102 PTE ASHRAF BIN AFFENDY - Annual Leave',
+      '`1101 PTE KAI YANG - Stay Out`',
+      '`1102 PTE ASHRAF BIN AFFENDY - Annual Leave`',
       '',
       '*PLT 1 BUNK 2 (1/2)*',
-      '1203 PTE KAUSHAL - Stay Out, MC',
+      '`1203 PTE KAUSHAL - Stay Out, MC`',
       '',
       '*ASA + MEDIC BUNK (2/2)*',
     ].join('\n'))
+  })
+})
+
+describe('excusing stay-in personnel', () => {
+  const stayIn: Exception = { ...ex('d', 'Status', 'Excuse Stay-In', false) }
+  const out = (exclude: boolean) => buildBunks(SOLDIERS, applyExcludeStayIn([stayIn], exclude), [], DAY, new Set(), OUT_SCOPES)
+    .flatMap((g) => g.bunks.flatMap((b) => b.members)).find((m) => m.soldier.name === 'JAY LIEW')!
+
+  it('keeps a stay-in soldier in the bunk unless excluded', () => {
+    expect(out(false).reasons).toEqual([])
+    expect(out(true).reasons).toEqual(['Excuse Stay-In'])
   })
 })

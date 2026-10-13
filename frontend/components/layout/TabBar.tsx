@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { CalendarDays, ClipboardList, Ellipsis, Flag, LayoutGrid, Stethoscope, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { Dialog } from '@/frontend/components/ui/dialog'
 
@@ -19,7 +19,7 @@ const TAB_GROUPS: { name: string; tabs: Tab[] }[] = [
     { id: 'nominal-roll', label: 'Nominal Roll', icon: Users },
     { id: 'off-leave', label: 'Off/Leave', icon: CalendarDays },
   ] },
-  { name: 'Duty & training', tabs: [
+  { name: 'Duty & Training', tabs: [
     { id: 'dashboard', label: 'Duty Dashboard', icon: Trophy },
     { id: 'conducts', label: 'Conducts', icon: Flag },
   ] },
@@ -46,11 +46,12 @@ export default function TabBar({ active, onSelect }: { active: TabId; onSelect: 
 
   /** Moves selection and focus with the keyboard. */
   function onKeyDown(e: KeyboardEvent) {
-    const i = ALL_TABS.findIndex((t) => t.id === active)
-    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: ALL_TABS.length - 1 }[e.key]
+    const tabs = group.tabs
+    const i = tabs.findIndex((t) => t.id === active)
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key]
     if (next === undefined) return
     e.preventDefault()
-    const id = ALL_TABS[(next + ALL_TABS.length) % ALL_TABS.length].id
+    const id = tabs[(next + tabs.length) % tabs.length].id
     onSelect(id)
     refs.current[id]?.focus()
   }
@@ -63,42 +64,57 @@ export default function TabBar({ active, onSelect }: { active: TabId; onSelect: 
   }
 
   const moreActive = MORE.some((t) => t.id === active)
+  const group = TAB_GROUPS.find((g) => g.tabs.some((t) => t.id === active))!
 
   return (
     <>
       <div className="sticky top-14 z-20 hidden border-b border-hairline bg-pearl/90 backdrop-blur md:block">
+        <div className="mx-auto flex max-w-screen-2xl items-center gap-2 px-6 pt-2">
+          <div role="radiogroup" aria-label="Section" className="flex shrink-0 gap-1 rounded-full bg-parchment p-1">
+            {TAB_GROUPS.map((g) => {
+              const current = g === group
+              return (
+                <button
+                  key={g.name}
+                  role="radio"
+                  aria-checked={current}
+                  onClick={() => !current && onSelect(g.tabs[0].id)}
+                  className={`h-8 whitespace-nowrap rounded-full px-4 text-sm font-medium ${current
+                    ? 'bg-action text-white'
+                    : 'text-ink-60 hover:text-ink-80'}`}
+                >
+                  {g.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <div
           role="tablist"
-          aria-label="Workspace"
+          aria-label={group.name}
           onKeyDown={onKeyDown}
-          className="mx-auto flex h-12 max-w-screen-2xl items-center gap-1 overflow-x-auto px-6"
+          className="mx-auto flex h-11 max-w-screen-2xl items-center gap-1 overflow-x-auto px-6"
         >
-          {TAB_GROUPS.map((g, gi) => (
-            <Fragment key={g.name}>
-              {gi > 0 && <span aria-hidden className="mx-2 h-5 w-px shrink-0 bg-hairline" />}
-              <span aria-hidden className="mr-1 shrink-0 text-xs text-ink-60">{g.name}</span>
-              {g.tabs.map((t) => {
-                const selected = t.id === active
-                return (
-                  <button
-                    key={t.id}
-                    ref={(el) => { refs.current[t.id] = el }}
-                    role="tab"
-                    id={`tab-${t.id}`}
-                    aria-selected={selected}
-                    aria-controls="workspace-panel"
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => onSelect(t.id)}
-                    className={`h-12 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium ${selected
-                      ? 'border-action text-ink'
-                      : 'border-transparent text-ink-60 hover:border-hairline hover:text-ink-80'}`}
-                  >
-                    {t.label}
-                  </button>
-                )
-              })}
-            </Fragment>
-          ))}
+          {group.tabs.map((t) => {
+            const selected = t.id === active
+            return (
+              <button
+                key={t.id}
+                ref={(el) => { refs.current[t.id] = el }}
+                role="tab"
+                id={`tab-${t.id}`}
+                aria-selected={selected}
+                aria-controls="workspace-panel"
+                tabIndex={selected ? 0 : -1}
+                onClick={() => onSelect(t.id)}
+                className={`h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium ${selected
+                  ? 'border-action text-ink'
+                  : 'border-transparent text-ink-60 hover:border-hairline hover:text-ink-80'}`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

@@ -218,6 +218,29 @@ describe('generateParadeReport — record line details', () => {
   })
 })
 
+describe('generateParadeReport — section ordering', () => {
+  const mk = (id: string, rank: string, name: string, four_d: string | null): Soldier => ({ id, rank, name, platoon: '1', four_d })
+  const soldiers = [
+    mk('p', 'PTE', 'AAA PRIVATE', '1101'),
+    mk('b', 'CPL', 'BRAVO', '1202'),
+    mk('a', 'CPL', 'ALPHA', '1201'),
+    mk('n2', 'CPL', 'BAKER', null),
+    mk('n1', 'CPL', 'ABLE', null),
+    mk('z', '3SG', 'ZULU', '1299'),
+  ]
+  // Listed in scrambled order, with different end dates, to prove dates no longer decide the order
+  const exceptions: Exception[] = ['p', 'n2', 'b', 'z', 'n1', 'a'].map((id, i) => ({
+    id: i + 1, name: soldiers.find((s) => s.id === id)!.name, soldier_id: id, scope: 'Others', reason: 'Task',
+    start: '2026-01-10', end: `2026-01-${20 - i}`, counts_as_absence: false,
+  }))
+
+  it('sorts rank descending, then 4D, then name (no 4D last)', () => {
+    const report = generateParadeReport({ ...BASE_INPUT, soldiers, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
+    const names = [...report.matchAll(/^\d+\. (?:\d{4} )?\S+ (.+?) - Task/gm)].map((m) => m[1])
+    expect(names).toEqual(['ZULU', 'ALPHA', 'BRAVO', 'ABLE', 'BAKER', 'AAA PRIVATE'])
+  })
+})
+
 describe('generateParadeReport — person-centric exceptions', () => {
   const withIds: Soldier[] = FIXTURE_SOLDIERS.map((s, i) => ({ ...s, id: `u-${i}` }))
   const goh = withIds.find((s) => s.name === 'GOH RONG HAO')!

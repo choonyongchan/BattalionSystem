@@ -30,6 +30,8 @@ export interface BunkMember {
   soldier: Soldier
   /** Why they are out; empty when in. NO_REASON when marked out by hand. */
   reasons: string[]
+  /** Reasons the soldier should be out but was marked present anyway; undefined otherwise. */
+  flagged?: string[]
 }
 
 /** A bunk and its troopers, by 4D. */
@@ -59,10 +61,11 @@ const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeri
 /**
  * Groups on-strength troopers by platoon and bunk with their reasons for being out on `date`.
  * Out of the bunk: an absence, an exception in `outScopes` (Settings > Overview), or a duty that day.
- * `markedOut` holds soldier keys unticked by hand.
+ * `markedOut` holds soldier keys unticked by hand; `markedPresent` holds keys ticked in despite a reason (flagged).
  */
 export function buildBunks(
   soldiers: Soldier[], exceptions: Exception[], duties: DutyEntry[], date: string, markedOut: Set<string>, outScopes: string[],
+  markedPresent: Set<string> = new Set(),
 ): BunkGroup[] {
   const people = soldiers.filter((s) => isOnStrength(s) && !isCommander(s))
   const keepsOut = (e: Exception) => e.counts_as_absence || outScopes.includes(e.scope)
@@ -82,7 +85,11 @@ export function buildBunks(
       ...(onDuty.get(soldier.name) ?? []),
     ]
     if (!reasons.length && markedOut.has(key)) reasons.push(NO_REASON)
-    bunks.set(label, [...(bunks.get(label) ?? []), { soldier, reasons: [...new Set(reasons)] }])
+    const unique = [...new Set(reasons)]
+    const member: BunkMember = markedPresent.has(key) && unique.length
+      ? { soldier, reasons: [], flagged: unique }
+      : { soldier, reasons: unique }
+    bunks.set(label, [...(bunks.get(label) ?? []), member])
   }
 
   const groups = new Map<string | null, Bunk[]>()
@@ -96,9 +103,9 @@ export function buildBunks(
     .map(([platoon, list]) => ({ platoon, bunks: list }))
 }
 
-/** "1101 PTE KAI YANG - Stay Out" */
+/** "`1101 PTE KAI YANG - Stay Out`", in backticks so chat apps show it as code. */
 const absenteeLine = ({ soldier: s, reasons }: BunkMember) =>
-  `${[s.four_d, s.rank, s.name].filter(Boolean).join(' ')} - ${reasons.join(', ')}`
+  `\`${[s.four_d, s.rank, s.name].filter(Boolean).join(' ')} - ${reasons.join(', ')}\``
 
 /** WhatsApp message: per bunk its strength, then only the people who are out and why. `title` is Settings > Overview. */
 export function generateBunkMessage(title: string, parade: string, date: string, time: string, groups: BunkGroup[]): string {
@@ -108,6 +115,10 @@ export function generateBunkMessage(title: string, parade: string, date: string,
     for (const b of g.bunks) {
       lines.push('', `*${b.label} (${strength(b.members)})*`, ...b.members.filter((m) => !isIn(m)).map(absenteeLine))
     }
+  }
+  const flagged = groups.flatMap((g) => g.bunks.flatMap((b) => b.members.filter((m) => m.flagged)))
+  if (flagged.length) {
+    lines.push('', '*⚠️ PRESENT DESPITE REASON*', ...flagged.map((m) => absenteeLine({ ...m, reasons: m.flagged! })))
   }
   return lines.join('\n')
 }

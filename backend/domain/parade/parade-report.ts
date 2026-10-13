@@ -5,7 +5,7 @@ import { getRankType, RANK_TYPES, RANK_INDEX } from '@/shared/ranks'
 import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES, type ExceptionScope } from '@/backend/domain/exceptions/exception-validation'
 import { exceptionSoldierKey, isOnStrength, isRevoked, mergeRuns, soldierIndex, soldierKeyOf, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
 import { BASE_DUTY_TYPES } from '@/backend/domain/settings/settings'
-import { compareNullableISO, ddmmyy } from '@/shared/dates'
+import { ddmmyy } from '@/shared/dates'
 
 /** What the report prints for a company: its name and the platoon blocks under COY HQ. */
 export interface ParadeConfig {
@@ -31,14 +31,14 @@ export interface ParadeReportInput {
 const SECTION_SEP = '================================'
 const BLOCK_SEP   = '--------------------------------'
 
-/** Orders by end date, then start date (nulls first), then seniority, then name. */
+/** Orders by rank (senior first), then 4D (missing last), then name. */
 function sortExceptions(exceptions: Exception[], idx: SoldierIndex): Exception[] {
   /** Seniority of an exception's soldier; -1 when unknown. */
   const seniority = (e: Exception) => RANK_INDEX[soldierOf(e, idx)?.rank ?? ''] ?? -1
+  const fourD = (e: Exception) => soldierOf(e, idx)?.four_d || '￿'
   return [...exceptions].sort((a, b) =>
-    compareNullableISO(a.end, b.end)
-    || compareNullableISO(a.start, b.start)
-    || seniority(b) - seniority(a)
+    seniority(b) - seniority(a)
+    || fourD(a).localeCompare(fourD(b), undefined, { numeric: true })
     || a.name.localeCompare(b.name))
 }
 

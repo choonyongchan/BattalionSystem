@@ -34,20 +34,20 @@ describe('CompanyContent signed in', () => {
     renderApp()
     const rsi = await screen.findByRole('tab', { name: 'Report Sick' }, { timeout: 10000 })
     await waitFor(() => expect(rsi).toHaveAttribute('aria-selected', 'true'))
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(
-      ['Overview', 'Parade State', 'Report Sick', 'Nominal Roll', 'Off/Leave', 'Duty Dashboard', 'Conducts'],
-    )
+    expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual(['Daily', 'Personnel', 'Duty & Training'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Overview', 'Parade State', 'Report Sick'])
   })
 
   it('records the chosen tab in the URL and supports arrow keys', async () => {
     window.history.replaceState(null, '', '/test/')
     renderApp()
-    await userEvent.click(await screen.findByRole('tab', { name: 'Conducts' }, { timeout: 10000 }))
+    await userEvent.click(await screen.findByRole('radio', { name: 'Duty & Training' }, { timeout: 10000 }))
+    await userEvent.click(screen.getByRole('tab', { name: 'Conducts' }))
     expect(window.location.search).toBe('?tab=conducts')
 
-    await userEvent.keyboard('{ArrowRight}') // wraps from the last tab to the first
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveFocus()
+    await userEvent.keyboard('{ArrowRight}') // wraps from the last tab of the group to its first
+    expect(screen.getByRole('tab', { name: 'Duty Dashboard' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Duty Dashboard' })).toHaveFocus()
   })
 
   it('falls back to the Overview for an unknown ?tab=', async () => {

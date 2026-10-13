@@ -7,9 +7,11 @@ import { isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
 import { isCommander } from '@/shared/ranks'
 import { buildBunks, generateBunkMessage, strength, NO_REASON } from '@/backend/domain/overview/bunks'
 import { combine, useDuties, useExceptions, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
-import { todaySGDate } from '@/shared/dates'
+import { nowSGTime, todaySGDate } from '@/shared/dates'
+import { applyExcludeStayIn } from '@/backend/domain/parade/exception-table'
+import { Segmented } from '@/frontend/components/ui/segmented'
 import MessageBox from '@/frontend/components/shared/MessageBox'
-import { Checkbox, Field, Input, Select } from '@/frontend/components/ui/fields'
+import { Checkbox, Field, Input } from '@/frontend/components/ui/fields'
 import { Banner, Card, Empty, Loading, PageHeader, SectionTitle } from '@/frontend/components/ui/layout'
 
 /**
@@ -28,31 +30,32 @@ export default function OverviewTab({ company }: { company: Company }) {
   const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
   const duties = useMemo(() => dutiesQ.data ?? [], [dutiesQ.data])
   const [markedOut, setMarkedOut] = useState<Set<string>>(new Set())
-  const paradeTimes = settings?.parade_times ?? {}
-  const [chosenParade, setParade] = useState<string | null>(null)
-  const parade = chosenParade ?? settings?.overview.default_parade ?? ''
-  const [time, setTime] = useState<string | null>(null)
+  const [markedPresent, setMarkedPresent] = useState<Set<string>>(new Set())
+  const [excludeStayIn, setExcludeStayIn] = useState(false)
+  const parade = settings?.overview.default_parade ?? ''
+  const paradeTime = nowSGTime()
 
   /** Changes the date; hand-marked absences belong to one day, so they reset. */
   function setDate(d: string) {
     setDateState(d)
     setMarkedOut(new Set())
+    setMarkedPresent(new Set())
   }
   const groups = useMemo(
-    () => buildBunks(soldiers, exceptions, duties, date, markedOut, settings?.overview.out_scopes ?? []),
-    [soldiers, exceptions, duties, date, markedOut, settings],
+    () => buildBunks(soldiers, applyExcludeStayIn(exceptions, excludeStayIn), duties, date, markedOut, settings?.overview.out_scopes ?? [], markedPresent),
+    [soldiers, exceptions, excludeStayIn, duties, date, markedOut, markedPresent, settings],
   )
-  const paradeTime = time ?? paradeTimes[parade] ?? ''
   const counted = groups.reduce((n, g) => n + g.bunks.reduce((m, b) => m + b.members.length, 0), 0)
   const uncounted = soldiers.filter((s) => isOnStrength(s) && !isCommander(s)).length - counted
 
-  /** Ticks or unticks a soldier with no keyed reason. */
-  function toggle(s: Soldier) {
+  /** Ticks or unticks a soldier. With a keyed reason it flags them present despite it instead. */
+  function toggle(s: Soldier, keyed: boolean) {
     const key = soldierKeyOf(s)
-    const next = new Set(markedOut)
+    const [set, setSet] = keyed ? [markedPresent, setMarkedPresent] : [markedOut, setMarkedOut]
+    const next = new Set(set)
     if (next.has(key)) next.delete(key)
     else next.add(key)
-    setMarkedOut(next)
+    setSet(next)
   }
 
   if (loading || !settings) return <Loading />
@@ -69,15 +72,15 @@ export default function OverviewTab({ company }: { company: Company }) {
 
       {error && <Banner>{error}</Banner>}
 
-      <div className="grid grid-cols-3 gap-2">
-        <Field label="Parade">
-          <Select value={parade} onChange={(e) => { setParade(e.target.value); setTime(null) }}>
-            {Object.keys(paradeTimes).map((p) => <option key={p}>{p}</option>)}
-          </Select>
-        </Field>
+      <div className="max-w-xs">
         <Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-        <Field label="Time"><Input type="time" value={paradeTime} onChange={(e) => setTime(e.target.value)} /></Field>
       </div>
+      <Segmented
+        label="Excuse stay-in personnel"
+        value={excludeStayIn}
+        onChange={setExcludeStayIn}
+        options={[{ value: false, label: 'No' }, { value: true, label: 'Yes' }]}
+      />
 
       {groups.length === 0 && <Empty>No soldier has a bunk yet. Add 4Ds or bunks in the Nominal Roll.</Empty>}
 
@@ -96,14 +99,15 @@ export default function OverviewTab({ company }: { company: Company }) {
                   <span className="text-sm text-ink-60">{strength(b.members)}</span>
                 </div>
                 <ul className="text-sm">
-                  {b.members.map(({ soldier: s, reasons }) => {
-                    const keyed = reasons.length > 0 && reasons[0] !== NO_REASON
+                  {b.members.map(({ soldier: s, reasons, flagged }) => {
+                    const keyed = !!flagged || (reasons.length > 0 && reasons[0] !== NO_REASON)
                     return (
                       <li key={s.name}>
                         <label className="flex items-center gap-2 py-0.5">
-                          <Checkbox checked={reasons.length === 0} disabled={keyed} onChange={() => toggle(s)} />
+                          <Checkbox checked={reasons.length === 0} onChange={() => toggle(s, keyed)} />
                           <span className={`truncate ${reasons.length ? 'text-ink-60' : 'text-ink'}`}>{[s.four_d, s.rank, s.name].filter(Boolean).join(' ')}</span>
                           {reasons.length > 0 && <span className="ml-auto shrink-0 text-xs text-ink-60">{reasons.join(', ')}</span>}
+                          {flagged && <span className="ml-auto shrink-0 text-xs text-ink-60">⚠️ {flagged.join(', ')}</span>}
                         </label>
                       </li>
                     )
