@@ -11,9 +11,11 @@ import { sortExceptions } from '@/backend/domain/parade/exception-table'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
-import { CONFIRM_BTN, ICON_BTN, ICON_BTN_DANGER } from '@/frontend/components/shared/styles'
+import { Button } from '@/frontend/components/ui/button'
+import { Field, Select, inputClass } from '@/frontend/components/ui/fields'
+import { Card, Empty } from '@/frontend/components/ui/layout'
+import { EditActions, RowActions, TD, TD_EDIT, Table, Th, rowClass } from '@/frontend/components/ui/table'
 import { soldierDropdownProps } from './parade-ui'
-import { THEME } from '@/frontend/theme'
 
 /**
  * Guard Duty for the selected date. Unlike the roster duties, any number of people can be
@@ -31,8 +33,6 @@ export default function GuardDutyPanel({ date, settings, data }: {
   const confirm = useConfirmDelete<number>()
 
   const entries = sortExceptions(exceptions).filter((e) => e.scope === 'Guard Duty' && isActiveOn(e, date))
-  const inputClass = `w-full border border-hairline rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`
-  const editInputClass = `w-full min-w-[6rem] border border-hairline rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${THEME.focusRing}`
 
   /** Soldiers whose rank fits the role's rank range (settings override, else default). */
   function eligibleFor(role: string) {
@@ -83,117 +83,89 @@ export default function GuardDutyPanel({ date, settings, data }: {
   )
 
   return (
-    <div className="bg-white border border-hairline rounded-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-hairline bg-parchment">
-        <span className="text-sm font-medium text-ink-60">Guard Duty</span>
-        <button
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-hairline bg-parchment px-4 py-3">
+        <h3 className="text-sm font-semibold text-ink">Guard Duty</h3>
+        <Button
+          size="sm"
+          variant={showForm ? 'secondary' : 'primary'}
           onClick={() => {
             if (!showForm) setForm({ name: '', reason: '' })
             setShowForm((v) => !v)
           }}
-          className={`px-3 py-1.5 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs font-medium rounded-lg transition-colors`}
         >
           {showForm ? 'Cancel' : '+ Add'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (
-        <div className="p-4 space-y-3 border-b border-hairline bg-parchment/50">
-          <div>
-            <label className="block text-xs text-ink-60 mb-1">Role</label>
-            <select value={form.reason} onChange={(e) => setForm(withRole(form, e.target.value))} className={inputClass}>
-              {roleOptions}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-ink-60 mb-1">Soldier <span className="text-danger">*</span></label>
+        <div className="space-y-3 border-b border-hairline bg-parchment/50 p-4">
+          <Field label="Role">
+            <Select value={form.reason} onChange={(e) => setForm(withRole(form, e.target.value))}>{roleOptions}</Select>
+          </Field>
+          <Field label="Soldier" required>
             <SearchDropdown
               {...soldierDropdownProps}
               items={eligibleFor(form.reason)}
               value={form.name}
               onChange={(name) => setForm({ ...form, name })}
-              inputClass={inputClass}
+              inputClass={inputClass()}
               disabled={!form.reason}
             />
-          </div>
-          <button
-            onClick={add}
-            disabled={!form.name}
-            className={`w-full py-2.5 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
-          >
-            Add Guard Duty
-          </button>
+          </Field>
+          <Button block onClick={add} disabled={!form.name}>Add Guard Duty</Button>
         </div>
       )}
 
       {entries.length === 0 ? (
-        <div className="text-center py-8 text-ink-60 text-sm">No Guard Duty entries for this date.</div>
+        <Empty className="py-8">No Guard Duty entries for this date.</Empty>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-parchment border-b border-hairline">
-                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Role</th>
-                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
-                <th />
+        <Table bare head={<><Th>Role</Th><Th>Name</Th><th /></>}>
+          {entries.map((e, i) => {
+            const isEditing = edit?.id === e.id
+            return (
+              <tr key={e.id} className={rowClass(i, isEditing)}>
+                {isEditing && edit ? (
+                  <>
+                    <td className={TD_EDIT}>
+                      <Select compact value={edit.reason ?? ''} onChange={(ev) => setEdit(withRole(edit, ev.target.value))}>{roleOptions}</Select>
+                    </td>
+                    <td className={TD_EDIT}>
+                      <SearchDropdown
+                        {...soldierDropdownProps}
+                        items={eligibleFor(edit.reason ?? '')}
+                        value={edit.name}
+                        onChange={(name) => setEdit({ ...edit, name })}
+                        inputClass={inputClass({ compact: true })}
+                        disabled={!edit.reason}
+                      />
+                    </td>
+                    <td className={TD_EDIT}>
+                      <EditActions onSave={save} onCancel={() => setEdit(null)} />
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className={`${TD} text-ink-60`}>{e.reason ?? '–'}</td>
+                    <td className={`${TD} font-medium`}>{displayName(e.name, soldiers)}</td>
+                    <td className={TD}>
+                      <RowActions
+                        confirming={confirm.isConfirming(e.id)}
+                        onEdit={() => setEdit({ ...e })}
+                        onRequest={() => confirm.request(e.id)}
+                        onConfirm={() => confirm.resolve(() => mutate(() => repos.exceptions.remove(e.id)))}
+                        onCancel={confirm.cancel}
+                        removeTitle="Clear"
+                        confirmTitle="Confirm clear"
+                      />
+                    </td>
+                  </>
+                )}
               </tr>
-            </thead>
-            <tbody>
-              {entries.map((e, i) => {
-                const isEditing = edit?.id === e.id
-                return (
-                  <tr key={e.id} className={`border-b border-hairline last:border-0 group ${i % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5' : ''}`}>
-                    {isEditing && edit ? (
-                      <>
-                        <td className="px-2 py-1">
-                          <select value={edit.reason ?? ''} onChange={(ev) => setEdit(withRole(edit, ev.target.value))} className={editInputClass}>
-                            {roleOptions}
-                          </select>
-                        </td>
-                        <td className="px-2 py-1">
-                          <SearchDropdown
-                            {...soldierDropdownProps}
-                            items={eligibleFor(edit.reason ?? '')}
-                            value={edit.name}
-                            onChange={(name) => setEdit({ ...edit, name })}
-                            inputClass={editInputClass}
-                            disabled={!edit.reason}
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <div className="flex gap-1 justify-end">
-                            <button onClick={save} className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg`}>Save</button>
-                            <button onClick={() => setEdit(null)} className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment">Cancel</button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-3 py-1.5 whitespace-nowrap text-ink-60">{e.reason ?? '–'}</td>
-                        <td className="px-3 py-1.5 whitespace-nowrap font-medium">{displayName(e.name, soldiers)}</td>
-                        <td className="px-3 py-1.5 whitespace-nowrap">
-                          <div className="flex gap-1 justify-end items-center">
-                            <button onClick={() => setEdit({ ...e })} className={ICON_BTN} title="Edit">✎</button>
-                            <button
-                              onClick={() => confirm.isConfirming(e.id)
-                                ? confirm.resolve(() => mutate(() => repos.exceptions.remove(e.id)))
-                                : confirm.request(e.id)}
-                              className={confirm.isConfirming(e.id) ? CONFIRM_BTN : ICON_BTN_DANGER}
-                              title={confirm.isConfirming(e.id) ? 'Confirm clear' : 'Clear'}
-                            >
-                              {confirm.isConfirming(e.id) ? 'Yes' : '✕'}
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+            )
+          })}
+        </Table>
       )}
-    </div>
+    </Card>
   )
 }

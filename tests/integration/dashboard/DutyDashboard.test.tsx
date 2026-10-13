@@ -62,7 +62,7 @@ describe('DutyDashboard', () => {
     renderDashboard()
     await loaded()
 
-    await userEvent.click(screen.getByRole('button', { name: 'CDO' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'CDO' }))
 
     expect(screen.getByText(nameCell('LEE JUN WEI'))).toBeInTheDocument()   // LTA — CDO-eligible
     // WONG KAH MENG (1SG) is not CDO-eligible (Officers only)

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/frontend/components/ui/button'
+import { SectionTitle } from '@/frontend/components/ui/layout'
 
 /** A generated message with a copy button. */
 export default function MessageBox({ title, text }: { title: string; text: string }) {
@@ -16,10 +18,10 @@ export default function MessageBox({ title, text }: { title: string; text: strin
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        <button onClick={copy} className="px-3 py-1.5 text-xs bg-ink text-white rounded-lg">{copied ? 'Copied' : 'Copy'}</button>
+        <SectionTitle className="mb-0">{title}</SectionTitle>
+        <Button size="sm" onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
       </div>
-      <pre className="bg-parchment border border-hairline rounded-lg p-3 text-xs whitespace-pre-wrap font-mono">{text}</pre>
+      <pre className="bg-parchment border border-hairline rounded-card p-3 text-xs whitespace-pre-wrap font-mono">{text}</pre>
     </div>
   )
 }

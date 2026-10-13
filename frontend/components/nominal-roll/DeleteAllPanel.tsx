@@ -4,6 +4,8 @@ import { useState } from 'react'
 import type { Company } from '@/shared/companies'
 import { signInCommander } from '@/backend/data/auth'
 import type { SoldierRepository } from '@/backend/data/repositories/SoldierRepository'
+import { Button } from '@/frontend/components/ui/button'
+import { Input } from '@/frontend/components/ui/fields'
 
 /** Password-confirmed "delete every soldier" prompt. */
 export default function DeleteAllPanel({ company, count, repo, onDone, onError, onCancel }: {
@@ -34,10 +36,10 @@ export default function DeleteAllPanel({ company, count, repo, onDone, onError, 
   }
 
   return (
-    <div className="bg-danger/5 border border-danger/30 rounded-card p-4 space-y-3">
+    <div className="space-y-3 rounded-card border border-danger/30 bg-danger/5 p-4">
       <p className="text-sm text-danger font-medium">This will permanently delete all {count} personnel. Enter your commander password to confirm.</p>
-      <div className="flex gap-2">
-        <input
+      <div className="flex flex-wrap gap-2">
+        <Input
           type="password"
           placeholder="Commander password"
           aria-label="Commander password"
@@ -45,18 +47,10 @@ export default function DeleteAllPanel({ company, count, repo, onDone, onError, 
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') onCancel() }}
           autoFocus
-          className="flex-1 border border-danger/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-danger"
+          className="w-auto min-w-48 flex-1"
         />
-        <button
-          onClick={confirm}
-          disabled={deleting || !password}
-          className="px-4 py-2 bg-danger hover:bg-danger text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
-        >
-          {deleting ? '…' : 'Confirm'}
-        </button>
-        <button onClick={onCancel} className="px-4 py-2 border border-hairline text-ink-80 text-sm font-medium rounded-lg hover:bg-parchment transition-colors">
-          Cancel
-        </button>
+        <Button variant="danger" onClick={confirm} disabled={deleting || !password}>{deleting ? '…' : 'Confirm'}</Button>
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
       {authError && <p role="alert" className="text-xs text-danger">{authError}</p>}
     </div>

@@ -20,7 +20,7 @@ test.describe('Duty Dashboard workflow', () => {
   })
 
   test('CDO filter pill narrows the list to CDO-eligible soldiers only', async ({ page }) => {
-    await page.getByRole('button', { name: 'CDO', exact: true }).click()
+    await page.getByRole('radio', { name: 'CDO', exact: true }).click()
 
     await expect(page.locator('tr', { hasText: 'LEE JUN WEI' })).toBeVisible({ timeout: 10000 })
     // WONG KAH MENG (1SG) is not CDO-eligible (Officers only)

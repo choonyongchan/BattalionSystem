@@ -9,10 +9,12 @@ import { eligibleSoldiers } from '@/backend/domain/duty/duty-rules'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
-import { CONFIRM_BTN, ICON_BTN, ICON_BTN_DANGER } from '@/frontend/components/shared/styles'
+import { Button } from '@/frontend/components/ui/button'
+import { inputClass } from '@/frontend/components/ui/fields'
+import { EditActions, RowActions, TD, TD_EDIT, Table, Th, rowClass } from '@/frontend/components/ui/table'
+import { cn } from '@/shared/utils'
 import { soldierDropdownProps } from './parade-ui'
 import GuardDutyPanel from './GuardDutyPanel'
-import { THEME } from '@/frontend/theme'
 
 const EXTERNAL_PERSONNEL: Soldier = { rank: '', name: EXTERNAL_DUTY_PERSON, platoon: '', four_d: '' }
 
@@ -31,7 +33,7 @@ export default function DutiesSection({ date, setDate, settings, data }: {
   const confirm = useConfirmDelete<string>()
 
   const dutyTypes = settings ? rosterDutyTypes(settings) : []
-  const editInputClass = `w-full min-w-[6rem] border border-hairline rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 ${THEME.focusRing}`
+  const editInputClass = inputClass({ compact: true })
 
   /** Soldiers eligible for a duty; Duty Clerk may also take an external partner. */
   function personnelFor(dutyType: string, excludeExternal: boolean) {
@@ -52,93 +54,62 @@ export default function DutiesSection({ date, setDate, settings, data }: {
     <div className="space-y-4">
       <WeekStrip date={date} setDate={setDate} duties={duties} dutyTypes={dutyTypes} soldiers={soldiers} />
 
-      <div className="bg-white border border-hairline rounded-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-parchment border-b border-hairline">
-                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Duty</th>
-                <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Assigned To</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {dutyTypes.map((dt, i) => {
-                const d = duties.find((x) => x.duty_type === dt && x.date === date)
-                const isEditing = editDuty?.duty_type === dt
-                return (
-                  <tr key={dt} className={`border-b border-hairline last:border-0 group ${i % 2 === 0 ? '' : 'bg-parchment/50'} ${isEditing ? 'bg-action/5' : ''}`}>
-                    <td className="px-3 py-1.5 whitespace-nowrap font-medium">{dt}</td>
-                    {isEditing ? (
-                      <>
-                        <td className="px-2 py-1 space-y-1">
-                          <SearchDropdown
-                            {...soldierDropdownProps}
-                            items={personnelFor(editDuty.duty_type, editDuty.name2 === EXTERNAL_DUTY_PERSON)}
-                            value={editDuty.name}
-                            onChange={(name) => setEditDuty({ ...editDuty, name })}
-                            inputClass={editInputClass}
-                          />
-                          {settings?.multi_name_duty_types.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
-                            <SearchDropdown
-                              {...soldierDropdownProps}
-                              items={personnelFor(editDuty.duty_type, editDuty.name === EXTERNAL_DUTY_PERSON)}
-                              value={editDuty.name2}
-                              onChange={(name) => setEditDuty({ ...editDuty, name2: name })}
-                              inputClass={editInputClass}
-                              placeholder="Second Duty Personnel?"
-                            />
-                          )}
-                        </td>
-                        <td className="px-2 py-1">
-                          <div className="flex gap-1 justify-end">
-                            <button onClick={saveDuty} disabled={saving} className={`px-2 py-1 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-xs rounded-lg disabled:opacity-50`}>
-                              {saving ? '…' : 'Save'}
-                            </button>
-                            <button onClick={() => setEditDuty(null)} className="px-2 py-1 border border-hairline text-ink-80 text-xs rounded-lg hover:bg-parchment">
-                              Cancel
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-3 py-1.5 whitespace-nowrap text-ink-80">{d?.name ? displayName(d.name, soldiers) : '–'}</td>
-                        <td className="px-3 py-1.5 whitespace-nowrap">
-                          <div className="flex gap-1 justify-end items-center">
-                            <button
-                              onClick={() => {
-                                const [n1, n2] = splitDutyNames(d?.name ?? '')
-                                setEditDuty({ duty_type: dt, name: n1 ?? '', name2: n2 ?? '' })
-                              }}
-                              className={ICON_BTN}
-                              title="Edit"
-                              aria-label={`Edit ${dt}`}
-                            >
-                              ✎
-                            </button>
-                            {d && (
-                              <button
-                                onClick={() => confirm.isConfirming(dt)
-                                  ? confirm.resolve(() => mutate(() => repos.duties.remove(dt, date)))
-                                  : confirm.request(dt)}
-                                className={confirm.isConfirming(dt) ? CONFIRM_BTN : ICON_BTN_DANGER}
-                                title={confirm.isConfirming(dt) ? 'Confirm clear' : 'Clear'}
-                              >
-                                {confirm.isConfirming(dt) ? 'Yes' : '✕'}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </>
+      <Table head={<><Th>Duty</Th><Th>Assigned To</Th><th /></>}>
+        {dutyTypes.map((dt, i) => {
+          const d = duties.find((x) => x.duty_type === dt && x.date === date)
+          const isEditing = editDuty?.duty_type === dt
+          return (
+            <tr key={dt} className={rowClass(i, isEditing)}>
+              <td className={`${TD} font-medium`}>{dt}</td>
+              {isEditing ? (
+                <>
+                  <td className={`${TD_EDIT} space-y-1`}>
+                    <SearchDropdown
+                      {...soldierDropdownProps}
+                      items={personnelFor(editDuty.duty_type, editDuty.name2 === EXTERNAL_DUTY_PERSON)}
+                      value={editDuty.name}
+                      onChange={(name) => setEditDuty({ ...editDuty, name })}
+                      inputClass={editInputClass}
+                    />
+                    {settings?.multi_name_duty_types.includes(editDuty.duty_type) && editDuty.name.trim() !== '' && (
+                      <SearchDropdown
+                        {...soldierDropdownProps}
+                        items={personnelFor(editDuty.duty_type, editDuty.name === EXTERNAL_DUTY_PERSON)}
+                        value={editDuty.name2}
+                        onChange={(name) => setEditDuty({ ...editDuty, name2: name })}
+                        inputClass={editInputClass}
+                        placeholder="Second Duty Personnel?"
+                      />
                     )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </td>
+                  <td className={TD_EDIT}>
+                    <EditActions onSave={saveDuty} onCancel={() => setEditDuty(null)} saving={saving} />
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td className={`${TD} text-ink-80`}>{d?.name ? displayName(d.name, soldiers) : '–'}</td>
+                  <td className={TD}>
+                    <RowActions
+                      confirming={confirm.isConfirming(dt)}
+                      editLabel={`Edit ${dt}`}
+                      onEdit={() => {
+                        const [n1, n2] = splitDutyNames(d?.name ?? '')
+                        setEditDuty({ duty_type: dt, name: n1 ?? '', name2: n2 ?? '' })
+                      }}
+                      onRequest={d ? () => confirm.request(dt) : undefined}
+                      onConfirm={() => confirm.resolve(() => mutate(() => repos.duties.remove(dt, date)))}
+                      onCancel={confirm.cancel}
+                      removeTitle="Clear"
+                      confirmTitle="Confirm clear"
+                    />
+                  </td>
+                </>
+              )}
+            </tr>
+          )
+        })}
+      </Table>
 
       <GuardDutyPanel date={date} settings={settings} data={data} />
     </div>
@@ -157,10 +128,8 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
   return (
     // Phones: controls on one row, the week as a full-width row under them; md+: one row
     <div className="flex flex-wrap items-center justify-center gap-2">
-      <button onClick={() => setDate(today)} className="min-h-11 px-3 text-sm text-ink-60 hover:text-ink border border-hairline rounded-lg bg-white transition-colors">
-        Today
-      </button>
-      <button onClick={() => setDate(offsetDate(date, -7))} aria-label="Previous week" className="min-h-11 min-w-11 text-ink-60 hover:text-ink text-lg transition-colors">←</button>
+      <Button variant="secondary" size="sm" onClick={() => setDate(today)}>Today</Button>
+      <Button variant="icon" onClick={() => setDate(offsetDate(date, -7))} aria-label="Previous week">←</Button>
 
       <div className="order-last grid basis-full grid-cols-7 gap-1 sm:gap-2 md:order-none md:basis-auto md:flex-1">
         {weekDates(date).map((iso) => {
@@ -174,7 +143,7 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
               key={iso}
               onClick={() => setDate(iso)}
               aria-pressed={isSelected}
-              className={`min-h-14 text-left rounded-lg border p-1.5 sm:p-2 transition-colors ${isSelected ? `${THEME.buttonBg} border-transparent text-white` : iso === today ? 'bg-parchment border-hairline' : 'bg-white border-hairline hover:bg-parchment'}`}
+              className={cn('min-h-14 rounded-lg border p-1.5 text-left transition-colors sm:p-2', isSelected ? 'border-transparent bg-action text-white' : iso === today ? 'border-hairline bg-parchment' : 'border-hairline bg-white hover:bg-parchment')}
             >
               <div className={`text-[10px] sm:text-xs font-medium ${isSelected ? 'text-white/80' : 'text-ink-60'}`}>{label.weekday}</div>
               <div className={`text-xs sm:text-sm font-semibold mb-1 ${isSelected ? 'text-white' : 'text-ink-80'}`}>{label.day}</div>
@@ -195,13 +164,13 @@ function WeekStrip({ date, setDate, duties, dutyTypes, soldiers }: {
         })}
       </div>
 
-      <button onClick={() => setDate(offsetDate(date, 7))} aria-label="Next week" className="min-h-11 min-w-11 text-ink-60 hover:text-ink text-lg transition-colors">→</button>
+      <Button variant="icon" onClick={() => setDate(offsetDate(date, 7))} aria-label="Next week">→</Button>
       <input
         type="date"
         value={date}
         aria-label="Duty date"
         onChange={(e) => setDate(e.target.value)}
-        className={`min-h-11 min-w-0 flex-1 bg-white border border-hairline rounded-lg px-3 text-base focus:outline-none focus:ring-2 md:flex-none ${THEME.focusRing}`}
+        className={cn(inputClass(), 'w-auto min-w-0 flex-1 md:flex-none')}
       />
     </div>
   )

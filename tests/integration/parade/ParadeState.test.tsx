@@ -30,7 +30,7 @@ afterAll(async () => {
 // Navigate to the Duties tab (which has the date picker) and change the date.
 // Returns to caller on the Duties tab.
 async function setParadeDate(date: string) {
-  await userEvent.click(screen.getByRole('button', { name: 'Duties' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Duties' }))
   const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement
   fireEvent.change(dateInput, { target: { value: date } })
   await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument(), { timeout: 10000 })
@@ -38,7 +38,7 @@ async function setParadeDate(date: string) {
 
 // Open the Generate tab and generate with whatever options are selected (First Parade by default).
 async function generateReport() {
-  await userEvent.click(screen.getByRole('button', { name: 'Generate' }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Generate' }))
   await userEvent.click(screen.getByRole('button', { name: 'Generate Parade State' }))
 }
 
@@ -68,7 +68,7 @@ describe('ParadeState', () => {
 
   it('shows fixture exceptions in the Exceptions tab', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
 
     await waitFor(() => {
       // Name cell renders "RANK NAME" combined (e.g. "CPT TAN WEI LIANG")
@@ -79,7 +79,7 @@ describe('ParadeState', () => {
 
   it('filters exceptions by soldier name using the search bar', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
 
     const searchInput = await screen.findByPlaceholderText('Search by name, scope, reason, 4D...')
     await userEvent.type(searchInput, 'TAN WEI')
@@ -127,7 +127,7 @@ describe('ParadeState', () => {
     }, { timeout: 5000 })
 
     // GOH RONG HAO should still appear in exceptions list (report textarea also contains this text)
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await waitFor(() => {
       expect(screen.getByRole('cell', { name: /GOH RONG HAO/ })).toBeInTheDocument()
     })
@@ -137,25 +137,25 @@ describe('ParadeState', () => {
 
   it('Absent? checkbox defaults per scope in the add-exception form', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
 
     const checkbox = screen.getByRole('checkbox', { name: 'Absent?' }) as HTMLInputElement
     expect(checkbox.checked).toBe(true) // scope defaults to Off/Leave
 
-    await userEvent.click(screen.getByRole('button', { name: 'Status' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Status' }))
     expect(checkbox.checked).toBe(false)
 
-    await userEvent.click(screen.getByRole('button', { name: 'MA' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'MA' }))
     expect(checkbox.checked).toBe(true)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Others' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Others' }))
     expect(checkbox.checked).toBe(false)
   })
 
   it('manually toggling Absent? is preserved across scope changes', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
 
     const checkbox = screen.getByRole('checkbox', { name: 'Absent?' }) as HTMLInputElement
@@ -165,13 +165,13 @@ describe('ParadeState', () => {
     expect(checkbox.checked).toBe(false)
 
     // Att C would normally default to true — manual toggle should stick
-    await userEvent.click(screen.getByRole('button', { name: 'Att C' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Att C' }))
     expect(checkbox.checked).toBe(false)
   })
 
   it('the checkbox in a read-only exception row is disabled', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
 
     const row = (await screen.findByText(/TAN WEI LIANG/)).closest('tr')!
     const checkbox = within(row).getByRole('checkbox') as HTMLInputElement
@@ -181,7 +181,7 @@ describe('ParadeState', () => {
 
   it('adding an exception with Absent? unchecked does not reduce present count', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
 
     const soldierInput = screen.getByPlaceholderText('Search soldier...')
@@ -223,7 +223,7 @@ describe('ParadeState', () => {
 
   it('adds an exception for a soldier and present count decreases by 1', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
 
     // Open the add-exception form
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
@@ -256,7 +256,7 @@ describe('ParadeState', () => {
 
   it('edits an existing exception successfully (regression: "time" column must exist on _Exceptions)', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
 
     const row = (await screen.findByText(/TAN WEI LIANG/)).closest('tr')!
     await userEvent.click(within(row).getByTitle('Edit'))
@@ -273,7 +273,7 @@ describe('ParadeState', () => {
 
   it('Add Exception button stays disabled until a soldier is picked, then MA can be saved with Location/Reason/Date left blank', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
 
     const addButton = screen.getByRole('button', { name: 'Add Exception' })
@@ -283,7 +283,7 @@ describe('ParadeState', () => {
     await userEvent.type(soldierInput, 'HO KAI')
     await userEvent.click(await screen.findByText('HO KAI XIANG', {}, { timeout: 5000 }))
 
-    await userEvent.click(screen.getByRole('button', { name: 'MA' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'MA' }))
 
     // Soldier + Scope are the only compulsory fields — Location, Reason,
     // and Date are all left blank here.
@@ -297,11 +297,11 @@ describe('ParadeState', () => {
 
   it('Exclude Excuse Stay-In counts stay-in Status as absent but keeps the status line', async () => {
     await renderOnFixtureDate()
-    await userEvent.click(screen.getByRole('button', { name: 'Exceptions' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Exceptions' }))
     await userEvent.click(screen.getByRole('button', { name: '+ Exception' }))
     await userEvent.type(screen.getByPlaceholderText('Search soldier...'), 'YEO JIA')
     await userEvent.click(await screen.findByText('YEO JIA HENG', {}, { timeout: 5000 }))
-    await userEvent.click(screen.getByRole('button', { name: 'Status' })) // Absent? defaults off; dates default to the viewed date
+    await userEvent.click(screen.getByRole('radio', { name: 'Status' })) // Absent? defaults off; dates default to the viewed date
     await userEvent.type(screen.getByPlaceholderText('e.g. Excuse RMJ, Excuse Uniform'), 'Excuse Stay-In')
     await userEvent.click(screen.getByRole('button', { name: 'Add Exception' }))
     await waitFor(() => expect(screen.getByText('Excuse Stay-In')).toBeInTheDocument(), { timeout: 10000 })

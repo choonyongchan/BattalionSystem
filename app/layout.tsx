@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { QueryProvider } from '@/frontend/providers/query-client'
-import { Toaster } from 'sonner'
 import './globals.css'
 
 // SF Pro on Apple devices via system-ui; Inter is the closest open substitute elsewhere
@@ -25,14 +24,13 @@ export const viewport: Viewport = {
   colorScheme: 'only light',
 }
 
-/** Root HTML shell: React Query provider, toasts and Vercel analytics. */
+/** Root HTML shell: React Query provider and Vercel analytics. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans text-ink antialiased">
         <QueryProvider>
           {children}
-          <Toaster position="top-center" />
         </QueryProvider>
         <Analytics />
         <SpeedInsights />

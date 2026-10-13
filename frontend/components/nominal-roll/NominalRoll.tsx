@@ -13,7 +13,9 @@ import BulkImportModal from './BulkImportModal'
 import AddSoldierForm from './AddSoldierForm'
 import DeleteAllPanel from './DeleteAllPanel'
 import SoldierTables from './SoldierTables'
-import { THEME } from '@/frontend/theme'
+import { Button } from '@/frontend/components/ui/button'
+import { CheckField, SearchInput, Switch } from '@/frontend/components/ui/fields'
+import { Banner, Empty, Loading, PageHeader } from '@/frontend/components/ui/layout'
 
 /** Nominal Roll tab: search, add, bulk import, edit and delete soldiers; opens a soldier's sheet. */
 export default function NominalRoll({ company }: { company: Company }) {
@@ -53,53 +55,41 @@ export default function NominalRoll({ company }: { company: Company }) {
   const activeFor = (s: Soldier) => (exceptionsByKey.get(soldierKeyOf(s)) ?? []).filter((e) => isActiveOn(e, today))
   const openSoldier = openKey ? allSoldiers.find((s) => soldierKeyOf(s) === openKey) : undefined
 
-  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading) return <Loading />
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-ink">Nominal Roll</h2>
-          <p className="text-xs text-ink-60">{onStrength.length} personnel</p>
-        </div>
-        <input
-          type="search"
+      <PageHeader
+        title="Nominal Roll"
+        subtitle={`${onStrength.length} personnel`}
+        actions={<>
+          <Button variant="danger-outline" onClick={() => setPanel('deleteAll')}>Delete All</Button>
+          <Button variant="secondary" onClick={() => setPanel('import')}>Bulk Import</Button>
+          <Button variant={panel === 'add' ? 'secondary' : 'primary'} onClick={() => setPanel(panel === 'add' ? 'none' : 'add')}>
+            {panel === 'add' ? 'Cancel' : '+ Add'}
+          </Button>
+        </>}
+      />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <SearchInput
           placeholder="Search by rank, name, platoon, 4D…"
           aria-label="Search nominal roll"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 max-w-sm border border-hairline rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus bg-white"
+          className="max-w-sm flex-1 min-w-48"
         />
         {postedOutCount > 0 && (
-          <button
-            onClick={() => setShowPostedOut(!showPostedOut)}
-            aria-pressed={showPostedOut}
-            className={`px-3 py-1 text-xs rounded-full border ${showPostedOut ? 'bg-ink text-white border-ink' : 'border-hairline text-ink-80'}`}
-          >
-            {showPostedOut ? 'Hide' : 'Show'} posted out ({postedOutCount})
-          </button>
+          <CheckField label={`Show posted out (${postedOutCount})`}>
+            <Switch checked={showPostedOut} onChange={(e) => setShowPostedOut(e.target.checked)} />
+          </CheckField>
         )}
-        <div className="flex gap-2 ml-auto">
-          <button onClick={() => setPanel('deleteAll')} className="px-3 py-2 border border-danger/30 text-danger hover:bg-danger/5 text-sm font-medium rounded-lg transition-colors">
-            Delete All
-          </button>
-          <button onClick={() => setPanel('import')} className="px-3 py-2 border border-hairline text-ink-80 hover:bg-parchment text-sm font-medium rounded-lg transition-colors">
-            Bulk Import
-          </button>
-          <button
-            onClick={() => setPanel(panel === 'add' ? 'none' : 'add')}
-            className={`px-3 py-2 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors`}
-          >
-            {panel === 'add' ? 'Cancel' : '+ Add'}
-          </button>
-        </div>
       </div>
 
       {panel === 'deleteAll' && (
         <DeleteAllPanel company={company} count={allSoldiers.length} repo={soldierRepo} onDone={load} onError={setError} onCancel={() => setPanel('none')} />
       )}
 
-      {error && <div role="alert" className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {error && <Banner>{error}</Banner>}
 
       {panel === 'add' && (
         <AddSoldierForm
@@ -114,12 +104,10 @@ export default function NominalRoll({ company }: { company: Company }) {
       />
 
       {soldiers.length === 0 && panel !== 'add' && (
-        <div className="text-center py-16 text-ink-60">
-          <p className="text-sm">No soldiers yet.</p>
-          <button onClick={() => setPanel('add')} className={`mt-3 text-sm ${THEME.activeText} hover:underline`}>
-            Add the first soldier
-          </button>
-        </div>
+        <Empty>
+          <p>No soldiers yet.</p>
+          <Button className="mt-3" onClick={() => setPanel('add')}>Add the first soldier</Button>
+        </Empty>
       )}
 
       {openSoldier && (

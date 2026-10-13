@@ -1,3 +1,4 @@
+import { Card } from '@/frontend/components/ui/layout'
 import CommanderLoginForm from './CommanderLoginForm'
 
 /** Signed-out landing page: the 40SAR stripes behind the company name and the commander sign-in. */
@@ -12,9 +13,9 @@ export default function LandingHero({ companyLabel, onSignIn }: {
           <h1 className="text-4xl font-bold tracking-tight text-sand-ink">{companyLabel} Company</h1>
           <p className="mt-2 text-xs uppercase tracking-widest text-sand-ink/70">40th Singapore Armoured Regiment</p>
         </div>
-        <div className="rounded-card bg-white p-5 shadow-sm">
+        <Card className="p-5">
           <CommanderLoginForm companyLabel={companyLabel} onSignIn={onSignIn} />
-        </div>
+        </Card>
       </div>
     </main>
   )

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { track } from '@vercel/analytics'
+import { Button } from '@/frontend/components/ui/button'
+import { Input } from '@/frontend/components/ui/fields'
 
 const MAX_ATTEMPTS = 3
 const LOCKOUT_SECONDS = 30
@@ -105,7 +107,7 @@ export default function CommanderLoginForm({
     <form onSubmit={handleSubmit} className="space-y-3 text-left" aria-label={`${companyLabel} commander sign in`}>
       <label htmlFor="commander-password" className="sr-only">Commander password</label>
       <div className="flex gap-2">
-        <input
+        <Input
           id="commander-password"
           type="password"
           placeholder={isLocked ? `Try again in ${countdown}s` : 'Password'}
@@ -116,15 +118,11 @@ export default function CommanderLoginForm({
           autoComplete="current-password"
           aria-invalid={!!error}
           aria-describedby="commander-password-status"
-          className="h-11 min-w-0 flex-1 rounded-pill border border-black/10 bg-white px-5 text-[17px] text-ink placeholder:text-ink-60 focus:outline-none focus-visible:outline-2 focus-visible:outline-action-focus disabled:bg-parchment disabled:text-ink-60"
+          className="w-auto min-w-0 flex-1 rounded-pill px-5"
         />
-        <button
-          type="submit"
-          disabled={isLocked || loading || !password}
-          className="h-11 shrink-0 rounded-pill bg-action px-[22px] text-[17px] text-white disabled:bg-ink-48"
-        >
+        <Button type="submit" className="shrink-0" disabled={isLocked || loading || !password}>
           {loading ? 'Signing in…' : 'Sign in'}
-        </button>
+        </Button>
       </div>
       <div id="commander-password-status" role="status" className="min-h-5 px-5 text-sm">
         {error && <p className="text-danger">{error}</p>}

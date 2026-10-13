@@ -11,7 +11,11 @@ import { SCOPE_TYPES, exceptionType, isActiveOn, isRevoked } from '@/backend/dom
 import { useSettingsQuery } from '@/frontend/hooks/queries'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import { ddmmyy, todaySGDate } from '@/shared/dates'
-
+import { Button } from '@/frontend/components/ui/button'
+import { Dialog } from '@/frontend/components/ui/dialog'
+import { CheckField, Checkbox, Field, Input, Switch } from '@/frontend/components/ui/fields'
+import { Badge, Banner, Empty, Panel, SectionTitle } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
 
 /** Short date range for an exception, e.g. "since 010326" or "010326–030326". */
 function dateRange(e: Exception): string {
@@ -113,15 +117,13 @@ export default function SoldierSheet({ company, soldier, exceptions, onClose, on
   const setOnStrength = (on: boolean) =>
     run(() => new SoldierRepository(company).update(soldier.name, { on_strength: on }))
 
-  const btn = 'px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50'
-
   /** Renders one exception row with the actions for its list. */
   function row(e: Exception, actions: 'current' | 'past' | 'revoked') {
     const confirming = delConfirm.isConfirming(e.id)
     return (
-      <li key={e.id} className="border border-hairline rounded-lg p-3 space-y-2">
+      <li key={e.id} className="space-y-2 rounded-card border border-hairline p-3">
         <div className="flex items-start gap-2">
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-parchment text-ink-80 shrink-0">{exceptionType(e)}</span>
+          <Badge className="shrink-0">{exceptionType(e)}</Badge>
           <div className="flex-1 min-w-0">
             <p className="text-sm text-ink break-words">{e.reason || e.scope}</p>
             <p className="text-xs text-ink-60">
@@ -131,134 +133,117 @@ export default function SoldierSheet({ company, soldier, exceptions, onClose, on
         </div>
         <div className="flex flex-wrap gap-1.5 justify-end">
           {actions !== 'revoked' && (
-            <button className={`${btn} border-hairline text-ink-80 hover:bg-parchment`} disabled={busy} onClick={() => setForm(editForm(e))}>Edit</button>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => setForm(editForm(e))}>Edit</Button>
           )}
           {actions === 'current' && isActiveOn(e, today) && e.end !== today && (
-            <button className={`${btn} border-hairline text-ink-80 hover:bg-parchment`} disabled={busy} onClick={() => endToday(e)}>End today</button>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => endToday(e)}>End today</Button>
           )}
           {actions !== 'revoked'
-            ? <button className={`${btn} border-amber-200 text-amber-700 hover:bg-amber-50`} disabled={busy} onClick={() => setRevoked(e, true)} title="Keyed wrongly or withdrawn — stops counting, kept here">Revoke</button>
-            : <button className={`${btn} border-hairline text-ink-80 hover:bg-parchment`} disabled={busy} onClick={() => setRevoked(e, false)}>Restore</button>}
+            ? <Button variant="secondary" size="sm" className="border-warning/40 text-warning hover:bg-warning/10" disabled={busy} onClick={() => setRevoked(e, true)} title="Keyed wrongly or withdrawn — stops counting, kept here">Revoke</Button>
+            : <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRevoked(e, false)}>Restore</Button>}
           {confirming ? (
             <>
-              <button className={`${btn} border-danger bg-danger text-white`} disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete for good</button>
-              <button className={`${btn} border-hairline text-ink-80`} onClick={delConfirm.cancel}>Keep</button>
+              <Button variant="danger" size="sm" disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete for good</Button>
+              <Button variant="soft" size="sm" onClick={delConfirm.cancel}>Keep</Button>
             </>
           ) : (
-            <button className={`${btn} border-danger/30 text-danger hover:bg-danger/5`} disabled={busy} onClick={() => delConfirm.request(e.id)}>Delete</button>
+            <Button variant="danger-outline" size="sm" disabled={busy} onClick={() => delConfirm.request(e.id)}>Delete</Button>
           )}
         </div>
       </li>
     )
   }
 
-  const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
   const onStrength = soldier.on_strength !== false
 
   return (
-    <div className="fixed inset-0 z-30 flex justify-end bg-black/30" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-label={`${soldier.rank} ${soldier.name}`}
-        className="w-full max-w-md h-full bg-white overflow-y-auto"
-        onClick={(ev) => ev.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white border-b border-hairline px-4 py-3 flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-ink">{soldier.rank} {soldier.name}</h2>
-            <p className="text-xs text-ink-60">
-              {soldier.four_d ? `${soldier.four_d} · ` : ''}{soldier.platoon === 'HQ' ? 'HQ' : `PLT ${soldier.platoon}`}
-              {!onStrength && <span className="ml-2 text-danger font-medium">Posted out</span>}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-ink-60 hover:text-ink-80 text-xl leading-none p-1" aria-label="Close">✕</button>
+    <Dialog placement="right" onClose={onClose} aria-label={`${soldier.rank} ${soldier.name}`}>
+      <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-hairline bg-white px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-ink">{soldier.rank} {soldier.name}</h2>
+          <p className="text-xs text-ink-60">
+            {soldier.four_d ? `${soldier.four_d} · ` : ''}{soldier.platoon === 'HQ' ? 'HQ' : `PLT ${soldier.platoon}`}
+            {!onStrength && <span className="ml-2 font-medium text-danger">Posted out</span>}
+          </p>
         </div>
+        <Button variant="icon" onClick={onClose} aria-label="Close">✕</Button>
+      </div>
 
-        <div className="p-4 space-y-4">
-          {error && <div className="bg-danger/5 border border-danger/30 text-danger px-3 py-2 rounded-lg text-sm">{error}</div>}
+      <div className="space-y-4 p-4">
+        {error && <Banner>{error}</Banner>}
 
-          {form ? (
-            <div className="bg-parchment border border-hairline rounded-lg p-3 space-y-3">
-              <p className="text-sm font-medium text-ink-80">{form.id === null ? 'Add exception' : 'Edit exception'}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {EXCEPTION_SCOPES.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setForm({ ...form, scope: s, type: SCOPE_TYPES[s][0], counts_as_absence: absenceDefault(s) })}
-                    className={`px-2.5 py-1 text-xs rounded-full border ${form.scope === s ? 'bg-ink text-white border-ink' : 'border-hairline text-ink-80'}`}
-                  >{s}</button>
-                ))}
-              </div>
-              {SCOPE_TYPES[form.scope].length > 1 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {SCOPE_TYPES[form.scope].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setForm({ ...form, type: t })}
-                      className={`px-2.5 py-1 text-xs rounded-full border ${form.type === t ? 'bg-action text-white border-action' : 'border-hairline text-ink-80'}`}
-                    >{t}</button>
-                  ))}
-                </div>
+        {form ? (
+          <Panel className="space-y-3">
+            <SectionTitle className="mb-0">{form.id === null ? 'Add exception' : 'Edit exception'}</SectionTitle>
+            <Segmented
+              size="sm"
+              aria-label="Scope"
+              value={form.scope}
+              onChange={(s) => setForm({ ...form, scope: s, type: SCOPE_TYPES[s][0], counts_as_absence: absenceDefault(s) })}
+              options={EXCEPTION_SCOPES}
+            />
+            {SCOPE_TYPES[form.scope].length > 1 && (
+              <Segmented size="sm" aria-label="Type" value={form.type} onChange={(type) => setForm({ ...form, type })} options={SCOPE_TYPES[form.scope]} />
+            )}
+            <Field label="Reason">
+              <Input placeholder="Reason (e.g. FEVER, LD)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              {!SINGLE_DATE_SCOPES.includes(form.scope) && (
+                <Field label="From"><Input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} /></Field>
               )}
-              <input className={input} placeholder="Reason (e.g. FEVER, LD)" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
-              <div className="grid grid-cols-2 gap-2">
-                {!SINGLE_DATE_SCOPES.includes(form.scope) && (
-                  <label className="text-xs text-ink-60">From<input type="date" className={input} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} /></label>
-                )}
-                <label className="text-xs text-ink-60">{SINGLE_DATE_SCOPES.includes(form.scope) ? 'Date' : 'To (blank = open-ended)'}
-                  <input type="date" className={input} value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
-                </label>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-ink-80">
-                <input type="checkbox" className="h-4 w-4" checked={form.counts_as_absence} onChange={(e) => setForm({ ...form, counts_as_absence: e.target.checked })} />
-                Out of camp (counts against strength)
-              </label>
-              <div className="flex gap-2">
-                <button onClick={save} disabled={busy} className="flex-1 py-2 bg-ink text-white text-sm font-medium rounded-lg disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
-                <button onClick={() => setForm(null)} className="px-4 py-2 border border-hairline text-ink-80 text-sm rounded-lg">Cancel</button>
-              </div>
+              <Field label={SINGLE_DATE_SCOPES.includes(form.scope) ? 'Date' : 'To (blank = open-ended)'}>
+                <Input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
+              </Field>
             </div>
-          ) : (
-            <button onClick={() => setForm(newForm())} className="w-full py-2.5 bg-ink text-white text-sm font-medium rounded-lg">+ Add exception</button>
-          )}
-
-          <div className="flex border-b border-hairline">
-            {([['current', `Active & upcoming (${current.length})`], ['history', `History (${past.length + revoked.length})`]] as const).map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={`flex-1 py-2 text-sm font-medium border-b-2 ${tab === id ? 'border-ink text-ink' : 'border-transparent text-ink-60'}`}
-              >{label}</button>
-            ))}
-          </div>
-
-          {tab === 'current' ? (
-            current.length ? <ul className="space-y-2">{current.map((e) => row(e, 'current'))}</ul>
-              : <p className="text-sm text-ink-60 text-center py-6">Nothing running or coming up.</p>
-          ) : (
-            <div className="space-y-4">
-              {past.length ? <ul className="space-y-2">{past.map((e) => row(e, 'past'))}</ul>
-                : <p className="text-sm text-ink-60 text-center py-4">No past exceptions.</p>}
-              {revoked.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-ink mb-2">Revoked</h3>
-                  <ul className="space-y-2 opacity-70">{revoked.map((e) => row(e, 'revoked'))}</ul>
-                </div>
-              )}
+            <CheckField label="Out of camp (counts against strength)">
+              <Checkbox checked={form.counts_as_absence} onChange={(e) => setForm({ ...form, counts_as_absence: e.target.checked })} />
+            </CheckField>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+              <Button variant="secondary" onClick={() => setForm(null)}>Cancel</Button>
             </div>
-          )}
+          </Panel>
+        ) : (
+          <Button block onClick={() => setForm(newForm())}>+ Add exception</Button>
+        )}
 
-          <div className="border-t border-hairline pt-4">
-            <label className="flex items-center justify-between gap-3 text-sm text-ink-80">
-              <span>
-                On strength
-                <span className="block text-xs text-ink-60">Off = posted out: hidden from the roll and strength, history kept.</span>
-              </span>
-              <input type="checkbox" className="h-5 w-5" checked={onStrength} disabled={busy} onChange={(e) => setOnStrength(e.target.checked)} />
-            </label>
+        <Segmented
+          aria-label="Exceptions"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'current', label: `Active & upcoming (${current.length})` },
+            { value: 'history', label: `History (${past.length + revoked.length})` },
+          ]}
+        />
+
+        {tab === 'current' ? (
+          current.length ? <ul className="space-y-2">{current.map((e) => row(e, 'current'))}</ul>
+            : <Empty className="py-6">Nothing running or coming up.</Empty>
+        ) : (
+          <div className="space-y-4">
+            {past.length ? <ul className="space-y-2">{past.map((e) => row(e, 'past'))}</ul>
+              : <Empty className="py-4">No past exceptions.</Empty>}
+            {revoked.length > 0 && (
+              <div>
+                <SectionTitle>Revoked</SectionTitle>
+                <ul className="space-y-2 opacity-70">{revoked.map((e) => row(e, 'revoked'))}</ul>
+              </div>
+            )}
           </div>
+        )}
+
+        <div className="border-t border-hairline pt-4">
+          <label className="flex items-center justify-between gap-3 text-sm text-ink-80">
+            <span>
+              On strength
+              <span className="block text-xs text-ink-60">Off = posted out: hidden from the roll and strength, history kept.</span>
+            </span>
+            <Switch checked={onStrength} disabled={busy} onChange={(e) => setOnStrength(e.target.checked)} />
+          </label>
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }

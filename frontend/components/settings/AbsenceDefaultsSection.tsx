@@ -3,8 +3,7 @@
 import type { Company } from '@/shared/companies'
 import { EXCEPTION_SCOPES } from '@/backend/domain/exceptions/exception-validation'
 import type { AppSettings } from '@/backend/domain/settings/settings'
-import { Switch } from '@/frontend/components/ui/switch'
-import { Label } from '@/frontend/components/ui/label'
+import { Switch } from '@/frontend/components/ui/fields'
 import SettingsForm from './SettingsForm'
 
 /** Settings: whether each exception scope counts as absent by default. */
@@ -17,13 +16,13 @@ export default function AbsenceDefaultsSection({ company, settings }: { company:
       defaultValues={{ absence_scope_defaults: settings.absence_scope_defaults }}
     >
       {({ watch, setValue }) => EXCEPTION_SCOPES.map((scope) => (
-        <div key={scope} className="flex items-center justify-between py-1">
-          <Label className="text-sm text-ink-80">{scope}</Label>
+        <label key={scope} className="flex min-h-11 items-center justify-between text-sm text-ink-80">
+          {scope}
           <Switch
             checked={watch('absence_scope_defaults')[scope] ?? false}
-            onCheckedChange={(v) => setValue('absence_scope_defaults', { ...watch('absence_scope_defaults'), [scope]: v }, { shouldDirty: true })}
+            onChange={(e) => setValue('absence_scope_defaults', { ...watch('absence_scope_defaults'), [scope]: e.target.checked }, { shouldDirty: true })}
           />
-        </div>
+        </label>
       ))}
     </SettingsForm>
   )

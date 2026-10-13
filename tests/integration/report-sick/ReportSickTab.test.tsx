@@ -48,7 +48,7 @@ describe('ReportSickTab', () => {
 
   it('keys an RSO with no default location and no message', async () => {
     await renderTab()
-    await userEvent.click(screen.getByRole('button', { name: 'RSO' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'RSO' }))
     expect(screen.getByLabelText('Location')).toHaveValue('')
     await pick('GOH RONG HAO')
     await userEvent.type(screen.getByPlaceholderText(/^Reason/), 'Sprained ankle')
@@ -62,7 +62,7 @@ describe('ReportSickTab', () => {
 
   it('keys a medical review and prints it in the medical review message', async () => {
     await renderTab()
-    await userEvent.click(screen.getByRole('button', { name: 'Medical Review' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Medical Review' }))
     await pick('WONG KAH MENG')
     expect(screen.getByLabelText('Coy')).toHaveValue('TEST')
     await userEvent.type(screen.getByLabelText('NRIC'), 's0000000a')

@@ -3,22 +3,23 @@
 import { useState } from 'react'
 import Holidays from 'date-holidays'
 import { format, compareAsc } from 'date-fns'
-import { toast } from 'sonner'
 import type { PublicHoliday } from '@/backend/domain/settings/settings'
 import { useAddHolidayMutation, useRemoveHolidayMutation } from '@/frontend/hooks/queries'
-import { Input } from '@/frontend/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/frontend/components/ui/popover'
-import { Calendar } from '@/frontend/components/ui/calendar'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
+import { Button } from '@/frontend/components/ui/button'
+import { Field, Input, Select } from '@/frontend/components/ui/fields'
+import { Banner, Empty } from '@/frontend/components/ui/layout'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1]
 
+type Message = { tone: 'success' | 'error'; text: string }
+
 /** Settings: battalion-wide public holidays (sync SG list or add manually). */
 export default function PublicHolidaysSection({ publicHolidays }: { publicHolidays: PublicHoliday[] }) {
   const [year, setYear] = useState(CURRENT_YEAR)
-  const [pickerDate, setPickerDate] = useState<Date | undefined>(undefined)
+  const [pickerDate, setPickerDate] = useState('')
   const [manualName, setManualName] = useState('')
+  const [message, setMessage] = useState<Message | null>(null)
   const addMutation = useAddHolidayMutation()
   const removeMutation = useRemoveHolidayMutation()
 
@@ -33,29 +34,28 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
       .map((h) => ({ date: format(new Date(h.date), 'yyyy-MM-dd'), name: h.name }))
       .filter((h) => !existingDates.has(h.date))
     if (toAdd.length === 0) {
-      toast.success(`No new SG holidays to add for ${year}`)
+      setMessage({ tone: 'success', text: `No new SG holidays to add for ${year}` })
       return
     }
     Promise.all(toAdd.map((h) => addMutation.mutateAsync(h)))
-      .then(() => toast.success(`Added ${toAdd.length} SG holiday(s) for ${year}`))
-      .catch(() => toast.error('Failed to sync some SG holidays'))
+      .then(() => setMessage({ tone: 'success', text: `Added ${toAdd.length} SG holiday(s) for ${year}` }))
+      .catch(() => setMessage({ tone: 'error', text: 'Failed to sync some SG holidays' }))
   }
 
   /** Adds the picked date as a holiday. */
   function addManual() {
     if (!pickerDate) return
-    const date = format(pickerDate, 'yyyy-MM-dd')
-    addMutation.mutate({ date, name: manualName }, {
-      onSuccess: () => { toast.success('Holiday added'); setPickerDate(undefined); setManualName('') },
-      onError: () => toast.error('Failed to add holiday'),
+    addMutation.mutate({ date: pickerDate, name: manualName }, {
+      onSuccess: () => { setMessage({ tone: 'success', text: 'Holiday added' }); setPickerDate(''); setManualName('') },
+      onError: () => setMessage({ tone: 'error', text: 'Failed to add holiday' }),
     })
   }
 
   /** Removes the holiday on `date`. */
   function remove(date: string) {
     removeMutation.mutate(date, {
-      onSuccess: () => toast.success('Holiday removed'),
-      onError: () => toast.error('Failed to remove holiday'),
+      onSuccess: () => setMessage({ tone: 'success', text: 'Holiday removed' }),
+      onError: () => setMessage({ tone: 'error', text: 'Failed to remove holiday' }),
     })
   }
 
@@ -66,49 +66,30 @@ export default function PublicHolidaysSection({ publicHolidays }: { publicHolida
         (no network call); it merges in new dates without overwriting manual entries.
       </p>
 
+      {message && <Banner tone={message.tone}>{message.text}</Banner>}
+
       <div className="flex items-center gap-2">
-        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {YEAR_OPTIONS.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-          </SelectContent>
+        <Select aria-label="Year" className="w-28" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+          {YEAR_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
         </Select>
-        <button
-          type="button"
-          onClick={syncSingaporeHolidays}
-          className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-        >
-          Sync Singapore Holidays
-        </button>
+        <Button type="button" variant="soft" onClick={syncSingaporeHolidays}>Sync Singapore Holidays</Button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors">
-            {pickerDate ? format(pickerDate, 'dd MMM yyyy') : 'Pick a date'}
-          </PopoverTrigger>
-          <PopoverContent className="p-0 w-auto">
-            <Calendar mode="single" selected={pickerDate} onSelect={setPickerDate} />
-          </PopoverContent>
-        </Popover>
-        <Input placeholder="Name (optional)" value={manualName} onChange={(e) => setManualName(e.target.value)} className="flex-1" />
-        <button
-          type="button"
-          onClick={addManual}
-          disabled={!pickerDate}
-          className="bg-action text-white rounded-pill px-[22px] py-2 text-sm disabled:bg-ink-48"
-        >
-          Add
-        </button>
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label="Date"><Input type="date" value={pickerDate} onChange={(e) => setPickerDate(e.target.value)} /></Field>
+        <Field label="Name (optional)" className="min-w-40 flex-1">
+          <Input placeholder="e.g. Hari Raya Haji" value={manualName} onChange={(e) => setManualName(e.target.value)} />
+        </Field>
+        <Button type="button" onClick={addManual} disabled={!pickerDate}>Add</Button>
       </div>
 
-      <div className="border border-hairline rounded-lg divide-y divide-hairline">
+      <div className="divide-y divide-hairline rounded-card border border-hairline">
         {sorted.length === 0 ? (
-          <p className="text-sm text-ink-60 text-center py-4">No public holidays yet.</p>
+          <Empty className="py-4">No public holidays yet.</Empty>
         ) : sorted.map((h) => (
-          <div key={h.date} className="flex items-center justify-between px-3 py-2 text-sm">
+          <div key={h.date} className="flex items-center justify-between px-3 py-1 text-sm">
             <span>{format(new Date(h.date), 'dd MMM yyyy')} {h.name && `— ${h.name}`}</span>
-            <button type="button" onClick={() => remove(h.date)} className="text-ink-60 hover:text-danger">×</button>
+            <Button type="button" variant="icon-danger" aria-label={`Remove ${h.date}`} title="Remove" onClick={() => remove(h.date)}>✕</Button>
           </div>
         ))}
       </div>

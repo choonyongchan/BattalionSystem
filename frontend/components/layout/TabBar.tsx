@@ -2,13 +2,14 @@
 
 import { Fragment, useRef, useState, type KeyboardEvent } from 'react'
 import { CalendarDays, ClipboardList, Ellipsis, Flag, LayoutGrid, Stethoscope, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { Dialog } from '@/frontend/components/ui/dialog'
 
 export type TabId = 'overview' | 'parade-state' | 'report-sick' | 'nominal-roll' | 'off-leave' | 'dashboard' | 'conducts'
 
 type Tab = { id: TabId; label: string; icon: LucideIcon }
 
 /** Tabs grouped by workflow: what a commander does daily, people admin, then planning. */
-export const TAB_GROUPS: { name: string; tabs: Tab[] }[] = [
+const TAB_GROUPS: { name: string; tabs: Tab[] }[] = [
   { name: 'Daily', tabs: [
     { id: 'overview', label: 'Overview', icon: LayoutGrid },
     { id: 'parade-state', label: 'Parade State', icon: ClipboardList },
@@ -102,12 +103,8 @@ export default function TabBar({ active, onSelect }: { active: TabId; onSelect: 
       </div>
 
       {moreOpen && (
-        <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setMoreOpen(false)}>
-          <ul
-            aria-label="More tabs"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute inset-x-0 bottom-0 rounded-t-card bg-pearl px-2 pt-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-xl"
-          >
+        <Dialog placement="bottom" onClose={() => setMoreOpen(false)} aria-label="More tabs">
+          <ul className="px-2 pt-2 pb-4">
             {MORE.map((t) => (
               <li key={t.id}>
                 <button
@@ -121,7 +118,7 @@ export default function TabBar({ active, onSelect }: { active: TabId; onSelect: 
               </li>
             ))}
           </ul>
-        </div>
+        </Dialog>
       )}
 
       <nav

@@ -8,7 +8,15 @@ import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/backend/d
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/backend/domain/duty/duty-dashboard'
 import { combine, useDuties, useExceptions, usePublicHolidaysQuery, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
 import { pointsDutyTypes, resolveDayType } from '@/backend/domain/settings/settings'
-import { THEME } from '@/frontend/theme'
+import { Banner, Loading, PageHeader, SectionTitle } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
+import { SortTh, TD, Table, Th, rowClass } from '@/frontend/components/ui/table'
+
+const DAY_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'weekday', label: 'M-T' },
+  { value: 'weekend', label: 'F-S/PH' },
+] as const
 
 /** Duty points leaderboard: who has done which duties, weighted by settings. */
 export default function DutyDashboard({ company }: { company: Company }) {
@@ -95,123 +103,66 @@ export default function DutyDashboard({ company }: { company: Company }) {
   }, [visible, filterPoints, filter, sortCol, sortDir, pointsByDutyType])
   const maxPts = Math.max(...sorted.map(s => filterPoints[s.name] ?? 0), 1)
 
-  if (loading) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading) return <Loading />
+
+  /** Sortable points column; clicking the same column flips the direction. */
+  const sortHeader = (col: string) => (
+    <SortTh key={col} label={col} className="text-center" dir={sortCol === col ? sortDir : null} onSort={() => handleSort(col)} />
+  )
 
   return (
-    <div className="space-y-6">
-            {error && <div role="alert" className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+    <div className="space-y-4">
+      <PageHeader title="Duty Dashboard" subtitle="Duty points per soldier, weighted by Settings" />
 
-            {/* Day-type tabs */}
-            <div className="flex border-b border-hairline">
-              {(['all', 'weekday', 'weekend'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setDayFilter(f)}
-                  className={`flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
-                    dayFilter === f ? `${THEME.activeBorder} ${THEME.activeText}` : 'border-transparent text-ink-60 hover:text-ink-80'
-                  }`}
-                >
-                  {f === 'all' ? 'All' : f === 'weekday' ? 'M-T' : 'F-S/PH'}
-                </button>
-              ))}
-            </div>
+      {error && <Banner>{error}</Banner>}
 
-            {/* Filter pills — duty-weight editing now lives on the Settings page */}
-            <div className="flex gap-2 flex-wrap">
-              {['all', ...dutyTypes].map(f => (
-                <button
-                  key={f}
-                  onClick={() => { setFilter(f); setSortCol(null) }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    filter === f
-                      ? `${THEME.buttonBg} ${THEME.buttonHoverBg} text-white`
-                      : 'bg-parchment text-ink-80 hover:bg-hairline'
-                  }`}
-                >
-                  {f === 'all' ? 'All' : f}
-                </button>
-              ))}
-            </div>
+      <Segmented aria-label="Days" value={dayFilter} onChange={setDayFilter} options={DAY_FILTERS} />
 
-            {/* Breakdown */}
-            <div>
-              <h3 className="mb-3 text-sm font-semibold text-ink">
-                Duty Breakdown
-              </h3>
-              <div className="bg-white border border-hairline rounded-card overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-parchment border-b border-hairline">
-                        <th className="text-left px-3 py-1.5 font-medium text-ink-60 whitespace-nowrap">Name</th>
-                        {filter === 'all' ? (
-                          <>
-                            {dutyTypes.map(dt => (
-                              <th
-                                key={dt}
-                                onClick={() => handleSort(dt)}
-                                className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
-                              >
-                                {dt}{sortCol === dt ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
-                              </th>
-                            ))}
-                            <th
-                              onClick={() => handleSort('Total')}
-                              className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
-                            >
-                              Total{sortCol === 'Total' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
-                            </th>
-                          </>
-                        ) : (
-                          <th
-                            onClick={() => handleSort('Points')}
-                            className="text-center px-2 py-1.5 font-medium text-ink-60 whitespace-nowrap cursor-pointer select-none hover:text-ink-80"
-                          >
-                            Points{sortCol === 'Points' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sorted.length === 0 ? (
-                        <tr>
-                          <td colSpan={filter === 'all' ? dutyTypes.length + 2 : 2} className="px-4 py-8 text-center text-sm text-ink-60">
-                            No personnel in this category
-                          </td>
-                        </tr>
-                      ) : sorted.map((s, i) => {
-                        const total = filterPoints[s.name] ?? 0
-                        const isMax = total === maxPts && sorted.length > 1 && total > 0
-                        return (
-                          <tr key={s.name} className={`border-b border-hairline last:border-0 ${i % 2 === 1 ? 'bg-parchment/50' : ''}`}>
-                            <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">{s.rank} {s.name}</td>
-                            {filter === 'all' ? (
-                              <>
-                                {dutyTypes.map(dt => {
-                                  const dtPoints = pointsByDutyType[s.name]?.[dt] ?? 0
-                                  return (
-                                    <td key={dt} className={`px-2 py-1.5 text-center ${dtPoints === 0 ? 'text-ink-48' : 'text-ink-80'}`}>
-                                      {dtPoints === 0 ? '—' : dtPoints}
-                                    </td>
-                                  )
-                                })}
-                                <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-ink' : 'text-ink-80'}`}>
-                                  {total}
-                                </td>
-                              </>
-                            ) : (
-                              <td className={`px-2 py-1.5 text-center font-bold ${isMax ? 'text-ink' : 'text-ink-80'}`}>
-                                {total}
-                              </td>
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+      {/* Duty-weight editing lives on the Settings page */}
+      <Segmented
+        aria-label="Duty"
+        value={filter}
+        onChange={(f) => { setFilter(f); setSortCol(null) }}
+        options={['all', ...dutyTypes].map((f) => ({ value: f, label: f === 'all' ? 'All' : f }))}
+      />
+
+      <div>
+        <SectionTitle>Duty Breakdown</SectionTitle>
+        <Table head={<>
+          <Th>Name</Th>
+          {filter === 'all' ? <>{dutyTypes.map(sortHeader)}{sortHeader('Total')}</> : sortHeader('Points')}
+        </>}>
+          {sorted.length === 0 ? (
+            <tr>
+              <td colSpan={filter === 'all' ? dutyTypes.length + 2 : 2} className="px-4 py-8 text-center text-sm text-ink-60">
+                No personnel in this category
+              </td>
+            </tr>
+          ) : sorted.map((s, i) => {
+            const total = filterPoints[s.name] ?? 0
+            const isMax = total === maxPts && sorted.length > 1 && total > 0
+            const totalCell = <td className={`${TD} text-center font-bold ${isMax ? 'text-ink' : 'text-ink-80'}`}>{total}</td>
+            return (
+              <tr key={s.name} className={rowClass(i)}>
+                <td className={`${TD} font-medium text-ink`}>{s.rank} {s.name}</td>
+                {filter === 'all' ? (
+                  <>
+                    {dutyTypes.map(dt => {
+                      const dtPoints = pointsByDutyType[s.name]?.[dt] ?? 0
+                      return (
+                        <td key={dt} className={`${TD} text-center ${dtPoints === 0 ? 'text-ink-48' : 'text-ink-80'}`}>
+                          {dtPoints === 0 ? '—' : dtPoints}
+                        </td>
+                      )
+                    })}
+                    {totalCell}
+                  </>
+                ) : totalCell}
+              </tr>
+            )
+          })}
+        </Table>
+      </div>
     </div>
   )
 }

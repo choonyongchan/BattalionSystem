@@ -85,7 +85,7 @@ describe('OffLeaveTracking', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '+ Off/Leave' }))
     await pickSoldier('LIM ZHEN', 'LIM ZHEN HAO')
-    await userEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    await userEvent.click(screen.getByRole('radio', { name: 'Leave' }))
     await userEvent.type(screen.getByPlaceholderText('e.g. 1 or 0.5'), '0.5')
     await userEvent.click(screen.getByRole('button', { name: 'Add Off/Leave' }))
 

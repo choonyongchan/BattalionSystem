@@ -31,3 +31,9 @@ import { vi } from 'vitest'
 vi.mock('@vercel/analytics', () => ({
   track: vi.fn(),
 }))
+
+// jsdom has <dialog> but not its modal API; open/close by attribute so dialogs render in tests
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  HTMLDialogElement.prototype.close = function () { this.open = false }
+}

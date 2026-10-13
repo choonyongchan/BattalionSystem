@@ -7,6 +7,7 @@ import type { Company } from '@/shared/companies'
 import { companyHref } from '@/shared/companies'
 import { useAuth } from '@/frontend/hooks/useAuth'
 import LandingHero from '@/frontend/components/auth/LandingHero'
+import { Loading } from '@/frontend/components/ui/layout'
 import GlobalNav from './GlobalNav'
 
 const NAV_BTN = 'inline-flex h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sand-ink/80 hover:text-sand-ink active:bg-black/5'
@@ -22,7 +23,7 @@ export default function CompanyShell({ company, label, children }: { company: Co
     return (
       <>
         <GlobalNav title={`${label} Coy`} href={companyHref(company)} />
-        <p role="status" className="py-16 text-center text-sm text-ink-60">Loading...</p>
+        <Loading className="py-16" />
       </>
     )
   }

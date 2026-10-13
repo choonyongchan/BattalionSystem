@@ -4,16 +4,16 @@ import type { ReactNode } from 'react'
 import { useForm, type DefaultValues, type FieldValues, type Resolver, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { z } from 'zod'
-import { toast } from 'sonner'
 import type { Company } from '@/shared/companies'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import { useSaveSettingsMutation } from '@/frontend/hooks/queries'
-import { THEME } from '@/frontend/theme'
+import { Button } from '@/frontend/components/ui/button'
+import { Banner } from '@/frontend/components/ui/layout'
 
 /**
- * One settings section: owns the form, the save, its toasts and the Save button, so a
- * section only renders its fields.
- * @param title Names the section in the button and toasts, e.g. "Parade Times".
+ * One settings section: owns the form, the save, its result message and the Save button,
+ * so a section only renders its fields.
+ * @param title Names the section in the button and messages, e.g. "Parade Times".
  * @param toSettings Maps form values to the settings fields to save; defaults to the values as is.
  * @param invalid Blocks saving, for checks the schema can't express.
  */
@@ -38,8 +38,7 @@ export default function SettingsForm<V extends FieldValues>({ company, title, de
   function onSubmit(values: V) {
     if (blocked) return
     save.mutate(toSettings ? toSettings(values) : (values as Partial<AppSettings>), {
-      onSuccess: () => { toast.success(`${title} saved`); form.reset(values) },
-      onError: () => toast.error(`Failed to save ${title.toLowerCase()}`),
+      onSuccess: () => form.reset(values),
     })
   }
 
@@ -47,13 +46,12 @@ export default function SettingsForm<V extends FieldValues>({ company, title, de
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
       {description && <p className="text-xs text-ink-60">{description}</p>}
       {children(form)}
-      <button
-        type="submit"
-        disabled={save.isPending || !form.formState.isDirty || blocked}
-        className={`px-4 py-2 rounded-full text-sm font-medium text-white transition-colors ${THEME.buttonBg} ${THEME.buttonHoverBg} disabled:opacity-50`}
-      >
+      {save.isError && <Banner>Failed to save {title.toLowerCase()}</Banner>}
+      {/* Clears on the next edit, which dirties the form again */}
+      {save.isSuccess && !form.formState.isDirty && <Banner tone="success">{title} saved</Banner>}
+      <Button type="submit" disabled={save.isPending || !form.formState.isDirty || blocked}>
         {save.isPending ? 'Saving…' : `Save ${title}`}
-      </button>
+      </Button>
     </form>
   )
 }

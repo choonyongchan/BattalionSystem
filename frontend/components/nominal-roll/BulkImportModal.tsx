@@ -6,7 +6,10 @@ import type { Soldier } from '@/shared/types'
 import type { Company } from '@/shared/companies'
 import { parseCSV, validateAndTransform } from '@/backend/domain/nominal-roll/bulk-import'
 import type { ParsedRow, RowError } from '@/backend/domain/nominal-roll/bulk-import'
-import { THEME } from '@/frontend/theme'
+import { Button, buttonClass } from '@/frontend/components/ui/button'
+import { Dialog } from '@/frontend/components/ui/dialog'
+import { Banner } from '@/frontend/components/ui/layout'
+import { TD, Th, rowClass } from '@/frontend/components/ui/table'
 
 const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/1IjFwbLWLSnoMelF92InkQBTGYk-4jal8URafSBKWEoc/edit?usp=sharing'
 
@@ -66,83 +69,64 @@ export default function BulkImportModal({
   const overwriteCount = valid?.filter((r) => r.isOverwrite).length ?? 0
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Bulk Import Soldiers">
-      <div className="bg-white rounded-card w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="p-5 space-y-4 overflow-y-auto">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-ink">Bulk Import Soldiers</h2>
-            <button onClick={onClose} className="text-ink-60 hover:text-ink-80 text-lg" aria-label="Close">✕</button>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => window.open(TEMPLATE_URL, '_blank')}
-              className="flex-1 border border-hairline rounded-lg py-2.5 text-sm text-ink-80 hover:bg-parchment transition-colors"
-            >
-              Download Template
-            </button>
-            <label className={`flex-1 text-center cursor-pointer py-2.5 text-sm font-medium text-white rounded-lg ${THEME.buttonBg} ${THEME.buttonHoverBg} transition-colors`}>
-              Upload CSV
-              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} data-testid="csv-upload" />
-            </label>
-          </div>
-
-          {errors.length > 0 && (
-            <div className="bg-danger/5 border border-danger/30 rounded-lg p-3 space-y-1 max-h-40 overflow-y-auto">
-              <p className="text-xs font-semibold text-danger mb-1">{errors.length} error{errors.length !== 1 ? 's' : ''} found — fix and re-upload</p>
-              {errors.map((e, i) => (
-                <p key={i} className="text-xs text-danger">Row {e.row}: {e.message}</p>
-              ))}
-            </div>
-          )}
-
-          {valid && valid.length > 0 && !importResult && (
-            <>
-              <div className="border border-hairline rounded-lg overflow-hidden">
-                <div className="max-h-64 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-parchment border-b border-hairline">
-                      <tr>
-                        <th className="text-left px-3 py-2 font-medium text-ink-60">Rank</th>
-                        <th className="text-left px-3 py-2 font-medium text-ink-60">Name</th>
-                        <th className="text-left px-3 py-2 font-medium text-ink-60">Platoon</th>
-                        <th className="text-left px-3 py-2 font-medium text-ink-60">4D</th>
-                        <th className="text-left px-3 py-2 font-medium text-ink-60"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {valid.map((row, i) => (
-                        <tr key={i} className={`border-b border-hairline last:border-0 ${row.isOverwrite ? 'bg-amber-50' : ''}`}>
-                          <td className="px-3 py-2 font-mono text-ink-80">{row.rank}</td>
-                          <td className="px-3 py-2 font-medium">{row.name}</td>
-                          <td className="px-3 py-2 text-ink-60">{row.platoon}</td>
-                          <td className="px-3 py-2 text-ink-60">{row.fourD ?? '—'}</td>
-                          <td className="px-3 py-2">{row.isOverwrite && <span className="text-amber-700 font-medium">overwrite</span>}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <button
-                onClick={doImport}
-                disabled={importing}
-                className={`w-full py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors`}
-              >
-                {importing
-                  ? 'Importing...'
-                  : `Import ${valid.length} soldier${valid.length !== 1 ? 's' : ''}${overwriteCount > 0 ? ` (${overwriteCount} overwrite${overwriteCount !== 1 ? 's' : ''})` : ''}`}
-              </button>
-            </>
-          )}
-
-          {importResult && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-              Done: {importResult.added} added, {importResult.updated} updated
-            </div>
-          )}
+    <Dialog onClose={onClose} aria-label="Bulk Import Soldiers">
+      <div className="space-y-4 p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-ink">Bulk Import Soldiers</h2>
+          <Button variant="icon" onClick={onClose} aria-label="Close">✕</Button>
         </div>
+
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => window.open(TEMPLATE_URL, '_blank')}>
+            Download Template
+          </Button>
+          <label className={buttonClass({ block: true }) + ' flex-1 cursor-pointer'}>
+            Upload CSV
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} data-testid="csv-upload" />
+          </label>
+        </div>
+
+        {errors.length > 0 && (
+          <Banner className="max-h-40 space-y-1 overflow-y-auto p-3">
+            <p className="mb-1 text-xs font-semibold">{errors.length} error{errors.length !== 1 ? 's' : ''} found — fix and re-upload</p>
+            {errors.map((e, i) => (
+              <p key={i} className="text-xs">Row {e.row}: {e.message}</p>
+            ))}
+          </Banner>
+        )}
+
+        {valid && valid.length > 0 && !importResult && (
+          <>
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-hairline">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 border-b border-hairline bg-parchment">
+                  <tr><Th>Rank</Th><Th>Name</Th><Th>Platoon</Th><Th>4D</Th><Th /></tr>
+                </thead>
+                <tbody>
+                  {valid.map((row, i) => (
+                    <tr key={i} className={rowClass(0, false, row.isOverwrite ? 'bg-warning/10' : undefined)}>
+                      <td className={`${TD} font-mono text-ink-80`}>{row.rank}</td>
+                      <td className={`${TD} font-medium`}>{row.name}</td>
+                      <td className={`${TD} text-ink-60`}>{row.platoon}</td>
+                      <td className={`${TD} text-ink-60`}>{row.fourD ?? '—'}</td>
+                      <td className={TD}>{row.isOverwrite && <span className="font-medium text-warning">overwrite</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Button block onClick={doImport} disabled={importing}>
+              {importing
+                ? 'Importing...'
+                : `Import ${valid.length} soldier${valid.length !== 1 ? 's' : ''}${overwriteCount > 0 ? ` (${overwriteCount} overwrite${overwriteCount !== 1 ? 's' : ''})` : ''}`}
+            </Button>
+          </>
+        )}
+
+        {importResult && (
+          <Banner tone="success">Done: {importResult.added} added, {importResult.updated} updated</Banner>
+        )}
       </div>
-    </div>
+    </Dialog>
   )
 }

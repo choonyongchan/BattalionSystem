@@ -22,7 +22,7 @@ export function bunkOf(s: Soldier): string | null {
 }
 
 /** The platoon a bunk belongs to ("PLT 1"), or null for a standalone bunk. */
-export const platoonOfBunk = (bunk: string): string | null => bunk.match(/^(PLT \S+)/)?.[1] ?? null
+const platoonOfBunk = (bunk: string): string | null => bunk.match(/^(PLT \S+)/)?.[1] ?? null
 
 
 /** One trooper's place in the count. */

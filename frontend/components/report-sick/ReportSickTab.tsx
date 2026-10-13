@@ -15,16 +15,22 @@ import { todaySGDate } from '@/shared/dates'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import MessageBox from '@/frontend/components/shared/MessageBox'
+import { soldierDropdownProps } from '@/frontend/components/parade/parade-ui'
+import { Button } from '@/frontend/components/ui/button'
+import { CheckField, Checkbox, Field, Input, inputClass } from '@/frontend/components/ui/fields'
+import { Banner, Empty, Loading, PageHeader, Panel } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
+import { RowActions } from '@/frontend/components/ui/table'
 
 /** Current Singapore time as "HH:MM". */
 const nowSGTime = () =>
   new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', hour12: false })
 
 type Kind = 'rsi' | 'rso' | 'review'
-const KINDS: { id: Kind; label: string }[] = [
-  { id: 'rsi', label: 'RSI' },
-  { id: 'rso', label: 'RSO' },
-  { id: 'review', label: 'Medical Review' },
+const KINDS: { value: Kind; label: string }[] = [
+  { value: 'rsi', label: 'RSI' },
+  { value: 'rso', label: 'RSO' },
+  { value: 'review', label: 'Medical Review' },
 ]
 const IS_KIND: Record<Kind, (e: Exception) => boolean> = { rsi: isRsi, rso: isRso, review: isMedicalReview }
 
@@ -34,8 +40,6 @@ type ReviewForm = { name: string; coy: string; nric: string; diagnosis: string; 
 
 const SICK_FORM: SickForm = { name: '', reason: '', urti: false, urtiTouched: false, location: null }
 const reviewForm = (coy: string): ReviewForm => ({ name: '', coy, nric: '', diagnosis: '', lastMa: '', nextMa: '', memo: false, remarks: '' })
-
-const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
 
 /**
  * Report Sick tab: RSI (inside, default location from Settings), RSO (outside) and medical reviews. Each is a
@@ -140,7 +144,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   /** Deletes an entry; a review's details go with it. */
   const remove = (e: Exception) => run(() => exceptionRepo.remove(e.id))
 
-  if (loading || !settings) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading || !settings) return <Loading />
 
   /** "<4D> <rank> <name>", or the stored name. */
   const who = (e: Exception) => {
@@ -154,124 +158,104 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   }
 
   const soldierPicker = (value: string, onChange: (name: string) => void) => (
-    <SearchDropdown
-      items={soldiers}
-      value={value}
-      getKey={(s) => s.name}
-      getLabel={(s) => `${s.rank} ${s.name}`.trim()}
-      matches={(s, q) => `${s.four_d ?? ''} ${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
-      renderOption={(s) => (
-        <div className="flex gap-2">
-          <span className="font-mono text-xs text-ink-60 w-12 shrink-0 pt-0.5">{s.rank}</span>
-          <span className="font-medium text-ink">{s.name}</span>
-        </div>
-      )}
-      onChange={onChange}
-      inputClass={input}
-      placeholder="Search soldier..."
-    />
+    <Field label="Soldier" required>
+      <SearchDropdown
+        {...soldierDropdownProps}
+        matches={(s, q) => `${s.four_d ?? ''} ${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
+        items={soldiers}
+        value={value}
+        onChange={onChange}
+        inputClass={inputClass()}
+      />
+    </Field>
   )
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-base font-semibold text-ink">Report Sick</h2>
-        <p className="text-xs text-ink-60">Entries go into the parade state under REPORT SICK. RSI and RSO also fall the soldier out of conducts.</p>
-      </div>
+      <PageHeader
+        title="Report Sick"
+        subtitle="Entries go into the parade state under REPORT SICK. RSI and RSO also fall the soldier out of conducts."
+      />
 
-      {error && <div role="alert" className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="grid grid-cols-3 gap-1 rounded-pill bg-hairline/60 p-1">
-        {KINDS.map((k) => (
-          <button
-            key={k.id}
-            onClick={() => switchKind(k.id)}
-            aria-pressed={kind === k.id}
-            className={`h-9 rounded-pill text-sm ${kind === k.id ? 'bg-white font-semibold text-ink' : 'text-ink-80 hover:text-ink'}`}
-          >
-            {k.label}
-          </button>
-        ))}
-      </div>
+      <Segmented aria-label="Kind" value={kind} onChange={switchKind} options={KINDS} />
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs text-ink-60">Date<input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        <label className="text-xs text-ink-60">Time<input type="time" className={input} value={time} onChange={(e) => setTime(e.target.value)} /></label>
+        <Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
+        <Field label="Time"><Input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>
       </div>
 
       {kind === 'review' ? (
-        <div className="bg-parchment border border-hairline rounded-card p-4 space-y-3">
+        <Panel className="space-y-3">
           {soldierPicker(review.name, (name) => setReview({ ...review, name }))}
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-ink-60">Coy<input className={input} value={review.coy} onChange={(e) => setReview({ ...review, coy: e.target.value })} /></label>
-            <label className="text-xs text-ink-60">NRIC<input className={input} value={review.nric} autoComplete="off" onChange={(e) => setReview({ ...review, nric: e.target.value })} /></label>
+            <Field label="Coy"><Input value={review.coy} onChange={(e) => setReview({ ...review, coy: e.target.value })} /></Field>
+            <Field label="NRIC"><Input value={review.nric} autoComplete="off" onChange={(e) => setReview({ ...review, nric: e.target.value })} /></Field>
           </div>
-          <label className="block text-xs text-ink-60">Diagnosis/Issue<input className={input} value={review.diagnosis} onChange={(e) => setReview({ ...review, diagnosis: e.target.value })} /></label>
+          <Field label="Diagnosis/Issue"><Input value={review.diagnosis} onChange={(e) => setReview({ ...review, diagnosis: e.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-ink-60">Most recent MA<input type="date" className={input} value={review.lastMa} onChange={(e) => setReview({ ...review, lastMa: e.target.value })} /></label>
-            <label className="text-xs text-ink-60">Next MA<input type="date" className={input} value={review.nextMa} onChange={(e) => setReview({ ...review, nextMa: e.target.value })} /></label>
+            <Field label="Most recent MA"><Input type="date" value={review.lastMa} onChange={(e) => setReview({ ...review, lastMa: e.target.value })} /></Field>
+            <Field label="Next MA"><Input type="date" value={review.nextMa} onChange={(e) => setReview({ ...review, nextMa: e.target.value })} /></Field>
           </div>
-          <fieldset className="flex items-center gap-4 text-sm text-ink-80">
-            <legend className="text-xs text-ink-60 mb-1">Memo</legend>
-            {[true, false].map((v) => (
-              <label key={String(v)} className="flex items-center gap-1.5">
-                <input type="radio" name="memo" className="h-4 w-4" checked={review.memo === v} onChange={() => setReview({ ...review, memo: v })} />
-                {v ? 'Yes' : 'No'}
-              </label>
-            ))}
-          </fieldset>
-          <label className="block text-xs text-ink-60">Remarks/Requests<input className={input} value={review.remarks} onChange={(e) => setReview({ ...review, remarks: e.target.value })} /></label>
-          <button onClick={addReview} disabled={busy || !review.name || !review.nric.trim() || !review.diagnosis.trim()} className="w-full py-2.5 bg-ink text-white text-sm font-medium rounded-lg disabled:opacity-50">
-            Add medical review
-          </button>
-        </div>
-      ) : (
-        <div className="bg-parchment border border-hairline rounded-card p-4 space-y-3">
-          {soldierPicker(sick.name, (name) => setSick({ ...sick, name }))}
-          <input
-            className={input}
-            placeholder="Reason (e.g. Flu and phlegm)"
-            value={sick.reason}
-            onChange={(e) => {
-              const reason = e.target.value
-              setSick({ ...sick, reason, urti: sick.urtiTouched ? sick.urti : isUrti(reason, settings.report_sick.urti_keywords) })
-            }}
+          <Segmented
+            label="Memo"
+            value={review.memo}
+            onChange={(memo) => setReview({ ...review, memo })}
+            options={[{ value: true, label: 'Yes' }, { value: false, label: 'No' }]}
           />
-          <input className={input} placeholder="Location" aria-label="Location" value={location} onChange={(e) => setSick({ ...sick, location: e.target.value })} />
-          <label className="flex items-center gap-2 text-sm text-ink-80">
-            <input type="checkbox" className="h-4 w-4" checked={sick.urti} onChange={(e) => setSick({ ...sick, urti: e.target.checked, urtiTouched: true })} />
-            URTI
-          </label>
-          <button onClick={addSick} disabled={busy || !sick.name || !sick.reason.trim()} className="w-full py-2.5 bg-ink text-white text-sm font-medium rounded-lg disabled:opacity-50">
+          <Field label="Remarks/Requests"><Input value={review.remarks} onChange={(e) => setReview({ ...review, remarks: e.target.value })} /></Field>
+          <Button block onClick={addReview} disabled={busy || !review.name || !review.nric.trim() || !review.diagnosis.trim()}>
+            Add medical review
+          </Button>
+        </Panel>
+      ) : (
+        <Panel className="space-y-3">
+          {soldierPicker(sick.name, (name) => setSick({ ...sick, name }))}
+          <Field label="Reason" required>
+            <Input
+              placeholder="Reason (e.g. Flu and phlegm)"
+              value={sick.reason}
+              onChange={(e) => {
+                const reason = e.target.value
+                setSick({ ...sick, reason, urti: sick.urtiTouched ? sick.urti : isUrti(reason, settings.report_sick.urti_keywords) })
+              }}
+            />
+          </Field>
+          <Field label="Location">
+            <Input placeholder="Location" value={location} onChange={(e) => setSick({ ...sick, location: e.target.value })} />
+          </Field>
+          <CheckField label="URTI">
+            <Checkbox checked={sick.urti} onChange={(e) => setSick({ ...sick, urti: e.target.checked, urtiTouched: true })} />
+          </CheckField>
+          <Button block onClick={addSick} disabled={busy || !sick.name || !sick.reason.trim()}>
             Add {kind === 'rso' ? 'RSO' : 'RSI'}
-          </button>
-        </div>
+          </Button>
+        </Panel>
       )}
 
       {entries.length === 0 ? (
-        <p className="text-center py-6 text-sm text-ink-60">Nothing on this day.</p>
+        <Empty className="py-6">Nothing on this day.</Empty>
       ) : (
-        <ul className="divide-y divide-hairline border border-hairline rounded-lg">
+        <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {entries.map((e) => (
             <li key={e.id} className="flex items-center gap-2 px-3 py-2 text-sm">
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-ink truncate">{who(e)}</div>
-                <div className="text-xs text-ink-60 truncate">{detail(e)}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium text-ink">{who(e)}</div>
+                <div className="truncate text-xs text-ink-60">{detail(e)}</div>
               </div>
               {kind !== 'review' && (
-                <label className="flex items-center gap-1 text-xs text-ink-80">
-                  <input type="checkbox" className="h-4 w-4" checked={isUrtiException(e)} disabled={busy} onChange={(ev) => setUrti(e, ev.target.checked)} />
-                  URTI
-                </label>
+                <CheckField label="URTI" className="text-xs">
+                  <Checkbox checked={isUrtiException(e)} disabled={busy} onChange={(ev) => setUrti(e, ev.target.checked)} />
+                </CheckField>
               )}
-              {delConfirm.isConfirming(e.id) ? (
-                <>
-                  <button className="px-2.5 py-1.5 text-xs bg-danger text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(() => remove(e))}>Delete</button>
-                  <button className="px-2.5 py-1.5 text-xs border border-hairline text-ink-80 rounded-lg" onClick={delConfirm.cancel}>Keep</button>
-                </>
-              ) : (
-                <button className="px-2.5 py-1.5 text-xs border border-danger/30 text-danger rounded-lg" onClick={() => delConfirm.request(e.id)}>Delete</button>
-              )}
+              <RowActions
+                confirming={delConfirm.isConfirming(e.id)}
+                disabled={busy}
+                onRequest={() => delConfirm.request(e.id)}
+                onConfirm={() => delConfirm.resolve(() => remove(e))}
+                onCancel={delConfirm.cancel}
+              />
             </li>
           ))}
         </ul>

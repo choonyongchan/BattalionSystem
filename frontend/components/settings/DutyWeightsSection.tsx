@@ -1,14 +1,13 @@
 'use client'
 
-import { useFieldArray, Controller, type UseFormReturn } from 'react-hook-form'
+import { useFieldArray, type UseFormReturn } from 'react-hook-form'
 import { z } from 'zod'
 import type { Company } from '@/shared/companies'
 import { DAY_TYPES, DAY_TYPE_LABELS, pointsDutyTypes } from '@/backend/domain/settings/settings'
 import type { AppSettings, DayType } from '@/backend/domain/settings/settings'
 import { hasDuplicateExceptionRows } from '@/backend/domain/duty/duty-weights-validation'
-import { Input } from '@/frontend/components/ui/input'
-import { Label } from '@/frontend/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/frontend/components/ui/select'
+import { Button } from '@/frontend/components/ui/button'
+import { Field, Input, Select } from '@/frontend/components/ui/fields'
 import SettingsForm from './SettingsForm'
 
 const FormSchema = z.object({
@@ -74,86 +73,56 @@ function WeightFields({ form, dutyTypes }: { form: UseFormReturn<FormValues>; du
   const { fields, append, remove } = useFieldArray({ control, name: 'exceptionRows' })
   return (
     <>
-      <div>
-        <Label className="text-xs text-ink-60 mb-2 block">Base weight per duty type</Label>
+      <fieldset>
+        <legend className="mb-2 text-xs text-ink-60">Base weight per duty type</legend>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
           {dutyTypes.map((dt) => (
-            <div key={dt}>
-              <Label className="text-xs text-ink-60 mb-1 block">{dt}</Label>
+            <Field key={dt} label={dt} error={errors.duty_base_weights?.[dt]?.message}>
               <Input type="number" step={0.5} min={0} {...register(`duty_base_weights.${dt}`, { valueAsNumber: true })} />
-              {errors.duty_base_weights?.[dt] && (
-                <p className="text-xs text-danger mt-1">{errors.duty_base_weights[dt]?.message}</p>
-              )}
-            </div>
+            </Field>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div>
-        <Label className="text-xs text-ink-60 mb-2 block">Day-type multiplier</Label>
+      <fieldset>
+        <legend className="mb-2 text-xs text-ink-60">Day-type multiplier</legend>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {DAY_TYPES.map((day) => (
-            <div key={day}>
-              <Label className="text-xs text-ink-60 mb-1 block">{DAY_TYPE_LABELS[day]}</Label>
+            <Field key={day} label={DAY_TYPE_LABELS[day]} error={errors.duty_day_multipliers?.[day]?.message}>
               <Input type="number" step={0.1} min={0} {...register(`duty_day_multipliers.${day}`, { valueAsNumber: true })} />
-              {errors.duty_day_multipliers?.[day] && (
-                <p className="text-xs text-danger mt-1">{errors.duty_day_multipliers[day]?.message}</p>
-              )}
-            </div>
+            </Field>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div>
-        <Label className="text-xs text-ink-60 mb-2 block">Exceptions (exact override, wins over the formula)</Label>
+      <fieldset>
+        <legend className="mb-2 text-xs text-ink-60">Exceptions (exact override, wins over the formula)</legend>
         <div className="space-y-2">
           {fields.map((field, i) => (
-            <div key={field.id} className="flex items-center gap-2">
-              <Controller
-                control={control}
-                name={`exceptionRows.${i}.dutyType`}
-                render={({ field: ctrlField }) => (
-                  <Select value={ctrlField.value} onValueChange={ctrlField.onChange}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Duty type" /></SelectTrigger>
-                    <SelectContent>
-                      {dutyTypes.map((dt) => <SelectItem key={dt} value={dt}>{dt}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <Controller
-                control={control}
-                name={`exceptionRows.${i}.dayType`}
-                render={({ field: ctrlField }) => (
-                  <Select value={ctrlField.value} onValueChange={ctrlField.onChange}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Day type" /></SelectTrigger>
-                    <SelectContent>
-                      {DAY_TYPES.map((day) => <SelectItem key={day} value={day}>{day}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <Input type="number" step={0.5} min={0} className="w-24" {...register(`exceptionRows.${i}.points`, { valueAsNumber: true })} />
-              <button type="button" onClick={() => remove(i)} className="text-ink-60 hover:text-danger">×</button>
+            <div key={field.id} className="flex flex-wrap items-center gap-2">
+              <Select aria-label="Duty type" className="w-auto flex-1" {...register(`exceptionRows.${i}.dutyType`)}>
+                {dutyTypes.map((dt) => <option key={dt} value={dt}>{dt}</option>)}
+              </Select>
+              <Select aria-label="Day type" className="w-auto flex-1" {...register(`exceptionRows.${i}.dayType`)}>
+                {DAY_TYPES.map((day) => <option key={day} value={day}>{day}</option>)}
+              </Select>
+              <Input aria-label="Points" type="number" step={0.5} min={0} className="w-24" {...register(`exceptionRows.${i}.points`, { valueAsNumber: true })} />
+              <Button type="button" variant="icon-danger" aria-label="Remove exception" title="Remove exception" onClick={() => remove(i)}>✕</Button>
               {errors.exceptionRows?.[i]?.points && (
-                <p className="text-xs text-danger">{errors.exceptionRows[i]?.points?.message}</p>
+                <p role="alert" className="text-xs text-danger">{errors.exceptionRows[i]?.points?.message}</p>
               )}
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() => append({ dutyType: dutyTypes[0], dayType: 'PublicHoliday', points: 1 })}
-            className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-          >
+          <Button type="button" variant="soft" onClick={() => append({ dutyType: dutyTypes[0], dayType: 'PublicHoliday', points: 1 })}>
             + Add exception
-          </button>
+          </Button>
           {(errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message) && (
-            <p className="text-xs text-danger">
+            <p role="alert" className="text-xs text-danger">
               {errors.exceptionRows?.root?.message ?? (errors.exceptionRows as { message?: string } | undefined)?.message}
             </p>
           )}
         </div>
-      </div>
+      </fieldset>
     </>
   )
 }

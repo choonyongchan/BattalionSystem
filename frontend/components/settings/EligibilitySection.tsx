@@ -6,6 +6,9 @@ import { useSoldiers } from '@/frontend/hooks/queries'
 import { isRankRangeInvalid, rankRuleFor } from '@/backend/domain/duty/duty-rules'
 import { isOnStrength } from '@/backend/domain/exceptions/active'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
+import { soldierDropdownProps } from '@/frontend/components/parade/parade-ui'
+import { inputClass } from '@/frontend/components/ui/fields'
+import { Chip, SectionTitle } from '@/frontend/components/ui/layout'
 import SettingsForm from './SettingsForm'
 import RankRangePicker from './RankRangePicker'
 
@@ -36,38 +39,32 @@ export default function EligibilitySection({ company, settings }: { company: Com
         return dutyTypes.map((dt) => {
           const names = nameOverrides[dt] ?? []
           return (
-            <div key={dt} className="border border-hairline rounded-lg p-3 space-y-3">
-              <p className="text-sm font-semibold text-ink">{dt}</p>
-              <div>
-                <p className="text-xs text-ink-60 mb-1">Name overrides (takes precedence)</p>
-                <div className="flex flex-wrap gap-1 mb-2">
+            <div key={dt} className="space-y-3 rounded-card border border-hairline p-3">
+              <SectionTitle className="mb-0">{dt}</SectionTitle>
+              <fieldset>
+                <legend className="mb-1 text-xs text-ink-60">Name overrides (takes precedence)</legend>
+                <div className="mb-2 flex flex-wrap gap-1">
                   {names.map((n) => (
-                    <span key={n} className="inline-flex items-center gap-1 bg-parchment text-ink-80 text-xs px-2 py-1 rounded-lg">
-                      {n}
-                      <button type="button" onClick={() => setNames(dt, names.filter((x) => x !== n))} className="text-ink-60 hover:text-danger">×</button>
-                    </span>
+                    <Chip key={n} removeLabel={`Remove ${n}`} onRemove={() => setNames(dt, names.filter((x) => x !== n))}>{n}</Chip>
                   ))}
                 </div>
                 <SearchDropdown
+                  {...soldierDropdownProps}
                   key={`${dt}-${names.length}`}
                   items={soldiers}
                   value=""
-                  getKey={(s) => s.name}
-                  getLabel={(s) => `${s.rank} ${s.name}`}
-                  matches={(s, q) => `${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
-                  renderOption={(s) => <span>{s.rank} {s.name}</span>}
                   onChange={(name) => name && !names.includes(name) && setNames(dt, [...names, name])}
-                  inputClass="w-full border border-hairline rounded-lg px-3 py-2 text-sm"
+                  inputClass={inputClass()}
                   placeholder="Add soldier..."
                 />
-              </div>
-              <div>
-                <p className="text-xs text-ink-60 mb-1">Rank range</p>
+              </fieldset>
+              <fieldset>
+                <legend className="mb-1 text-xs text-ink-60">Rank range</legend>
                 <RankRangePicker
                   rule={rankRuleFor(dt, rankOverrides)}
                   onChange={(rule) => setValue('eligibility_rank_overrides', { ...rankOverrides, [dt]: rule }, { shouldDirty: true })}
                 />
-              </div>
+              </fieldset>
             </div>
           )
         })

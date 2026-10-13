@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useFieldArray, type UseFormReturn } from 'react-hook-form'
 import type { Company } from '@/shared/companies'
 import { AppSettingsSchema, rosterDutyTypes, BASE_DUTY_TYPES, type AppSettings } from '@/backend/domain/settings/settings'
@@ -8,9 +8,9 @@ import { EXCEPTION_SCOPES } from '@/backend/domain/exceptions/exception-validati
 import { SCOPE_TYPES, isOnStrength } from '@/backend/domain/exceptions/active'
 import { PARADE_TYPES } from '@/frontend/components/parade/parade-ui'
 import { useSoldiers } from '@/frontend/hooks/queries'
-import { Input } from '@/frontend/components/ui/input'
-import { Label } from '@/frontend/components/ui/label'
-import { Switch } from '@/frontend/components/ui/switch'
+import { Button } from '@/frontend/components/ui/button'
+import { CheckField, Checkbox, Field, Input, Select, Switch } from '@/frontend/components/ui/fields'
+import { Chip } from '@/frontend/components/ui/layout'
 import SettingsForm from './SettingsForm'
 
 // Company structure and per-tab knobs: everything that used to be hardcoded per company.
@@ -25,10 +25,9 @@ function CheckList({ options, value, onChange }: { options: readonly string[]; v
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-2">
       {options.map((o) => (
-        <label key={o} className="flex items-center gap-2 text-sm text-ink-80">
-          <input type="checkbox" className="h-4 w-4" checked={value.includes(o)} onChange={(e) => onChange(toggle(value, o, e.target.checked))} />
-          {o}
-        </label>
+        <CheckField key={o} label={o}>
+          <Checkbox checked={value.includes(o)} onChange={(e) => onChange(toggle(value, o, e.target.checked))} />
+        </CheckField>
       ))}
     </div>
   )
@@ -47,17 +46,24 @@ function ChipInput({ value, onChange, placeholder }: { value: string[]; onChange
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1">
         {value.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 bg-parchment text-ink-80 text-xs px-2 py-1 rounded-lg">
-            {v}
-            <button type="button" aria-label={`Remove ${v}`} onClick={() => onChange(value.filter((x) => x !== v))} className="text-ink-60 hover:text-danger">×</button>
-          </span>
+          <Chip key={v} removeLabel={`Remove ${v}`} onRemove={() => onChange(value.filter((x) => x !== v))}>{v}</Chip>
         ))}
       </div>
       <div className="flex gap-2">
         <Input value={draft} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }} />
-        <button type="button" onClick={add} className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium">Add</button>
+        <Button type="button" variant="soft" onClick={add}>Add</Button>
       </div>
     </div>
+  )
+}
+
+/** A labelled group of controls (checkboxes, chips) that a single <label> can't wrap. */
+function Group({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <fieldset>
+      <legend className="mb-2 text-xs text-ink-60">{label}</legend>
+      {children}
+    </fieldset>
   )
 }
 
@@ -101,22 +107,19 @@ function PlatoonRows({ form, saved, company }: { form: UseFormReturn<PlatoonValu
             <Input aria-label="Platoon key" readOnly={saved.includes(f.key)} {...register(`platoons.${i}.key`)} />
             <Input aria-label="Platoon label" {...register(`platoons.${i}.label`)} />
             <Input aria-label="PDS label" {...register(`platoons.${i}.pdsLabel`)} />
-            <button
+            <Button
               type="button"
+              variant="icon-danger"
+              aria-label="Remove platoon"
               disabled={count > 0 || fields.length === 1}
-              title={count > 0 ? `${count} soldier(s) still in this platoon` : undefined}
+              title={count > 0 ? `${count} soldier(s) still in this platoon` : 'Remove platoon'}
               onClick={() => remove(i)}
-              className="text-ink-60 hover:text-danger disabled:opacity-30"
-            >×</button>
+            >✕</Button>
           </div>
         )
       })}
-      {message && <p className="text-xs text-danger">{message}</p>}
-      <button
-        type="button"
-        onClick={() => append({ key: '', label: '', pdsLabel: '' })}
-        className="bg-parchment text-ink-80 hover:bg-hairline rounded-full px-3 py-1.5 text-sm font-medium"
-      >+ Add platoon</button>
+      {message && <p role="alert" className="text-xs text-danger">{message}</p>}
+      <Button type="button" variant="soft" onClick={() => append({ key: '', label: '', pdsLabel: '' })}>+ Add platoon</Button>
     </>
   )
 }
@@ -135,18 +138,16 @@ export function DutyRosterSection({ company, settings }: Props) {
         const v = watch()
         return (
           <>
-            <div>
-              <Label className="text-xs text-ink-60 mb-2 block">Extra duties</Label>
+            <Group label="Extra duties">
               <ChipInput value={v.extra_duty_types} placeholder="e.g. Duty Clerk" onChange={(x) => setValue('extra_duty_types', x, { shouldDirty: true })} />
-            </div>
-            <div>
-              <Label className="text-xs text-ink-60 mb-2 block">Two names allowed (points split)</Label>
+            </Group>
+            <Group label="Two names allowed (points split)">
               <CheckList
                 options={rosterDutyTypes({ ...settings, extra_duty_types: v.extra_duty_types })}
                 value={v.multi_name_duty_types}
                 onChange={(x) => setValue('multi_name_duty_types', x, { shouldDirty: true })}
               />
-            </div>
+            </Group>
           </>
         )
       }}
@@ -166,23 +167,16 @@ export function ReportSickSection({ company, settings }: Props) {
       {({ register, watch, setValue }) => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-ink-60 mb-1 block">RSI message company</Label>
-              <Input placeholder="e.g. HQ COY" {...register('report_sick.header_label')} />
-            </div>
-            <div>
-              <Label className="text-xs text-ink-60 mb-1 block">Default RSI location</Label>
-              <Input placeholder="e.g. KHMC" {...register('report_sick.default_location')} />
-            </div>
+            <Field label="RSI message company"><Input placeholder="e.g. HQ COY" {...register('report_sick.header_label')} /></Field>
+            <Field label="Default RSI location"><Input placeholder="e.g. KHMC" {...register('report_sick.default_location')} /></Field>
           </div>
-          <div>
-            <Label className="text-xs text-ink-60 mb-2 block">URTI keywords (pre-tick URTI when the reason has one)</Label>
+          <Group label="URTI keywords (pre-tick URTI when the reason has one)">
             <ChipInput
               value={watch('report_sick.urti_keywords')}
               placeholder="e.g. sore throat"
               onChange={(x) => setValue('report_sick.urti_keywords', x, { shouldDirty: true })}
             />
-          </div>
+          </Group>
         </>
       )}
     </SettingsForm>
@@ -200,18 +194,17 @@ export function ConductsSection({ company, settings }: Props) {
     >
       {({ watch, setValue }) => (
         <>
-          <div className="flex items-center justify-between py-1">
-            <Label className="text-sm text-ink-80">COY HQ takes part</Label>
-            <Switch checked={watch('conducts.include_hq')} onCheckedChange={(v) => setValue('conducts.include_hq', v, { shouldDirty: true })} />
-          </div>
-          <div>
-            <Label className="text-xs text-ink-60 mb-2 block">Needs a commander&apos;s call (out until decided)</Label>
+          <label className="flex min-h-11 items-center justify-between text-sm text-ink-80">
+            COY HQ takes part
+            <Switch checked={watch('conducts.include_hq')} onChange={(e) => setValue('conducts.include_hq', e.target.checked, { shouldDirty: true })} />
+          </label>
+          <Group label="Needs a commander's call (out until decided)">
             <CheckList
               options={SCOPE_TYPES.Status}
               value={watch('conducts.needs_call_types')}
               onChange={(x) => setValue('conducts.needs_call_types', x, { shouldDirty: true })}
             />
-          </div>
+          </Group>
         </>
       )}
     </SettingsForm>
@@ -230,25 +223,20 @@ export function OverviewSection({ company, settings }: Props) {
       {({ register, watch, setValue }) => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-ink-60 mb-1 block">Message title</Label>
-              <Input placeholder="e.g. STRENGTH CAA" {...register('overview.message_title')} />
-            </div>
-            <div>
-              <Label className="text-xs text-ink-60 mb-1 block">Default parade</Label>
-              <select className="w-full border border-hairline rounded-lg px-3 py-2 text-sm bg-white" {...register('overview.default_parade')}>
+            <Field label="Message title"><Input placeholder="e.g. STRENGTH CAA" {...register('overview.message_title')} /></Field>
+            <Field label="Default parade">
+              <Select {...register('overview.default_parade')}>
                 {PARADE_TYPES.map((p) => <option key={p}>{p}</option>)}
-              </select>
-            </div>
+              </Select>
+            </Field>
           </div>
-          <div>
-            <Label className="text-xs text-ink-60 mb-2 block">Out of the bunk (besides anything counted absent)</Label>
+          <Group label="Out of the bunk (besides anything counted absent)">
             <CheckList
               options={EXCEPTION_SCOPES}
               value={watch('overview.out_scopes')}
               onChange={(x) => setValue('overview.out_scopes', x, { shouldDirty: true })}
             />
-          </div>
+          </Group>
         </>
       )}
     </SettingsForm>

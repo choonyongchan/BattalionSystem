@@ -116,7 +116,8 @@ export default function SearchDropdown<T>({
             </li>
           ))}
         </ul>,
-        document.body
+        // Inside a modal <dialog>, the rest of the page is inert: keep the menu in the dialog
+        ref.current?.closest('dialog') ?? document.body
       )}
     </div>
   )

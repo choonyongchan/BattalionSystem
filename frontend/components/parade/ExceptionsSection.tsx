@@ -6,7 +6,9 @@ import { matchesExceptionQuery, sortExceptions } from '@/backend/domain/parade/e
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import AddExceptionForm from './AddExceptionForm'
 import ExceptionsTable from './ExceptionsTable'
-import { THEME } from '@/frontend/theme'
+import { Button } from '@/frontend/components/ui/button'
+import { SearchInput } from '@/frontend/components/ui/fields'
+import { Empty } from '@/frontend/components/ui/layout'
 
 /** Searchable list of exceptions (Guard Duty excluded) with an add form. */
 export default function ExceptionsSection({ date, settings, data }: {
@@ -22,29 +24,22 @@ export default function ExceptionsSection({ date, settings, data }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
-        <input
-          type="search"
+        <SearchInput
           placeholder="Search by name, scope, reason, 4D..."
           aria-label="Search exceptions"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-hairline rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus bg-white"
         />
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`flex-shrink-0 px-4 py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors`}
-        >
+        <Button variant={showForm ? 'secondary' : 'primary'} className="shrink-0" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Exception'}
-        </button>
+        </Button>
       </div>
 
       {/* Remounts on open, so the form resets to the currently viewed date */}
       {showForm && <AddExceptionForm date={date} settings={settings} data={data} onDone={() => setShowForm(false)} />}
 
       {rows.length === 0 ? (
-        <div className="text-center py-12 text-ink-60 text-sm">
-          {search.trim() ? 'No exceptions match that query.' : 'No exceptions for this date.'}
-        </div>
+        <Empty>{search.trim() ? 'No exceptions match that query.' : 'No exceptions for this date.'}</Empty>
       ) : (
         <ExceptionsTable settings={settings} data={data} rows={rows} />
       )}

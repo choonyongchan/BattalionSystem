@@ -88,7 +88,7 @@ function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex): string
 }
 
 /**
- * Renders the parade-state text in the battalion-wide format (see parade_state_template_new.md):
+ * Renders the parade-state text in the battalion-wide format (see docs/parade-state-template.md):
  * header, duties, company strength, then COY HQ and each platoon block with its exceptions.
  * Posted-out soldiers and their exceptions drop out; revoked rows drop and back-to-back runs merge.
  */

@@ -38,7 +38,7 @@ describe('SoldierSheet', () => {
     // Fixture: CHONG KAH WAI has an Att C "Fever" 13–17 Jan 2026 (past relative to today)
     const sheet = await openSheet('GOH RONG HAO')
     expect(within(sheet).getByText(/PTE GOH RONG HAO/)).toBeInTheDocument()
-    await userEvent.click(within(sheet).getByRole('button', { name: /History/ }))
+    await userEvent.click(within(sheet).getByRole('radio', { name: /History/ }))
     expect(within(sheet).getByText('Excuse RMJ')).toBeInTheDocument()
   })
 
@@ -62,7 +62,7 @@ describe('SoldierSheet', () => {
     }, { timeout: 10000 })
 
     const dialog = screen.getByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /History/ }))
+    await userEvent.click(within(dialog).getByRole('radio', { name: /History/ }))
     // The DB write lands before the sheet's reload does — wait for the UI to catch up
     expect(await within(dialog).findByText('Revoked', {}, { timeout: 10000 })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Restore' })).toBeInTheDocument()

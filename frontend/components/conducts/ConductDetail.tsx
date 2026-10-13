@@ -8,6 +8,10 @@ import {
   needsDecision, type Participation,
 } from '@/backend/domain/conducts/conducts'
 import MessageBox from '@/frontend/components/shared/MessageBox'
+import { Button } from '@/frontend/components/ui/button'
+import { SearchInput, inputClass } from '@/frontend/components/ui/fields'
+import { SectionTitle } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
 
 /** The writes a conduct's calls make. */
 export interface DecisionActions {
@@ -51,7 +55,6 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
 
   /** Formats a participant as "<4D> <rank> <name>". */
   const who = (p: Participation) => `${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name}`
-  const small = 'px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50'
   const time = conductTimeRange(conduct)
 
   return (
@@ -60,27 +63,23 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
         {conductDateRange(conduct)}{time ? ` · ${time}HRS` : ''} · {parts.filter((p) => p.participating).length}/{parts.length} taking part
       </p>
 
-      <div className="flex flex-wrap gap-1.5">
-        {[{ key: 'ALL', label: 'ALL' }, ...blocks].map((b) => (
-          <button
-            key={b.key}
-            onClick={() => setBlockKey(b.key)}
-            className={`px-3 py-1 text-xs rounded-full border ${blockKey === b.key ? 'bg-ink text-white border-ink' : 'border-hairline text-ink-80'}`}
-          >{b.label}</button>
-        ))}
-      </div>
-      <input
-        type="search"
+      <Segmented
+        aria-label="Block"
+        value={blockKey}
+        onChange={setBlockKey}
+        options={[{ value: 'ALL', label: 'ALL' }, ...blocks.map((b) => ({ value: b.key, label: b.label }))]}
+      />
+      <SearchInput
         placeholder="Search name or 4D…"
+        aria-label="Search conduct"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full border border-hairline rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus"
       />
 
       {pending.length > 0 && (
-        <section className="border border-amber-300 bg-amber-50 rounded-card p-3 space-y-2">
-          <h3 className="text-sm font-semibold text-amber-800">Needs a call ({pending.length})</h3>
-          <p className="text-xs text-amber-700">Falling out until a commander confirms.</p>
+        <section className="space-y-2 rounded-card border border-warning/40 bg-warning/10 p-3">
+          <SectionTitle className="mb-0 text-warning">Needs a call ({pending.length})</SectionTitle>
+          <p className="text-xs text-warning">Falling out until a commander confirms.</p>
           <ul className="space-y-2">
             {pending.map((p) => (
               <li key={p.soldier.id} className="flex items-center gap-2 bg-white rounded-lg p-2">
@@ -88,8 +87,8 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
                   <p className="text-sm font-medium text-ink">{who(p)}</p>
                   <p className="text-xs text-ink-60">{p.reason}</p>
                 </div>
-                <button className={`${small} border-green-300 text-green-700 hover:bg-green-50`} disabled={busy} onClick={() => actions.decide(p.soldier.id!, true, null)}>✓ Can</button>
-                <button className={`${small} border-danger/30 text-danger hover:bg-danger/5`} disabled={busy} onClick={() => actions.decide(p.soldier.id!, false, null)}>✗ Cannot</button>
+                <Button variant="secondary" size="sm" className="border-success/40 text-success hover:bg-success/5" disabled={busy} onClick={() => actions.decide(p.soldier.id!, true, null)}>✓ Can</Button>
+                <Button variant="danger-outline" size="sm" disabled={busy} onClick={() => actions.decide(p.soldier.id!, false, null)}>✗ Cannot</Button>
               </li>
             ))}
           </ul>
@@ -97,8 +96,8 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
       )}
 
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-ink">Fall out – {out.length}</h3>
-        <ul className="bg-white border border-hairline rounded-card divide-y divide-hairline">
+        <SectionTitle className="mb-0">Fall out – {out.length}</SectionTitle>
+        <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {out.map((p) => (
             <li key={p.soldier.id} className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1 min-w-0">
@@ -106,7 +105,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
                 <p className="text-xs text-danger">{p.reason}{p.kind === 'out-auto' ? ' · auto' : ''}</p>
               </div>
               {p.decision && (
-                <button className={`${small} border-hairline text-ink-80 hover:bg-parchment`} disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</button>
+                <Button variant="secondary" size="sm" disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</Button>
               )}
             </li>
           ))}
@@ -115,23 +114,24 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-ink">Taking part – {taking.length}</h3>
-        <ul className="bg-white border border-hairline rounded-card divide-y divide-hairline">
+        <SectionTitle className="mb-0">Taking part – {taking.length}</SectionTitle>
+        <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {taking.map((p) => (
             <li key={p.soldier.id} className="px-3 py-2 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink">{who(p)}</p>
-                  {p.note && <p className="text-xs text-amber-700">{p.note}{p.kind === 'in-confirmed' ? ' · confirmed can' : ''}</p>}
+                  {p.note && <p className="text-xs text-warning">{p.note}{p.kind === 'in-confirmed' ? ' · confirmed can' : ''}</p>}
                 </div>
                 {p.decision ? (
-                  <button className={`${small} border-hairline text-ink-80 hover:bg-parchment`} disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</button>
+                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</Button>
                 ) : (
-                  <button
-                    className={`${small} border-danger/30 text-danger hover:bg-danger/5`}
+                  <Button
+                    variant="danger-outline"
+                    size="sm"
                     disabled={busy || !p.soldier.id}
                     onClick={() => setFallingOut({ id: p.soldier.id!, reason: p.note ?? '' })}
-                  >Fall out…</button>
+                  >Fall out…</Button>
                 )}
               </div>
               {fallingOut && fallingOut.id === p.soldier.id && (
@@ -141,14 +141,16 @@ export default function ConductDetail({ companyLabel, conduct, parts, platoons, 
                     value={fallingOut.reason}
                     onChange={(e) => setFallingOut({ id: fallingOut.id, reason: e.target.value })}
                     placeholder="Reason (e.g. Duty)"
-                    className="flex-1 border border-hairline rounded-lg px-3 py-1.5 text-sm"
+                    aria-label="Fall-out reason"
+                    className={inputClass({ compact: true }) + ' flex-1'}
                   />
-                  <button
-                    className={`${small} border-danger bg-danger text-white`}
+                  <Button
+                    variant="danger"
+                    size="sm"
                     disabled={busy}
                     onClick={async () => { await actions.decide(fallingOut.id, false, fallingOut.reason.trim() || null); setFallingOut(null) }}
-                  >Fall out</button>
-                  <button className={`${small} border-hairline text-ink-80`} onClick={() => setFallingOut(null)}>Cancel</button>
+                  >Fall out</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setFallingOut(null)}>Cancel</Button>
                 </div>
               )}
             </li>

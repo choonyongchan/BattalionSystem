@@ -4,6 +4,7 @@ import type { Company } from '@/shared/companies'
 import { GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from '@/shared/ranks'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import { isRankRangeInvalid } from '@/backend/domain/duty/duty-rules'
+import { SectionTitle } from '@/frontend/components/ui/layout'
 import SettingsForm from './SettingsForm'
 import RankRangePicker from './RankRangePicker'
 
@@ -23,8 +24,8 @@ export default function GuardDutyRolesSection({ company, settings }: { company: 
       invalid={(v) => GUARD_DUTY_ROLES.some((role) => isRankRangeInvalid(ruleFor(v, role)))}
     >
       {({ watch, setValue }) => GUARD_DUTY_ROLES.map((role) => (
-        <div key={role} className="border border-hairline rounded-lg p-3 space-y-3">
-          <p className="text-sm font-semibold text-ink">{role}</p>
+        <div key={role} className="space-y-3 rounded-card border border-hairline p-3">
+          <SectionTitle className="mb-0">{role}</SectionTitle>
           <RankRangePicker
             rule={ruleFor(watch(), role)}
             onChange={(rule) => setValue('guard_duty_rank_overrides', { ...watch('guard_duty_rank_overrides'), [role]: rule }, { shouldDirty: true })}

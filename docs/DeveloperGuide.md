@@ -58,10 +58,9 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `app/[company]/` | `/<company>/` and `/<company>/settings`. `company-param.ts` allowlists the param. |
 | `frontend/components/layout/` | `CompanyShell` (auth gate and nav), `GlobalNav`, `TabBar`, `CompanyContent` (tabs and `?tab=`) |
 | `frontend/components/<feature>/` | One folder per tab or feature: `overview`, `parade`, `report-sick`, `nominal-roll`, `off-leave`, `dashboard`, `conducts`, `soldier`, `settings`, `auth` |
-| `frontend/components/ui/` | shadcn components (`components.json` points here) |
-| `frontend/components/shared/` | Shared UI bits and style constants (`styles.ts`) |
+| `frontend/components/ui/` | UI building blocks every page uses (see [UI](#ui)) |
+| `frontend/components/shared/` | Shared feature widgets: `SearchDropdown`, `MessageBox`, `ComingSoon`, `Redirect` |
 | `frontend/hooks/` | `useAuth`, `queries` (React Query hooks keyed `[company, ...]`, `useWrite`), `useParadeData`, `useConfirmDelete` |
-| `frontend/theme.ts` | The single accent theme (Action Blue) |
 | `backend/data/client.ts` | Supabase client and `tbl(company, table)` |
 | `backend/data/auth.ts` | Commander sign-in |
 | `backend/data/repositories/` | One class per table (see below) |
@@ -144,12 +143,22 @@ The tab bar, keyboard navigation and `?tab=<id>` deep links then work with no ot
 
 ## UI
 
-Styling follows `DESIGN.md`. Tokens live in `app/globals.css` under `@theme`. Use them as Tailwind classes (`bg-action`, `text-ink-60`, `bg-parchment`, `border-hairline`, `rounded-card`) rather than raw hex values.
+Styling follows `docs/DESIGN.md`. Tokens live in `app/globals.css` under `@theme`. Use them as Tailwind classes (`bg-action`, `text-ink-60`, `bg-parchment`, `border-hairline`, `rounded-card`) rather than raw hex values.
 
-- The only accent is Action Blue (`action`). Red (`danger`), amber and green are for status only.
-- Body text is 17px. Tables stay at 14px.
+- The only accent is `action` (gray-900). `danger`, `warning` and `success` are for status only.
 - Use `text-ink-60` for secondary text. `ink-48` fails WCAG AA contrast for text.
-- No shadows. Cards use a hairline border and an 18px radius.
+- No shadows. Cards use a hairline border and the `rounded-card` radius.
+
+Build pages from the blocks in `frontend/components/ui/` instead of styling raw elements:
+
+| File | Blocks |
+|---|---|
+| `button.tsx` | `Button` / `buttonClass`: `primary`, `secondary`, `soft`, `danger`, `danger-outline`, `icon`, `icon-danger`. Size `md` is the pill call to action; `sm` is the 8px utility button for tables and toolbars. |
+| `fields.tsx` | `Field` (label, required mark, hint, error), `Input`, `Select`, `SearchInput`, `Checkbox`, `Switch`, `CheckField`, and `inputClass` for raw inputs and `SearchDropdown` |
+| `segmented.tsx` | `Segmented`: the one single-choice control, for radios, choice chips and in-page sub-navigation |
+| `layout.tsx` | `PageHeader`, `SectionTitle`, `Card`, `Panel` (form surface), `Banner` (inline status: the app has no toasts), `Loading`, `Empty`, `Badge`, `Chip` |
+| `table.tsx` | `Table`, `Th`, `SortTh`, `rowClass`, `TD` / `TD_EDIT`, `RowActions` (edit / confirm-delete), `EditActions` (Save / Cancel) |
+| `dialog.tsx` | `Dialog` on the native `<dialog>`, placed `center`, `right` (sheet) or `bottom` |
 
 ## Testing
 

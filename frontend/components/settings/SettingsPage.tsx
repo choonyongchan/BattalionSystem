@@ -4,6 +4,8 @@ import { useState } from 'react'
 import type { Company } from '@/shared/companies'
 import { useSettingsQuery, usePublicHolidaysQuery } from '@/frontend/hooks/queries'
 import CompanyShell from '@/frontend/components/layout/CompanyShell'
+import { Card, Loading } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
 import DutyWeightsSection from './DutyWeightsSection'
 import ParadeTimesSection from './ParadeTimesSection'
 import EligibilitySection from './EligibilitySection'
@@ -16,18 +18,18 @@ type SettingsTab =
   | 'platoons' | 'duty-roster' | 'duty-weights' | 'parade-times' | 'eligibility' | 'guard-duty-roles'
   | 'absence-defaults' | 'report-sick' | 'conducts' | 'overview' | 'public-holidays'
 
-const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'platoons', label: 'Platoons' },
-  { id: 'duty-roster', label: 'Duty Roster' },
-  { id: 'duty-weights', label: 'Duty Weights' },
-  { id: 'parade-times', label: 'Parade Times' },
-  { id: 'eligibility', label: 'Duty Eligibility' },
-  { id: 'guard-duty-roles', label: 'Guard Duty Roles' },
-  { id: 'absence-defaults', label: 'Absence Defaults' },
-  { id: 'report-sick', label: 'Report Sick' },
-  { id: 'conducts', label: 'Conducts' },
-  { id: 'overview', label: 'Overview' },
-  { id: 'public-holidays', label: 'Public Holidays' },
+const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
+  { value: 'platoons', label: 'Platoons' },
+  { value: 'duty-roster', label: 'Duty Roster' },
+  { value: 'duty-weights', label: 'Duty Weights' },
+  { value: 'parade-times', label: 'Parade Times' },
+  { value: 'eligibility', label: 'Duty Eligibility' },
+  { value: 'guard-duty-roles', label: 'Guard Duty Roles' },
+  { value: 'absence-defaults', label: 'Absence Defaults' },
+  { value: 'report-sick', label: 'Report Sick' },
+  { value: 'conducts', label: 'Conducts' },
+  { value: 'overview', label: 'Overview' },
+  { value: 'public-holidays', label: 'Public Holidays' },
 ]
 
 /** A company's settings page, one section per setting group, behind commander login. */
@@ -49,26 +51,12 @@ function SettingsContent({ company }: { company: Company }) {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] md:py-8">
       <h1 className="mb-4 text-2xl font-bold text-ink md:mb-6 md:text-3xl">Settings</h1>
       {settingsLoading || holidaysLoading || !settings ? (
-        <p role="status" className="py-8 text-center text-sm text-ink-60">Loading...</p>
+        <Loading />
       ) : (
         <>
-          <div role="tablist" aria-label="Settings sections" className="-mx-4 mb-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
-            {SETTINGS_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`h-11 shrink-0 snap-start whitespace-nowrap rounded-pill px-4 text-sm ${activeTab === tab.id
-                  ? 'bg-action font-semibold text-white'
-                  : 'bg-parchment text-ink-80 hover:text-ink'}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <Segmented aria-label="Settings sections" className="mb-4" value={activeTab} onChange={setActiveTab} options={SETTINGS_TABS} />
 
-          <div role="tabpanel" className="rounded-card border border-hairline bg-white p-4 shadow-sm md:p-6">
+          <Card className="p-4 md:p-6">
             {activeTab === 'platoons' && <PlatoonsSection company={company} settings={settings} />}
             {activeTab === 'duty-roster' && <DutyRosterSection company={company} settings={settings} />}
             {activeTab === 'duty-weights' && <DutyWeightsSection company={company} settings={settings} />}
@@ -85,7 +73,7 @@ function SettingsContent({ company }: { company: Company }) {
                 <PublicHolidaysSection publicHolidays={publicHolidays ?? []} />
               </div>
             )}
-          </div>
+          </Card>
         </>
       )}
     </main>

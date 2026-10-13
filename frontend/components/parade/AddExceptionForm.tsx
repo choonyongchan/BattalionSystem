@@ -10,7 +10,10 @@ import {
 import type { ParadeData } from '@/frontend/hooks/useParadeData'
 import SearchDropdown from '@/frontend/components/shared/SearchDropdown'
 import { REASON_HINTS, soldierDropdownProps } from './parade-ui'
-import { THEME } from '@/frontend/theme'
+import { Button } from '@/frontend/components/ui/button'
+import { CheckField, Checkbox, Field, Input, inputClass } from '@/frontend/components/ui/fields'
+import { Panel } from '@/frontend/components/ui/layout'
+import { Segmented } from '@/frontend/components/ui/segmented'
 
 // Guard Duty is added in the Duties tab; new report sicks are keyed in the Report Sick tab
 const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty' && s !== 'Report Sick')
@@ -36,11 +39,6 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
   const [errors, setErrors] = useState<Record<string, boolean>>({})
 
   const singleDate = SINGLE_DATE_SCOPES.includes(form.scope)
-  const inputClass = `w-full border border-hairline rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ${THEME.focusRing}`
-  /** Input class for a field, red when it failed validation. */
-  const fieldClass = (field: string) => errors[field]
-    ? 'w-full border border-danger rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 ring-2 ring-danger'
-    : inputClass
   /** Patches one STATUS row. */
   const updateStatusRow = (i: number, patch: Partial<StatusRow>) =>
     setStatusRows((rows) => rows.map((x, j) => (j === i ? { ...x, ...patch } : x)))
@@ -71,39 +69,25 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
     if (await mutate(() => repos.exceptions.insert(rows))) onDone()
   }
 
-  /** Classes for a toggle chip, filled when active. */
-  const choiceClass = (active: boolean) => active
-    ? `${THEME.buttonBg} ${THEME.buttonHoverBg} text-white border-transparent`
-    : 'bg-white border-hairline text-ink-80 hover:border-hairline'
-
   return (
-    <div className="bg-parchment border border-hairline rounded-card p-4 space-y-4">
-      <div>
-        <label className="block text-xs text-ink-60 mb-1">Soldier <span className="text-danger">*</span></label>
+    <Panel>
+      <Field label="Soldier" required>
         <SearchDropdown
           {...soldierDropdownProps}
           items={soldiers}
           value={form.name}
           onChange={(name) => setForm({ ...form, name })}
-          inputClass={fieldClass('name')}
+          inputClass={inputClass({ error: errors.name })}
         />
-      </div>
+      </Field>
 
       <div>
-        <label className="block text-xs text-ink-60 mb-2">Scope <span className="text-danger">*</span></label>
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          {ADD_SCOPES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={form.scope === s}
-              onClick={() => setForm({ ...form, scope: s, counts_as_absence: absenceTouched ? form.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
-              className={`flex-none px-3 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${choiceClass(form.scope === s)}`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label={<>Scope <span aria-hidden className="text-danger">*</span></>}
+          value={form.scope}
+          onChange={(s) => setForm({ ...form, scope: s, counts_as_absence: absenceTouched ? form.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
+          options={ADD_SCOPES}
+        />
         <p className="text-xs text-ink-60 mt-1">Report sick → Report Sick tab</p>
       </div>
 
@@ -116,118 +100,67 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
               <div key={i} className={`space-y-3 ${i > 0 ? 'pt-3 border-t border-hairline' : ''}`}>
                 {statusRows.length > 1 && (
                   <div className="flex justify-end">
-                    <button type="button" onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))} className="text-xs text-ink-60 hover:text-danger transition-colors">
-                      × Remove
-                    </button>
+                    <Button variant="icon-danger" type="button" onClick={() => setStatusRows((r) => r.filter((_, j) => j !== i))} title="Remove status" aria-label="Remove status">
+                      ✕
+                    </Button>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-ink-60 mb-1">From</label>
-                    <input type="date" value={row.start} onChange={(e) => updateStatusRow(i, { start: e.target.value })} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-ink-60 mb-1">To</label>
-                    <input type="date" value={row.end} onChange={(e) => updateStatusRow(i, { end: e.target.value })} className={inputClass} />
-                  </div>
+                  <Field label="From"><Input type="date" value={row.start} onChange={(e) => updateStatusRow(i, { start: e.target.value })} /></Field>
+                  <Field label="To"><Input type="date" value={row.end} onChange={(e) => updateStatusRow(i, { end: e.target.value })} /></Field>
                 </div>
-                <div>
-                  <label className="block text-xs mb-1">
-                    {isDupe
-                      ? <span className="text-amber-700 font-medium">Reason must be unique across entries</span>
-                      : <span className="text-ink-60">Reason</span>}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={REASON_HINTS.Status}
-                    value={row.reason}
-                    onChange={(e) => updateStatusRow(i, { reason: e.target.value })}
-                    className={isDupe ? `${inputClass} !border-amber-300 !ring-2 !ring-amber-100` : inputClass}
-                  />
-                </div>
+                <Field label="Reason" error={isDupe && 'Reason must be unique across entries'}>
+                  <Input type="text" placeholder={REASON_HINTS.Status} value={row.reason} onChange={(e) => updateStatusRow(i, { reason: e.target.value })} error={isDupe} />
+                </Field>
               </div>
             )
           })}
-          <button
-            type="button"
-            onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}
-            className="w-full py-2 text-sm text-ink-60 border border-dashed border-hairline hover:border-hairline rounded-lg transition-colors"
-          >
+          <Button variant="secondary" size="sm" block type="button" className="border-dashed" onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}>
             + Add Status
-          </button>
+          </Button>
         </>
       ) : singleDate ? (
-        <div>
-          <label className="block text-xs text-ink-60 mb-1">Date</label>
-          <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className={fieldClass('end')} />
-        </div>
+        <Field label="Date"><Input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} error={errors.end} /></Field>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-ink-60 mb-1">From</label>
-            <input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} className={fieldClass('start')} />
-          </div>
-          <div>
-            <label className="block text-xs text-ink-60 mb-1">To</label>
-            <input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className={fieldClass('end')} />
-          </div>
+          <Field label="From"><Input type="date" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} error={errors.start} /></Field>
+          <Field label="To"><Input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} error={errors.end} /></Field>
         </div>
       )}
 
       {form.scope === 'MA' && (
-        <div>
-          <label className="block text-xs text-ink-60 mb-1">Appointment Time (optional)</label>
-          <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={fieldClass('time')} />
-        </div>
+        <Field label="Appointment Time (optional)">
+          <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} error={errors.time} />
+        </Field>
       )}
 
       {form.scope !== 'Status' && (
-        <div>
-          <label className="block text-xs text-ink-60 mb-1">Reason</label>
-          <input type="text" placeholder={REASON_HINTS[form.scope]} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className={fieldClass('reason')} />
-        </div>
+        <Field label="Reason">
+          <Input type="text" placeholder={REASON_HINTS[form.scope]} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} error={errors.reason} />
+        </Field>
       )}
 
-      <div>
-        <label className="block text-xs text-ink-60 mb-1">Location (optional)</label>
-        <input type="text" placeholder="e.g. CGH, NUH, Raffles" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={fieldClass('location')} />
-      </div>
+      <Field label="Location (optional)">
+        <Input type="text" placeholder="e.g. CGH, NUH, Raffles" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} error={errors.location} />
+      </Field>
 
       {IN_OUT_SCOPES.includes(form.scope) && (
-        <div>
-          <label className="block text-xs text-ink-60 mb-2">In/Out (optional)</label>
-          <div className="flex gap-2">
-            {(['', 'IN', 'OUT'] as const).map((v) => (
-              <button
-                key={v || 'blank'}
-                type="button"
-                onClick={() => setForm({ ...form, in_out: v })}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${choiceClass(form.in_out === v)}`}
-              >
-                {v || '—'}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Segmented
+          label="In/Out (optional)"
+          value={form.in_out}
+          onChange={(in_out) => setForm({ ...form, in_out })}
+          options={[{ value: '', label: '—' }, 'IN', 'OUT']}
+        />
       )}
 
-      <label className="flex items-center gap-2 text-sm text-ink-80 -mx-1 px-1 py-2 cursor-pointer">
-        <input
-          type="checkbox"
-          className="h-5 w-5"
+      <CheckField label="Absent?">
+        <Checkbox
           checked={form.counts_as_absence}
           onChange={(e) => { setForm({ ...form, counts_as_absence: e.target.checked }); setAbsenceTouched(true) }}
         />
-        Absent?
-      </label>
+      </CheckField>
 
-      <button
-        onClick={add}
-        disabled={!isExceptionValid(form, statusRows)}
-        className={`w-full py-3 ${THEME.buttonBg} ${THEME.buttonHoverBg} text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
-      >
-        Add Exception
-      </button>
-    </div>
+      <Button block onClick={add} disabled={!isExceptionValid(form, statusRows)}>Add Exception</Button>
+    </Panel>
   )
 }

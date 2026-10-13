@@ -3,8 +3,7 @@
 import type { Company } from '@/shared/companies'
 import { AppSettingsSchema, type AppSettings } from '@/backend/domain/settings/settings'
 import { isValidTime } from '@/backend/domain/exceptions/exception-validation'
-import { Input } from '@/frontend/components/ui/input'
-import { Label } from '@/frontend/components/ui/label'
+import { Input } from '@/frontend/components/ui/fields'
 import { PARADE_TYPES } from '@/frontend/components/parade/parade-ui'
 import SettingsForm from './SettingsForm'
 
@@ -29,12 +28,12 @@ export default function ParadeTimesSection({ company, settings }: { company: Com
       {({ register, formState: { errors } }) => (
         <>
           {PARADE_TYPES.map((pt) => (
-            <div key={pt} className="flex items-center gap-3">
-              <Label className="text-sm text-ink-80 flex-1">{pt}</Label>
+            <label key={pt} className="flex items-center gap-3 text-sm text-ink-80">
+              <span className="flex-1">{pt}</span>
               <Input type="text" inputMode="numeric" placeholder="HH:MM" maxLength={5} className="w-24" {...register(`parade_times.${pt}`)} />
-            </div>
+            </label>
           ))}
-          {errors.parade_times && <p className="text-xs text-danger">{(errors.parade_times as { message?: string }).message}</p>}
+          {errors.parade_times && <p role="alert" className="text-xs text-danger">{(errors.parade_times as { message?: string }).message}</p>}
         </>
       )}
     </SettingsForm>

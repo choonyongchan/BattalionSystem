@@ -8,6 +8,10 @@ import { classifyConduct, conductDateRange, conductEnd, conductSoldiers, nearest
 import { todaySGDate } from '@/shared/dates'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import { combine, useConductDecisions, useConducts, useExceptions, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
+import { Button } from '@/frontend/components/ui/button'
+import { Field, Input } from '@/frontend/components/ui/fields'
+import { Banner, Empty, Loading, PageHeader, Panel } from '@/frontend/components/ui/layout'
+import { cn } from '@/shared/utils'
 import ConductDetail from './ConductDetail'
 
 type Form = { id: string | null; name: string; date: string; end_date: string; start_time: string; end_time: string }
@@ -78,15 +82,15 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     },
   }
 
-  if (loading || !settings) return <div className="text-ink-60 text-sm py-8 text-center">Loading...</div>
+  if (loading || !settings) return <Loading />
 
-  const input = 'w-full border border-hairline rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-focus'
   /** Renders a selectable chip for one conduct. */
   const chip = (c: Conduct) => (
     <button
       key={c.id}
       onClick={() => { setSelectedId(c.id); setForm(null) }}
-      className={`px-3 py-2 text-left rounded-lg border text-sm ${selected?.id === c.id ? 'bg-ink text-white border-ink' : 'border-hairline text-ink-80 hover:bg-parchment'}`}
+      aria-pressed={selected?.id === c.id}
+      className={cn('rounded-lg border px-3 py-2 text-left text-sm transition-colors', selected?.id === c.id ? 'border-transparent bg-action text-white' : 'border-hairline bg-white text-ink-80 hover:bg-parchment')}
     >
       <span className="font-medium">{c.name}</span>
       <span className={`block text-xs ${selected?.id === c.id ? 'text-ink-48' : 'text-ink-60'}`}>{conductDateRange(c)}</span>
@@ -95,42 +99,44 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-ink">Conducts</h2>
-          <p className="text-xs text-ink-60">Troopers only. Fall-outs come from exceptions automatically; {settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.</p>
-        </div>
-        <button
-          onClick={() => setForm(form ? null : { id: null, name: '', date: today, end_date: '', start_time: '', end_time: '' })}
-          className="px-4 py-3 bg-ink text-white text-sm font-medium rounded-lg"
-        >{form ? 'Cancel' : '+ New'}</button>
-      </div>
+      <PageHeader
+        title="Conducts"
+        subtitle={`Troopers only. Fall-outs come from exceptions automatically; ${settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.`}
+        actions={
+          <Button
+            variant={form ? 'secondary' : 'primary'}
+            onClick={() => setForm(form ? null : { id: null, name: '', date: today, end_date: '', start_time: '', end_time: '' })}
+          >{form ? 'Cancel' : '+ New'}</Button>
+        }
+      />
 
-      {error && <div className="bg-danger/5 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {error && <Banner>{error}</Banner>}
 
       {form && (
-        <div className="bg-parchment border border-hairline rounded-card p-4 space-y-3">
-          <input className={input} placeholder="Conduct name (e.g. IPPT1)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Panel className="space-y-3">
+          <Field label="Conduct name">
+            <Input placeholder="Conduct name (e.g. IPPT1)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </Field>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs text-ink-60">Date<input type="date" className={input} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-            <label className="text-xs text-ink-60">Until (multi-day)<input type="date" className={input} value={form.end_date} min={form.date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></label>
-            <label className="text-xs text-ink-60">Start time<input type="time" className={input} value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></label>
-            <label className="text-xs text-ink-60">End time<input type="time" className={input} value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></label>
+            <Field label="Date"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
+            <Field label="Until (multi-day)"><Input type="date" value={form.end_date} min={form.date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></Field>
+            <Field label="Start time"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} /></Field>
+            <Field label="End time"><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} /></Field>
           </div>
-          <button onClick={saveConduct} disabled={busy || !form.name.trim() || !form.date} className="w-full py-2.5 bg-ink text-white text-sm font-medium rounded-lg disabled:opacity-50">
+          <Button block onClick={saveConduct} disabled={busy || !form.name.trim() || !form.date}>
             {form.id ? 'Save conduct' : 'Create conduct'}
-          </button>
-        </div>
+          </Button>
+        </Panel>
       )}
 
       {conducts.length === 0 ? (
-        <p className="text-center py-12 text-sm text-ink-60">No conducts yet.</p>
+        <Empty>No conducts yet.</Empty>
       ) : (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">{upcoming.map(chip)}</div>
           {past.length > 0 && (
             <div>
-              <button onClick={() => setShowPast(!showPast)} className="text-xs text-ink-60 hover:text-ink-80">
+              <button onClick={() => setShowPast(!showPast)} aria-expanded={showPast} className="min-h-11 text-xs text-ink-60 hover:text-ink-80 md:min-h-8">
                 {showPast ? '▾' : '▸'} Past conducts ({past.length})
               </button>
               {showPast && <div className="flex flex-wrap gap-2 mt-2">{past.map(chip)}</div>}
@@ -143,20 +149,21 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
         <div className="border-t border-hairline pt-4 space-y-3">
           <div className="flex items-center gap-2">
             <h3 className="flex-1 text-lg font-semibold text-ink">{selected.name}</h3>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setForm({
                 id: selected.id, name: selected.name, date: selected.date, end_date: selected.end_date ?? '',
                 start_time: selected.start_time?.slice(0, 5) ?? '', end_time: selected.end_time?.slice(0, 5) ?? '',
               })}
-              className="px-2.5 py-1.5 text-xs border border-hairline text-ink-80 rounded-lg"
-            >Edit</button>
+            >Edit</Button>
             {delConfirm.isConfirming(selected.id) ? (
               <>
-                <button className="px-2.5 py-1.5 text-xs bg-danger text-white rounded-lg" disabled={busy} onClick={() => delConfirm.resolve(() => deleteConduct(selected))}>Delete conduct</button>
-                <button className="px-2.5 py-1.5 text-xs border border-hairline text-ink-80 rounded-lg" onClick={delConfirm.cancel}>Keep</button>
+                <Button variant="danger" size="sm" disabled={busy} onClick={() => delConfirm.resolve(() => deleteConduct(selected))}>Delete conduct</Button>
+                <Button variant="soft" size="sm" onClick={delConfirm.cancel}>Keep</Button>
               </>
             ) : (
-              <button className="px-2.5 py-1.5 text-xs border border-danger/30 text-danger rounded-lg" onClick={() => delConfirm.request(selected.id)}>Delete</button>
+              <Button variant="danger-outline" size="sm" onClick={() => delConfirm.request(selected.id)}>Delete</Button>
             )}
           </div>
           <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={settings.platoons} includeHQ={settings.conducts.include_hq} busy={busy} actions={actions} />
