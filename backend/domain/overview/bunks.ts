@@ -21,6 +21,13 @@ export function bunkOf(s: Soldier): string | null {
   return m ? `PLT ${m[1]} BUNK ${m[2]}` : null
 }
 
+/** Short reason: MC and Off/Leave by name, anything else by its own reason. */
+function reasonLabel(e: Exception): string {
+  if (exceptionType(e) === 'MC') return 'MC'
+  if (e.scope === 'Off/Leave') return 'Off/Leave'
+  return e.reason?.trim() || exceptionType(e)
+}
+
 /** The platoon a bunk belongs to ("PLT 1"), or null for a standalone bunk. */
 const platoonOfBunk = (bunk: string): string | null => bunk.match(/^(PLT \S+)/)?.[1] ?? null
 
@@ -81,7 +88,7 @@ export function buildBunks(
     if (!label) continue
     const key = soldierKeyOf(soldier)
     const reasons = [
-      ...(active.get(key) ?? []).filter(keepsOut).map((e) => e.reason?.trim() || exceptionType(e)),
+      ...(active.get(key) ?? []).filter(keepsOut).map(reasonLabel),
       ...(onDuty.get(soldier.name) ?? []),
     ]
     if (!reasons.length && markedOut.has(key)) reasons.push(NO_REASON)

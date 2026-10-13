@@ -56,7 +56,7 @@ describe('buildBunks', () => {
     const reasons = Object.fromEntries(groups.flatMap((g) => g.bunks.flatMap((b) => b.members.map((m) => [m.soldier.name, m.reasons]))))
     expect(reasons).toEqual({
       'KAI YANG': ['Stay Out'],
-      'ASHRAF BIN AFFENDY': ['Annual Leave'],
+      'ASHRAF BIN AFFENDY': ['Off/Leave'],
       'EDMUND CHEW': ['❌️'],
       'JAY LIEW': [],
       KAUSHAL: ['Stay Out', 'MC'],
@@ -86,7 +86,7 @@ describe('generateBunkMessage', () => {
       '',
       '*PLT 1 BUNK 1 (1/3)*',
       '> 1101 PTE KAI YANG - Stay Out',
-      '> 1102 PTE ASHRAF BIN AFFENDY - Annual Leave',
+      '> 1102 PTE ASHRAF BIN AFFENDY - Off/Leave',
       '',
       '*PLT 1 BUNK 2 (1/2)*',
       '> 1203 PTE KAUSHAL - Stay Out, MC',
