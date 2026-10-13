@@ -103,9 +103,9 @@ export function buildBunks(
     .map(([platoon, list]) => ({ platoon, bunks: list }))
 }
 
-/** "`1101 PTE KAI YANG - Stay Out`", in backticks so chat apps show it as code. */
+/** "> 1101 PTE KAI YANG - Stay Out", a quote line in chat apps. */
 const absenteeLine = ({ soldier: s, reasons }: BunkMember) =>
-  `\`${[s.four_d, s.rank, s.name].filter(Boolean).join(' ')} - ${reasons.join(', ')}\``
+  `> ${[s.four_d, s.rank, s.name].filter(Boolean).join(' ')} - ${reasons.join(', ')}`
 
 /** WhatsApp message: per bunk its strength, then only the people who are out and why. `title` is Settings > Overview. */
 export function generateBunkMessage(title: string, parade: string, date: string, time: string, groups: BunkGroup[]): string {
