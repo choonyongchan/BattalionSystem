@@ -6,10 +6,9 @@ import type { Company } from '@/shared/companies'
 import { AppSettingsSchema, rosterDutyTypes, BASE_DUTY_TYPES, type AppSettings } from '@/backend/domain/settings/settings'
 import { EXCEPTION_SCOPES } from '@/backend/domain/exceptions/exception-validation'
 import { SCOPE_TYPES, isOnStrength } from '@/backend/domain/exceptions/active'
-import { PARADE_TYPES } from '@/frontend/components/parade/parade-ui'
 import { useSoldiers } from '@/frontend/hooks/queries'
 import { Button } from '@/frontend/components/ui/button'
-import { CheckField, Checkbox, Field, Input, Select, Switch } from '@/frontend/components/ui/fields'
+import { CheckField, Checkbox, Field, Input, Switch } from '@/frontend/components/ui/fields'
 import { Chip } from '@/frontend/components/ui/layout'
 import SettingsForm from './SettingsForm'
 
@@ -222,14 +221,7 @@ export function OverviewSection({ company, settings }: Props) {
     >
       {({ register, watch, setValue }) => (
         <>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Message title"><Input placeholder="e.g. STRENGTH CAA" {...register('overview.message_title')} /></Field>
-            <Field label="Default parade">
-              <Select {...register('overview.default_parade')}>
-                {PARADE_TYPES.map((p) => <option key={p}>{p}</option>)}
-              </Select>
-            </Field>
-          </div>
+          <Field label="Message title"><Input placeholder="e.g. CURRENT STRENGTH CAA" {...register('overview.message_title')} /></Field>
           <Group label="Out of the bunk (besides anything counted absent)">
             <CheckList
               options={EXCEPTION_SCOPES}

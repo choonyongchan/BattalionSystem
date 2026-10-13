@@ -72,15 +72,15 @@ describe('present despite a reason', () => {
   it('counts the soldier in, flags the reason, and lists them in the message', () => {
     const kai = groups[0].bunks[0].members.find((m) => m.soldier.name === 'KAI YANG')!
     expect(kai).toMatchObject({ reasons: [], flagged: ['Stay Out'] })
-    expect(generateBunkMessage('t', 'LAST PARADE', DAY, '21:30', groups)).toContain('*⚠️ PRESENT DESPITE REASON*\n> 1101 PTE KAI YANG - Stay Out')
+    expect(generateBunkMessage('t', DAY, '21:30', groups)).toContain('*⚠️ PRESENT DESPITE REASON*\n> 1101 PTE KAI YANG - Stay Out')
   })
 })
 
 describe('generateBunkMessage', () => {
   it('prints each bunk\'s strength and only who is out', () => {
     const groups = buildBunks(SOLDIERS, EXCEPTIONS, [], DAY, new Set(), OUT_SCOPES)
-    expect(generateBunkMessage('Strength CAA', 'Last Parade', DAY, '21:30', groups)).toBe([
-      '*LAST PARADE STRENGTH CAA 111026 2130HRS*',
+    expect(generateBunkMessage('Strength CAA', DAY, '21:30', groups)).toBe([
+      '*STRENGTH CAA 111026 2130HRS*',
       '',
       '*PLT 1: 2/5*',
       '',

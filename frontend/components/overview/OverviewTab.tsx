@@ -32,7 +32,6 @@ export default function OverviewTab({ company }: { company: Company }) {
   const [markedOut, setMarkedOut] = useState<Set<string>>(new Set())
   const [markedPresent, setMarkedPresent] = useState<Set<string>>(new Set())
   const [excludeStayIn, setExcludeStayIn] = useState(false)
-  const parade = settings?.overview.default_parade ?? ''
   const paradeTime = nowSGTime()
 
   /** Changes the date; hand-marked absences belong to one day, so they reset. */
@@ -119,7 +118,7 @@ export default function OverviewTab({ company }: { company: Company }) {
         </section>
       ))}
 
-      {groups.length > 0 && <MessageBox title="Strength message" text={generateBunkMessage(settings.overview.message_title, parade, date, paradeTime, groups)} />}
+      {groups.length > 0 && <MessageBox title="Strength message" text={generateBunkMessage(settings.overview.message_title, date, paradeTime, groups)} />}
     </div>
   )
 }

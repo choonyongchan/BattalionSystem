@@ -108,8 +108,8 @@ const absenteeLine = ({ soldier: s, reasons }: BunkMember) =>
   `> ${[s.four_d, s.rank, s.name].filter(Boolean).join(' ')} - ${reasons.join(', ')}`
 
 /** WhatsApp message: per bunk its strength, then only the people who are out and why. `title` is Settings > Overview. */
-export function generateBunkMessage(title: string, parade: string, date: string, time: string, groups: BunkGroup[]): string {
-  const lines = [`*${parade.toUpperCase()} ${title.toUpperCase()} ${ddmmyy(date)} ${time.replace(':', '')}HRS*`]
+export function generateBunkMessage(title: string, date: string, time: string, groups: BunkGroup[]): string {
+  const lines = [`*${title.toUpperCase()} ${ddmmyy(date)} ${time.replace(':', '')}HRS*`]
   for (const g of groups) {
     if (g.platoon) lines.push('', `*${g.platoon}: ${strength(g.bunks.flatMap((b) => b.members))}*`)
     for (const b of g.bunks) {

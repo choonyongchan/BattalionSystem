@@ -64,7 +64,6 @@ export const AppSettingsSchema = z.object({
     /** Scopes that keep a soldier out of the bunk even when not counted absent. */
     out_scopes: z.array(z.string()),
     /** Parade picked when the Overview tab opens. */
-    default_parade: z.string(),
   }),
 })
 
@@ -117,7 +116,7 @@ export function defaultSettings(company: Company): AppSettings {
       urti_keywords: ['urti', 'flu', 'cough', 'coughs', 'coughing', 'sore throat', 'phlegm', 'runny nose', 'blocked nose', 'sneeze', 'sneezing', 'fever', 'cold'],
     },
     conducts: { include_hq: !hq, needs_call_types: ['LD', 'RMJ'] },
-    overview: { message_title: 'STRENGTH CAA', out_scopes: ['Others', 'Guard Duty'], default_parade: 'Last Parade' },
+    overview: { message_title: 'CURRENT STRENGTH CAA', out_scopes: ['Others', 'Guard Duty'] },
   }
 }
 
