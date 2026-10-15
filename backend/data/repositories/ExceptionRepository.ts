@@ -33,6 +33,11 @@ export class ExceptionRepository extends CompanyRepository {
     return this.from().delete().eq('id', id)
   }
 
+  /** Deletes exceptions whose end date is before `today`; open-ended ones (no end) stay. */
+  async purgeExpired(today: string): Promise<WriteResult> {
+    return this.from().delete().lt('end', today)
+  }
+
   /** Rewrites the soldier name stored on every exception after a rename. */
   async rename(oldName: string, newName: string): Promise<WriteResult> {
     return this.from().update({ name: newName }).eq('name', oldName)

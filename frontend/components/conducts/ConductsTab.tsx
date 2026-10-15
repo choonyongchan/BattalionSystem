@@ -166,7 +166,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
               <Button variant="danger-outline" size="sm" onClick={() => delConfirm.request(selected.id)}>Delete</Button>
             )}
           </div>
-          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} platoons={settings.platoons} includeHQ={settings.conducts.include_hq} busy={busy} actions={actions} />
+          <ConductDetail companyLabel={companyLabel} conduct={selected} parts={parts} busy={busy} actions={actions} />
         </div>
       )}
     </div>

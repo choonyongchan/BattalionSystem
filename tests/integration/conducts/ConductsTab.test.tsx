@@ -36,19 +36,19 @@ afterAll(async () => {
 })
 
 describe('ConductsTab', () => {
-  it('falls out the MC automatically and asks for a call on the LD, which ✓ Can settles', async () => {
+  it('puts the MC not in camp and the LD in fall out, which ✓ Participate settles', async () => {
     renderWithQuery(<ConductsTab company="test" companyLabel="Test" />)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'IPPT TEST' })).toBeInTheDocument(), { timeout: 10000 })
 
+    const away = screen.getByText(/^Not in camp –/).closest('section')!
+    expect(within(away).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
+    expect(within(away).getByText('CONDUCT TEST MC')).toBeInTheDocument()
+
     const outSection = screen.getByText(/^Fall out –/).closest('section')!
-    expect(within(outSection).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
-    expect(within(outSection).getByText('CONDUCT TEST MC · auto')).toBeInTheDocument()
+    expect(within(outSection).getByText(/GOH RONG HAO/)).toBeInTheDocument()
+    await userEvent.click(within(outSection).getByRole('button', { name: '✓ Participate' }))
 
-    const pending = screen.getByText(/^Needs a call/).closest('section')!
-    expect(within(pending).getByText(/GOH RONG HAO/)).toBeInTheDocument()
-    await userEvent.click(within(pending).getByRole('button', { name: '✓ Can' }))
-
-    await waitFor(() => expect(screen.queryByText(/^Needs a call/)).not.toBeInTheDocument(), { timeout: 10000 })
+    await waitFor(() => expect(within(screen.getByText(/^Fall out –/).closest('section')!).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument(), { timeout: 10000 })
     const taking = screen.getByText(/^Taking part –/).closest('section')!
     expect(within(taking).getByText('CONDUCT TEST LD · confirmed can')).toBeInTheDocument()
 
@@ -56,7 +56,8 @@ describe('ConductsTab', () => {
     expect(data).toEqual([{ participating: true }])
 
     expect(screen.getByText(/TEST COY CONDUCT STATE/)).toBeInTheDocument()
-    expect(screen.getByText(/TAN RONG XIAN — CONDUCT TEST MC/)).toBeInTheDocument()
+    // Not in camp is left out of the message
+    expect(screen.queryByText(/TAN RONG XIAN — CONDUCT TEST MC/)).not.toBeInTheDocument()
     // Troopers only: commanders are not listed anywhere
     expect(screen.queryByText(/CHONG KAH WAI/)).not.toBeInTheDocument()
   })

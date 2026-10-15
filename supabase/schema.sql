@@ -11,7 +11,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 DO $$
 DECLARE
   companies text[] := ARRAY['Archer','Braves','Cougar','Stallion','Hercules','Test'];
-  tables    text[] := ARRAY['NominalRoll','Exceptions','Duty','Settings','OffLeave','Conducts','ConductDecisions','MedicalReviews'];
+  tables    text[] := ARRAY['NominalRoll','Exceptions','Duty','Settings','OffLeave','Conducts','ConductDecisions','MedicalReviews','OverviewMarks'];
   c text;
   t text;
 BEGIN
@@ -117,6 +117,15 @@ BEGIN
       )', c, c, c);
     EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_conduct_decisions_soldier_idx" ON public."%s_ConductDecisions" (soldier_id)', c, c);
 
+    -- Hand-marked absences/presences on the Overview, shared by every device. key: soldier id or 'name:NAME'
+    EXECUTE format('
+      CREATE TABLE IF NOT EXISTS public."%s_OverviewMarks" (
+        date date NOT NULL,
+        key  text NOT NULL,
+        kind text NOT NULL CHECK (kind = ANY (ARRAY[''out'',''present''])),
+        PRIMARY KEY (date, key)
+      )', c);
+
     -- A medical review is a 'Report Sick' exception typed 'Medical Review', so it prints in
     -- the parade state; NRIC and appointment details live here, apart
     EXECUTE format('
@@ -144,7 +153,21 @@ BEGIN
          USING (auth.email() = lower(%L) || ''@40sar.internal'')
          WITH CHECK (auth.email() = lower(%L) || ''@40sar.internal'')',
         c, t, c, t, c, c);
+      -- Realtime: devices refetch when any of these tables change
+      BEGIN
+        EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public."%s_%s"', c, t);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END;
     END LOOP;
+
+    -- Expired exceptions (end date passed) are deleted at 00:00 SGT = 16:00 UTC; rows with no end stay.
+    -- Needs the pg_cron extension (enable it in the dashboard); same job name = update in place.
+    BEGIN
+      PERFORM cron.schedule(
+        format('purge-%s-exceptions', c), '0 16 * * *',
+        format('DELETE FROM public."%s_Exceptions" WHERE "end" < (now() AT TIME ZONE ''Asia/Singapore'')::date', c));
+    EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'purge job not scheduled for %: %', c, SQLERRM;
+    END;
 
   END LOOP;
 END;

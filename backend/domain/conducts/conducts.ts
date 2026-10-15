@@ -1,5 +1,4 @@
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
-import type { PlatoonBlock } from '@/shared/companies'
 import { RANK_INDEX, isCommander } from '@/shared/ranks'
 import { wordsRegex } from '@/shared/names'
 import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
@@ -78,8 +77,10 @@ export type ParticipationKind =
   | 'in-excused'
   /** Pinged, and a commander confirmed he CAN take part. */
   | 'in-confirmed'
-  /** MC, report sick, or out of camp — always out, not overridable. */
+  /** Report sick (RSI/RSO) — falls out automatically; a commander may still let him take part. */
   | 'out-auto'
+  /** MC, Att C, MA, course or any other absence — not in camp, so outside the strength. Can be overridden to take part. */
+  | 'not-in-camp'
   /** LD / RMJ with no call yet — out until someone decides. */
   | 'out-default'
   /** Pinged, and a commander confirmed he cannot. */
@@ -115,13 +116,16 @@ function describe(e: Exception): string {
 const isHard = (e: Exception) => e.counts_as_absence || exceptionType(e) === 'MC' || isReportSick(e)
 
 /** An MC reads first, then a report sick, then whatever keeps him out of camp. */
-function hardOutReason(active: Exception[]): string | null {
-  const pick =
+function hardOutReason(active: Exception[]): Exception | undefined {
+  return (
     active.find((e) => exceptionType(e) === 'MC') ??
     active.find(isReportSick) ??
     active.find((e) => e.counts_as_absence)
-  return pick ? describe(pick) : null
+  )
 }
+
+/** False for someone not in camp: outside the strength and the message. */
+export const inCamp = (p: Participation): boolean => p.kind !== 'not-in-camp'
 
 /** Orders soldiers most senior first, then by 4D, then name. */
 function compareSoldiers(a: Soldier, b: Soldier): number {
@@ -156,11 +160,15 @@ export function classifyConduct(
   return people.map((soldier): Participation => {
     const mine = active.get(soldierKeyOf(soldier)) ?? []
     const hard = hardOutReason(mine)
-    if (hard) return { soldier, kind: 'out-auto', participating: false, reason: hard, note: null, decision: null }
+    const decision = (soldier.id && decisionFor.get(soldier.id)) || null
+    // A commander's "participate" overrides even a hard absence
+    if (hard && !decision?.participating) {
+      const kind = isReportSick(hard) ? 'out-auto' : 'not-in-camp'
+      return { soldier, kind, participating: false, reason: describe(hard), note: null, decision }
+    }
 
     const soft = mine.filter((e) => !isHard(e))
-    const softReason = soft.map(describe).join(', ') || null
-    const decision = (soldier.id && decisionFor.get(soldier.id)) || null
+    const softReason = [...(hard ? [hard] : []), ...soft].map(describe).join(', ') || null
     if (decision) {
       if (decision.participating) return { soldier, kind: 'in-confirmed', participating: true, reason: null, note: softReason, decision }
       return {
@@ -187,12 +195,6 @@ export const needsDecision = (parts: Participation[]): Participation[] => parts.
 export const conductSoldiers = (soldiers: Soldier[], includeHQ: boolean): Soldier[] =>
   soldiers.filter((s) => !isCommander(s) && (includeHQ || s.platoon !== 'HQ'))
 
-/** COY HQ first (unless it sits out), then the company's platoons: the same blocks as the parade state. */
-export function conductBlocks(platoons: PlatoonBlock[], includeHQ: boolean): { key: string; label: string }[] {
-  const blocks = platoons.map((p) => ({ key: p.key, label: p.label }))
-  return includeHQ ? [{ key: 'HQ', label: 'COY HQ' }, ...blocks] : blocks
-}
-
 /** Title, date and time lines for a conduct state. */
 function headerLines(label: string, c: Conduct): string[] {
   const lines = [`${label} CONDUCT STATE`, `CONDUCT: ${c.name.toUpperCase()}`, `DATE: ${conductDateRange(c)}`]
@@ -201,32 +203,22 @@ function headerLines(label: string, c: Conduct): string[] {
   return lines
 }
 
-/** In/total and fall-out counts, zero-padded. */
+/** Taking part / in camp, and the fall-out count, zero-padded. Not in camp is ignored. */
 function strengthLines(parts: Participation[]): string[] {
-  const out = parts.filter((p) => !p.participating).length
-  return [`OVERALL: ${pad2(parts.length - out)}/${pad2(parts.length)}`, `FALL OUT: ${pad2(out)}`]
+  const camp = parts.filter(inCamp)
+  const out = camp.filter((p) => !p.participating).length
+  return [`OVERALL: ${pad2(camp.length - out)}/${pad2(camp.length)}`, `FALL OUT: ${pad2(out)}`]
 }
 
 /** Numbered fall-out lines with each reason. */
 function fallOutLines(parts: Participation[]): string[] {
   return parts
-    .filter((p) => !p.participating)
+    .filter((p) => inCamp(p) && !p.participating)
     .map((p, i) => `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name} — ${(p.reason ?? '').toUpperCase()}`)
 }
 
-/** The whole company's conduct state: strength, then fall-outs per block. */
-export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[], platoons: PlatoonBlock[], includeHQ: boolean): string {
-  const lines = [...headerLines(`${companyLabel.toUpperCase()} COY`, c), '', ...strengthLines(parts)]
-  for (const block of conductBlocks(platoons, includeHQ)) {
-    const out = fallOutLines(parts.filter((p) => p.soldier.platoon === block.key))
-    lines.push('', `${block.label}: ${pad2(out.length)}`, ...out)
-  }
-  return lines.join('\n')
-}
-
-/** One block's conduct state: what each PDS sends up before it's collated. */
-export function generatePlatoonConductState(c: Conduct, parts: Participation[], block: { key: string; label: string }): string {
-  const mine = parts.filter((p) => p.soldier.platoon === block.key)
-  const out = fallOutLines(mine)
-  return [...headerLines(block.label, c), '', ...strengthLines(mine), ...(out.length ? ['', ...out] : [])].join('\n')
+/** The company's conduct state: strength, then who falls out. */
+export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[]): string {
+  const out = fallOutLines(parts)
+  return [...headerLines(`${companyLabel.toUpperCase()} COY`, c), '', ...strengthLines(parts), ...(out.length ? ['', ...out] : [])].join('\n')
 }

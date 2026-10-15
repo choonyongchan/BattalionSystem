@@ -9,6 +9,10 @@ import OffLeaveTracking from '@/frontend/components/off-leave/OffLeaveTracking'
 import ConductsTab from '@/frontend/components/conducts/ConductsTab'
 import ReportSickTab from '@/frontend/components/report-sick/ReportSickTab'
 import OverviewTab from '@/frontend/components/overview/OverviewTab'
+import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
+import { useRefresh } from '@/frontend/hooks/queries'
+import { useRealtimeSync } from '@/frontend/hooks/useRealtimeSync'
+import { todaySGDate } from '@/shared/dates'
 import CompanyShell from './CompanyShell'
 import TabBar, { isTabId, type TabId } from './TabBar'
 
@@ -33,8 +37,17 @@ export default function CompanyContent({ company, label }: { company: Company; l
 function Workspace({ company, label }: { company: Company; label: string }) {
   const [tab, setTab] = useState<TabId>(DEFAULT_TAB)
 
+  const refresh = useRefresh(company)
+  useRealtimeSync(company)
+
   // Static export: the query string is only known in the browser
   useEffect(() => setTab(tabFromUrl()), [])
+
+  // Exceptions past their end date are deleted (the nightly DB job does the same at 00:00 SGT)
+  useEffect(() => {
+    new ExceptionRepository(company).purgeExpired(todaySGDate()).then(({ error }) => { if (!error) refresh() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company])
 
   /** Switches tab and records it in the URL without a navigation. */
   function select(id: TabId) {
@@ -47,7 +60,7 @@ function Workspace({ company, label }: { company: Company; label: string }) {
   return (
     <>
       <TabBar active={tab} onSelect={select} />
-      <main id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mx-auto w-full max-w-screen-2xl flex-1 px-4 pt-4 pb-safe-nav sm:px-6 md:py-6">
+      <main id="workspace-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="mx-auto w-full max-w-screen-2xl flex-1 overflow-x-hidden px-4 pt-4 pb-safe-nav sm:px-6 md:py-6">
         {tab === 'overview' && <OverviewTab company={company} />}
         {tab === 'dashboard' && <DutyDashboard company={company} />}
         {tab === 'nominal-roll' && <NominalRoll company={company} />}

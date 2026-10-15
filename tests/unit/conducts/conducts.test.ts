@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   conductEnd, conductDay, conductDateRange, conductTimeRange, nearestConduct,
-  classifyConduct, needsDecision, generateConductState, generatePlatoonConductState, conductBlocks,
+  classifyConduct, needsDecision, generateConductState,
   conductSoldiers,
 } from '@/backend/domain/conducts/conducts'
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
@@ -80,10 +80,10 @@ describe('conduct dates', () => {
 describe('classifyConduct', () => {
   const today = '2026-09-22'
 
-  it('MC and out-of-camp soldiers fall out automatically with their reason', () => {
+  it('MC and out-of-camp soldiers are not in camp, with their reason', () => {
     const p = byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, CALL))
-    expect(p['MC GUY']).toMatchObject({ kind: 'out-auto', participating: false, reason: '3D MC' })
-    expect(p['LEAVE GUY']).toMatchObject({ kind: 'out-auto', participating: false, reason: 'Annual Leave' })
+    expect(p['MC GUY']).toMatchObject({ kind: 'not-in-camp', participating: false, reason: '3D MC' })
+    expect(p['LEAVE GUY']).toMatchObject({ kind: 'not-in-camp', participating: false, reason: 'Annual Leave' })
   })
 
   it('LD and RMJ fall out by default and wait for a commander\'s call', () => {
@@ -117,9 +117,9 @@ describe('classifyConduct', () => {
     expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [other], today, CALL))['FIT GUY'].kind).toBe('in')
   })
 
-  it('anyone marked absent falls out automatically, whatever the scope', () => {
+  it('anyone marked absent is not in camp, whatever the scope', () => {
     const absent = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Others', type: 'Others', reason: 'Court', counts_as_absence: true })]
-    expect(byName(classifyConduct(C(), SOLDIERS, absent, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'out-auto', reason: 'Court' })
+    expect(byName(classifyConduct(C(), SOLDIERS, absent, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'not-in-camp', reason: 'Court' })
   })
 
   it('a report sick falls out automatically, URTI or not', () => {
@@ -137,9 +137,9 @@ describe('classifyConduct', () => {
     expect(byName(classifyConduct(C(), SOLDIERS, mr, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'in-excused', note: 'Knee review' })
   })
 
-  it('a hard fall-out cannot be overridden by a decision', () => {
+  it('a commander can let someone not in camp take part', () => {
     const can: ConductDecision = { id: 'd4', conduct_id: 'c1', soldier_id: 'mc', participating: true, reason: null }
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today, CALL))['MC GUY'].kind).toBe('out-auto')
+    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today, CALL))['MC GUY']).toMatchObject({ kind: 'in-confirmed', participating: true })
   })
 
   it('reads exceptions on the conduct day, and skips revoked ones and posted-out soldiers', () => {
@@ -157,11 +157,6 @@ describe('conduct state text', () => {
   const conduct = C({ start_time: '08:00:00', end_time: '10:00:00' })
   const parts = classifyConduct(conduct, conductSoldiers(SOLDIERS, true), EXCEPTIONS, [], today, CALL)
 
-  it('orders the blocks COY HQ then the platoons, or the platoons alone when HQ sits out', () => {
-    expect(conductBlocks(BLOCKS, true).map((b) => b.label)).toEqual(['COY HQ', 'PL 1', 'PL 2'])
-    expect(conductBlocks(BLOCKS, false).map((b) => b.label)).toEqual(['PL 1', 'PL 2'])
-  })
-
   it('counts troopers only, and drops COY HQ when it sits out', () => {
     expect(byName(parts)['OC ONE']).toBeUndefined()
     expect(byName(parts)['PC ONE']).toBeUndefined()
@@ -174,39 +169,17 @@ describe('conduct state text', () => {
     expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, []))['LD GUY'].kind).toBe('in-excused')
   })
 
-  it('renders the company conduct state', () => {
-    expect(generateConductState('Hercules', conduct, parts, BLOCKS, true)).toBe([
+  it('renders the conduct state: in-camp strength, fall-outs only', () => {
+    expect(generateConductState('Hercules', conduct, parts)).toBe([
       'HERCULES COY CONDUCT STATE',
       'CONDUCT: IPPT1',
       'DATE: 220926',
       'TIME: 0800 - 1000HRS',
       '',
-      'OVERALL: 02/05',
-      'FALL OUT: 03',
+      'OVERALL: 02/03',
+      'FALL OUT: 01',
       '',
-      'COY HQ: 00',
-      '',
-      'PL 1: 02',
-      '1. 1101 PTE MC GUY — 3D MC',
-      '2. 1102 PTE LD GUY — FEVER, LD',
-      '',
-      'PL 2: 01',
-      '1. 2103 CPL LEAVE GUY — ANNUAL LEAVE',
-    ].join('\n'))
-  })
-
-  it('renders one platoon', () => {
-    expect(generatePlatoonConductState(conduct, parts, BLOCKS[0])).toBe([
-      'PL 1 CONDUCT STATE',
-      'CONDUCT: IPPT1',
-      'DATE: 220926',
-      'TIME: 0800 - 1000HRS',
-      '',
-      'OVERALL: 00/02',
-      'FALL OUT: 02',
-      '',
-      '1. 1101 PTE MC GUY — 3D MC',
-      '2. 1102 PTE LD GUY — FEVER, LD',
+      '1. 1102 PTE LD GUY — FEVER, LD',
     ].join('\n'))
   })
 })

@@ -10,6 +10,7 @@ import { SoldierRepository } from '@/backend/data/repositories/SoldierRepository
 import { ExceptionRepository } from '@/backend/data/repositories/ExceptionRepository'
 import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
 import { ConductRepository } from '@/backend/data/repositories/ConductRepository'
+import { OverviewMarkRepository } from '@/backend/data/repositories/OverviewMarkRepository'
 import { OffLeaveRepository } from '@/backend/data/repositories/OffLeaveRepository'
 import { MedicalReviewRepository } from '@/backend/data/repositories/MedicalReviewRepository'
 
@@ -44,6 +45,10 @@ export const useConducts = (company: Company) => useRows(company, ['conducts'], 
 /** Every manual conduct participation call. */
 export const useConductDecisions = (company: Company) =>
   useRows(company, ['conductDecisions'], () => new ConductRepository(company).listDecisions())
+
+/** Shared Overview marks for one date. */
+export const useOverviewMarks = (company: Company, date: string) =>
+  useRows(company, ['overviewMarks', date], () => new OverviewMarkRepository(company).list(date))
 
 /** Off and leave balances. */
 export const useOffLeave = (company: Company) => useRows(company, ['offLeave'], () => new OffLeaveRepository(company).list())

@@ -6,7 +6,8 @@ import type { Company } from '@/shared/companies'
 import { isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
 import { isCommander } from '@/shared/ranks'
 import { buildBunks, generateBunkMessage, strength, NO_REASON } from '@/backend/domain/overview/bunks'
-import { combine, useDuties, useExceptions, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
+import { OverviewMarkRepository } from '@/backend/data/repositories/OverviewMarkRepository'
+import { combine, useDuties, useExceptions, useOverviewMarks, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
 import { nowSGTime, todaySGDate } from '@/shared/dates'
 import { applyExcludeStayIn } from '@/backend/domain/parade/exception-table'
 import { Segmented } from '@/frontend/components/ui/segmented'
@@ -24,22 +25,20 @@ export default function OverviewTab({ company }: { company: Company }) {
   const exceptionsQ = useExceptions(company)
   const dutiesQ = useDuties(company, date, date)
   const settingsQ = useSettingsQuery(company)
-  const { loading, error } = combine(soldiersQ, exceptionsQ, dutiesQ, settingsQ)
+  const marksQ = useOverviewMarks(company, date)
+  const { loading, error } = combine(soldiersQ, exceptionsQ, dutiesQ, settingsQ, marksQ)
   const settings = settingsQ.data
   const soldiers = useMemo(() => soldiersQ.data ?? [], [soldiersQ.data])
   const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
   const duties = useMemo(() => dutiesQ.data ?? [], [dutiesQ.data])
-  const [markedOut, setMarkedOut] = useState<Set<string>>(new Set())
-  const [markedPresent, setMarkedPresent] = useState<Set<string>>(new Set())
+  const { run } = useWrite(company)
+  // Marks are shared by every device; each belongs to one date
+  const marks = useMemo(() => marksQ.data ?? [], [marksQ.data])
+  const markedOut = useMemo(() => new Set(marks.filter((m) => m.kind === 'out').map((m) => m.key)), [marks])
+  const markedPresent = useMemo(() => new Set(marks.filter((m) => m.kind === 'present').map((m) => m.key)), [marks])
   const [excludeStayIn, setExcludeStayIn] = useState(false)
   const paradeTime = nowSGTime()
-
-  /** Changes the date; hand-marked absences belong to one day, so they reset. */
-  function setDate(d: string) {
-    setDateState(d)
-    setMarkedOut(new Set())
-    setMarkedPresent(new Set())
-  }
+  const setDate = setDateState
   const groups = useMemo(
     () => buildBunks(soldiers, applyExcludeStayIn(exceptions, excludeStayIn), duties, date, markedOut, settings?.overview.out_scopes ?? [], markedPresent),
     [soldiers, exceptions, excludeStayIn, duties, date, markedOut, markedPresent, settings],
@@ -50,11 +49,9 @@ export default function OverviewTab({ company }: { company: Company }) {
   /** Ticks or unticks a soldier. With a keyed reason it flags them present despite it instead. */
   function toggle(s: Soldier, keyed: boolean) {
     const key = soldierKeyOf(s)
-    const [set, setSet] = keyed ? [markedPresent, setMarkedPresent] : [markedOut, setMarkedOut]
-    const next = new Set(set)
-    if (next.has(key)) next.delete(key)
-    else next.add(key)
-    setSet(next)
+    const kind = keyed ? 'present' : 'out'
+    const repo = new OverviewMarkRepository(company)
+    run(() => ((keyed ? markedPresent : markedOut).has(key) ? repo.clear(date, key) : repo.set({ date, key, kind })))
   }
 
   if (loading || !settings) return <Loading />
@@ -90,7 +87,7 @@ export default function OverviewTab({ company }: { company: Company }) {
               {g.platoon} <span className="font-normal text-ink-60">{strength(g.bunks.flatMap((b) => b.members))}</span>
             </SectionTitle>
           )}
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {g.bunks.map((b) => (
               <Card key={b.label} className="p-3">
                 <div className="flex items-baseline justify-between mb-1">
