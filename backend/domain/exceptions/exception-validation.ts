@@ -8,14 +8,11 @@ export type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 /** Scopes recorded against one day rather than a range. */
 export const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
 
-/** Scopes that carry an optional IN/OUT (of camp) marker in the parade state. */
-export const IN_OUT_SCOPES: ExceptionScope[] = ['Att C', 'Report Sick', 'MA', 'Others']
-
 /** Scopes that print an optional "@ <location>" suffix in the parade state. */
 export const LOCATION_PRINT_SCOPES: ExceptionScope[] = ['MA', 'Others']
 
 /** The add-exception form's fields. */
-export type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string; location: string; in_out: '' | 'IN' | 'OUT' }
+export type ExForm = { name: string; scope: ExceptionScope; reason: string; start: string; end: string; counts_as_absence: boolean; time: string; location: string }
 /** One STATUS row of the add form; STATUS can add several reasons at once. */
 export type StatusRow = { start: string; end: string; reason: string }
 

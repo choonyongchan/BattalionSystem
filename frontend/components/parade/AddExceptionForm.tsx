@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import {
-  EXCEPTION_SCOPES, IN_OUT_SCOPES, SINGLE_DATE_SCOPES,
+  EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
   isExceptionValid, validateAddEx,
   type ExForm, type StatusRow,
 } from '@/backend/domain/exceptions/exception-validation'
@@ -20,7 +20,7 @@ const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty' && s !== 'R
 
 /** Blank form for a new exception dated `date`. */
 const emptyForm = (date: string): ExForm =>
-  ({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '', in_out: '' })
+  ({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '' })
 
 /**
  * Form for adding an exception. STATUS can hold several rows (one per status) that are
@@ -62,7 +62,6 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
         end: form.end || null,
         counts_as_absence: form.counts_as_absence,
         location: form.location.trim() || null,
-        in_out: IN_OUT_SCOPES.includes(form.scope) && form.in_out ? form.in_out : null,
         ...(form.scope === 'MA' && form.time ? { time: form.time } : {}),
         ...linkFields(form.name, form.scope, reason),
       }
@@ -143,15 +142,6 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
       <Field label="Location (optional)">
         <Input type="text" placeholder="e.g. CGH, NUH, Raffles" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} error={errors.location} />
       </Field>
-
-      {IN_OUT_SCOPES.includes(form.scope) && (
-        <Segmented
-          label="In/Out (optional)"
-          value={form.in_out}
-          onChange={(in_out) => setForm({ ...form, in_out })}
-          options={[{ value: '', label: '—' }, 'IN', 'OUT']}
-        />
-      )}
 
       <CheckField label="Absent?">
         <Checkbox

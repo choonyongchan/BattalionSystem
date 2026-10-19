@@ -56,8 +56,8 @@ describe('ReportSickTab', () => {
 
     await waitFor(() => expect(screen.getByText(/Sprained ankle/)).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.queryByText(/message$/)).not.toBeInTheDocument()
-    const { data } = await supabase.from('Test_Exceptions').select('in_out, location').eq('reason', 'Sprained ankle')
-    expect(data).toEqual([{ in_out: 'OUT', location: null }])
+    const { data } = await supabase.from('Test_Exceptions').select('in_out, location, counts_as_absence').eq('reason', 'Sprained ankle')
+    expect(data).toEqual([{ in_out: 'OUT', location: null, counts_as_absence: true }])
   })
 
   it('keys a medical review and prints it in the medical review message', async () => {

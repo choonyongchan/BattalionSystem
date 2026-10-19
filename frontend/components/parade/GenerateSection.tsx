@@ -40,7 +40,7 @@ export default function GenerateSection({ company, settings, data, onGenerated }
       paradeTimeStr: settings.parade_times[paradeType] ?? '',
       duties,
       paradeType,
-    }, { companyName: company.toUpperCase(), platoons: settings.platoons })
+    }, { companyName: company.toUpperCase(), platoons: settings.platoons, inOutScopes: settings.in_out_scopes })
     onGenerated(report, paradeType)
     track('parade_state_generated', { company, soldierCount: data.soldiers.length, date: today, paradeType, excludeStayIn })
   }

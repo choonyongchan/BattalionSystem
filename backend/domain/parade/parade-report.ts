@@ -2,7 +2,7 @@ import type { Soldier, Exception, DutyEntry } from '@/shared/types'
 import { displayDutyName } from '@/shared/names'
 import { STD_SCOPES, type PlatoonBlock } from '@/shared/companies'
 import { getRankType, RANK_TYPES, RANK_INDEX } from '@/shared/ranks'
-import { SINGLE_DATE_SCOPES, IN_OUT_SCOPES, LOCATION_PRINT_SCOPES, type ExceptionScope } from '@/backend/domain/exceptions/exception-validation'
+import { SINGLE_DATE_SCOPES, LOCATION_PRINT_SCOPES, type ExceptionScope } from '@/backend/domain/exceptions/exception-validation'
 import { exceptionSoldierKey, isOnStrength, isRevoked, mergeRuns, soldierIndex, soldierKeyOf, soldierOf, type SoldierIndex } from '@/backend/domain/exceptions/active'
 import { BASE_DUTY_TYPES } from '@/backend/domain/settings/settings'
 import { ddmmyy } from '@/shared/dates'
@@ -11,6 +11,8 @@ import { ddmmyy } from '@/shared/dates'
 export interface ParadeConfig {
   companyName: string
   platoons: PlatoonBlock[]
+  /** Scopes whose lines end IN or OUT, from counts_as_absence. */
+  inOutScopes: string[]
 }
 
 /** The data one parade state is built from. */
@@ -75,14 +77,14 @@ function formatDescription(e: Exception): string {
 }
 
 /** One numbered line: 4D, rank, name, description, dates, then in/out and location where printed. */
-function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex): string {
+function formatExceptionLine(e: Exception, n: number, idx: SoldierIndex, inOutScopes: string[]): string {
   // The soldier's current name and rank, so a rename on the roll shows through
   const soldier = soldierOf(e, idx)
   const fourD = soldier?.four_d ?? ''
   const identity = soldier ? `${soldier.rank} ${soldier.name}` : e.name
   const parts = [formatDescription(e), formatDates(e)].filter(Boolean).join(' ')
   let line = `${n + 1}. ${fourD ? `${fourD} ` : ''}${identity} - ${parts}`
-  if (IN_OUT_SCOPES.includes(e.scope as ExceptionScope) && e.in_out) line += ` ${e.in_out}`
+  if (inOutScopes.includes(e.scope)) line += e.counts_as_absence ? ' OUT' : ' IN'
   if (LOCATION_PRINT_SCOPES.includes(e.scope as ExceptionScope) && e.location) line += ` @ ${e.location}`
   return line
 }
@@ -128,7 +130,7 @@ export function generateParadeReport(input: ParadeReportInput, config: ParadeCon
     lines.push(`${label}: ${block.all}`, ...block.byType.map(([rt, s]) => `${rt.toUpperCase()}: ${s}`))
     for (const { key: scope, label: scopeLabel } of STD_SCOPES) {
       const scoped = group.filter((e) => e.scope === scope)
-      lines.push(`${scopeLabel}: ${scoped.length}`, ...scoped.map((e, n) => formatExceptionLine(e, n, idx)))
+      lines.push(`${scopeLabel}: ${scoped.length}`, ...scoped.map((e, n) => formatExceptionLine(e, n, idx, config.inOutScopes)))
     }
   })
   return lines.join('\n')

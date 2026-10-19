@@ -12,7 +12,7 @@ import EligibilitySection from './EligibilitySection'
 import GuardDutyRolesSection from './GuardDutyRolesSection'
 import AbsenceDefaultsSection from './AbsenceDefaultsSection'
 import PublicHolidaysSection from './PublicHolidaysSection'
-import { ConductsSection, DutyRosterSection, OverviewSection, PlatoonsSection, ReportSickSection } from './CompanySections'
+import { ConductsSection, DutyRosterSection, InOutSection, OverviewSection, PlatoonsSection, ReportSickSection } from './CompanySections'
 
 type SettingsTab =
   | 'platoons' | 'duty-roster' | 'duty-weights' | 'parade-times' | 'eligibility' | 'guard-duty-roles'
@@ -63,7 +63,12 @@ function SettingsContent({ company }: { company: Company }) {
             {activeTab === 'parade-times' && <ParadeTimesSection company={company} settings={settings} />}
             {activeTab === 'eligibility' && <EligibilitySection company={company} settings={settings} />}
             {activeTab === 'guard-duty-roles' && <GuardDutyRolesSection company={company} settings={settings} />}
-            {activeTab === 'absence-defaults' && <AbsenceDefaultsSection company={company} settings={settings} />}
+            {activeTab === 'absence-defaults' && (
+              <>
+                <AbsenceDefaultsSection company={company} settings={settings} />
+                <InOutSection company={company} settings={settings} />
+              </>
+            )}
             {activeTab === 'report-sick' && <ReportSickSection company={company} settings={settings} />}
             {activeTab === 'conducts' && <ConductsSection company={company} settings={settings} />}
             {activeTab === 'overview' && <OverviewSection company={company} settings={settings} />}

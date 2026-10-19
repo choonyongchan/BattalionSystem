@@ -210,6 +210,28 @@ export function ConductsSection({ company, settings }: Props) {
   )
 }
 
+/** Settings: which scopes end their parade-state lines with IN or OUT (OUT when counted absent). */
+export function InOutSection({ company, settings }: Props) {
+  return (
+    <SettingsForm<Pick<AppSettings, 'in_out_scopes'>>
+      company={company}
+      title="IN/OUT"
+      description="Lines in these scopes end OUT when Absent is ticked, else IN."
+      defaultValues={{ in_out_scopes: settings.in_out_scopes }}
+    >
+      {({ watch, setValue }) => (
+        <Group label="Print IN/OUT in parade state">
+          <CheckList
+            options={EXCEPTION_SCOPES}
+            value={watch('in_out_scopes')}
+            onChange={(x) => setValue('in_out_scopes', x, { shouldDirty: true })}
+          />
+        </Group>
+      )}
+    </SettingsForm>
+  )
+}
+
 /** Settings: the Overview tab's bunk strength message and what keeps a trooper out of the bunk. */
 export function OverviewSection({ company, settings }: Props) {
   return (

@@ -9,6 +9,7 @@ export const FIXTURE_SETTINGS: AppSettings = {
 
 export const FIXTURE_PARADE_CONFIG: ParadeConfig = {
   companyName: 'STALLION',
+  inOutScopes: ['Att C', 'Report Sick', 'MA', 'Others'],
   platoons: [
     { key: '1', label: 'PL 1', pdsLabel: 'PDS 1' },
     { key: '2', label: 'PL 2', pdsLabel: 'PDS 2' },

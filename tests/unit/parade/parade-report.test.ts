@@ -161,20 +161,24 @@ describe('generateParadeReport — record line details', () => {
     expect(report).toContain('1. 1234 CPL LIM ZHEN HAO - MA (Skin Appt) (150126)')
   })
 
-  it('appends IN/OUT only for scopes that carry it (Att C, Report Sick, MA, Others)', () => {
+  it('appends OUT when absent, IN when not, only for the configured IN/OUT scopes', () => {
     const exceptions: Exception[] = [
-      { id: 1, ...FIXTURE_EXCEPTIONS[3], in_out: 'OUT' },  // Att C — CHONG KAH WAI
-      { id: 2, ...FIXTURE_EXCEPTIONS[4], in_out: 'OUT' },  // Status — GOH RONG HAO (not an IN/OUT scope)
+      { id: 1, ...FIXTURE_EXCEPTIONS[3] },  // Att C, absent — CHONG KAH WAI
+      { id: 2, ...FIXTURE_EXCEPTIONS[2], counts_as_absence: false },  // MA, present — LIM ZHEN HAO
+      { id: 3, ...FIXTURE_EXCEPTIONS[4], counts_as_absence: true },  // Status — GOH RONG HAO (not an IN/OUT scope)
     ]
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
     expect(report).toContain('1. SSG CHONG KAH WAI - Fever (130126-170126) OUT')
-    expect(report).toContain('1. PTE GOH RONG HAO - Excuse RMJ (100126-200126)')
-    expect(report).not.toContain('Excuse RMJ (100126-200126) OUT')
+    expect(report).toContain('1. CPL LIM ZHEN HAO - MA (Skin Appt) (150126) IN')
+    expect(report).toMatch(/1\. PTE GOH RONG HAO - Excuse RMJ \(100126-200126\)$/m)
+
+    const noAttC = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, { ...FIXTURE_PARADE_CONFIG, inOutScopes: ['MA'] })
+    expect(noAttC).toMatch(/1\. SSG CHONG KAH WAI - Fever \(130126-170126\)$/m)
   })
 
   it('prints RSO with OUT and a medical review, both under REPORT SICK', () => {
     const exceptions: Exception[] = [
-      { id: 1, ...FIXTURE_EXCEPTIONS[1], in_out: 'OUT' },  // Report Sick — TAN RONG XIAN, as RSO
+      { id: 1, ...FIXTURE_EXCEPTIONS[1], counts_as_absence: true },  // Report Sick — TAN RONG XIAN, as RSO
       { id: 2, ...FIXTURE_EXCEPTIONS[1], name: 'LIM ZHEN HAO', soldier_id: null, type: 'Medical Review', reason: 'Revoke FLEGS Status' },
     ]
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
@@ -188,7 +192,7 @@ describe('generateParadeReport — record line details', () => {
       { id: 2, ...FIXTURE_EXCEPTIONS[3], location: 'CGH' },  // Att C — CHONG KAH WAI (not a location-print scope)
     ]
     const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: exceptions }, FIXTURE_PARADE_CONFIG)
-    expect(report).toContain('1. CPL LIM ZHEN HAO - MA (Skin Appt) (150126) @ CGH')
+    expect(report).toContain('1. CPL LIM ZHEN HAO - MA (Skin Appt) (150126) OUT @ CGH')
     expect(report).toContain('1. SSG CHONG KAH WAI - Fever (130126-170126)')
     expect(report).not.toContain('Fever (130126-170126) @ CGH')
   })

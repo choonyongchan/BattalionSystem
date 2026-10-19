@@ -87,7 +87,7 @@ BEGIN
         absence_scope_defaults      jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}'',
         parade_times                jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''
       )', c);
-    FOREACH t IN ARRAY ARRAY['platoons','extra_duty_types','multi_name_duty_types','report_sick','conducts','overview'] LOOP
+    FOREACH t IN ARRAY ARRAY['platoons','extra_duty_types','multi_name_duty_types','report_sick','conducts','overview','in_out_scopes'] LOOP
       EXECUTE format('ALTER TABLE public."%s_Settings" ADD COLUMN IF NOT EXISTS %I jsonb', c, t);
     END LOOP;
     EXECUTE format('INSERT INTO public."%s_Settings" (id) VALUES (1) ON CONFLICT (id) DO NOTHING', c);

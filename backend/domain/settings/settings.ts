@@ -37,6 +37,8 @@ export const AppSettingsSchema = z.object({
   eligibility_rank_overrides: z.record(z.string(), RankRuleSchema),
   guard_duty_rank_overrides: z.record(z.string(), RankRuleSchema),
   absence_scope_defaults: z.record(z.string(), z.boolean()),
+  /** Scopes whose parade-state lines end IN or OUT (OUT when counted absent). */
+  in_out_scopes: z.array(z.string()),
   parade_times: z.record(z.string(), z.string()),
   /** Parade-state blocks after COY HQ, in print order; PDS1..n follow this order. */
   platoons: z.array(z.object({ key: z.string().min(1), label: z.string().min(1), pdsLabel: z.string().min(1) })).min(1),
@@ -106,6 +108,7 @@ export function defaultSettings(company: Company): AppSettings {
       'Report Sick': false,
       Others: false,
     },
+    in_out_scopes: ['Att C', 'Report Sick', 'MA', 'Others'],
     parade_times: { 'First Parade': '09:30', 'Last Parade': '17:30' },
     platoons: DEFAULT_PLATOONS[company],
     extra_duty_types: hq ? ['Duty Clerk'] : [],

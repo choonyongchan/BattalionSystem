@@ -5,7 +5,7 @@ import type { Exception, Soldier } from '@/shared/types'
 import { toSGDate } from '@/shared/dates'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import {
-  EXCEPTION_SCOPES, IN_OUT_SCOPES, SINGLE_DATE_SCOPES,
+  EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
   isEditExceptionValid, validateEditEx, type ExceptionScope,
 } from '@/backend/domain/exceptions/exception-validation'
 import { buildExceptionGroups, type ExceptionSort } from '@/backend/domain/parade/exception-table'
@@ -72,7 +72,6 @@ export default function ExceptionsTable({ settings, data, rows }: {
       counts_as_absence: edit.counts_as_absence,
       time: edit.scope === 'MA' ? (edit.time || null) : null,
       location: (edit.location ?? '').trim() || null,
-      in_out: IN_OUT_SCOPES.includes(edit.scope as ExceptionScope) && edit.in_out ? edit.in_out : null,
       ...linkFields(edit.name, edit.scope, reason, edit.type),
     }))
     if (ok) cancel()
@@ -209,15 +208,6 @@ function EditCells({
             className={fieldClass('reason')}
           />
           <input type="text" value={edit.location ?? ''} onChange={(ev) => setEdit({ ...edit, location: ev.target.value })} placeholder="Location (optional)" className={fieldClass('location')} />
-          {IN_OUT_SCOPES.includes(edit.scope as ExceptionScope) && (
-            <Segmented
-              size="sm"
-              aria-label="In/Out"
-              value={edit.in_out ?? ''}
-              onChange={(v) => setEdit({ ...edit, in_out: v || null })}
-              options={[{ value: '', label: '—' }, 'IN', 'OUT']}
-            />
-          )}
         </div>
       </td>
       <td className={TD_EDIT}>

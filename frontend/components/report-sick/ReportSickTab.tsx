@@ -112,6 +112,8 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
     if (!soldier || !reason) return
     const ok = await run(() => exceptionRepo.insert({
       ...base(soldier),
+      // RSO is outside camp, so always absent
+      ...(kind === 'rso' ? { counts_as_absence: true } : {}),
       type: sick.urti ? 'URTI' : 'Report Sick',
       reason,
       in_out: kind === 'rso' ? 'OUT' : 'IN',

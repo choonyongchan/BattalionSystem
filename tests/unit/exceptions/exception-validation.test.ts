@@ -15,7 +15,7 @@ describe('isValidTime', () => {
   it('rejects malformed input', () => expect(isValidTime('noon')).toBe(false))
 })
 
-const baseExForm: ExForm = { name: 'TAN AH KOW', scope: 'Off/Leave', reason: '', start: '2026-01-01', end: '2026-01-01', counts_as_absence: true, time: '', location: '', in_out: '' }
+const baseExForm: ExForm = { name: 'TAN AH KOW', scope: 'Off/Leave', reason: '', start: '2026-01-01', end: '2026-01-01', counts_as_absence: true, time: '', location: '' }
 
 describe('isExceptionValid', () => {
   it('false when name is empty', () => {
