@@ -112,9 +112,12 @@ BEGIN
         soldier_id    uuid NOT NULL REFERENCES public."%s_NominalRoll" (id) ON DELETE CASCADE,
         participating boolean NOT NULL,
         reason        text,
+        group_kind    text CHECK (group_kind = ANY (ARRAY[''out-of-camp'',''to-confirm''])),
         created_at    timestamptz NOT NULL DEFAULT now(),
         UNIQUE (conduct_id, soldier_id)
       )', c, c, c);
+    -- Seeded from the Overview when a conduct is created; null for a plain manual call
+    EXECUTE format('ALTER TABLE public."%s_ConductDecisions" ADD COLUMN IF NOT EXISTS group_kind text CHECK (group_kind = ANY (ARRAY[''out-of-camp'',''to-confirm'']))', c);
     EXECUTE format('CREATE INDEX IF NOT EXISTS "%s_conduct_decisions_soldier_idx" ON public."%s_ConductDecisions" (soldier_id)', c, c);
 
     -- Hand-marked absences/presences on the Overview, shared by every device. key: soldier id or 'name:NAME'

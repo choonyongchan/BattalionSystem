@@ -48,9 +48,14 @@ export class ConductRepository extends CompanyRepository {
   /** Records whether a soldier takes part in a conduct, replacing any earlier call. */
   async decide(conductId: string, soldierId: string, participating: boolean, reason: string | null): Promise<WriteResult> {
     return this.decisions().upsert(
-      { conduct_id: conductId, soldier_id: soldierId, participating, reason },
+      { conduct_id: conductId, soldier_id: soldierId, participating, reason, group_kind: null },
       { onConflict: 'conduct_id,soldier_id' },
     )
+  }
+
+  /** Records many calls at once, e.g. the groups seeded from the Overview. */
+  async decideMany(conductId: string, calls: Omit<ConductDecision, 'id' | 'conduct_id'>[]): Promise<WriteResult> {
+    return this.decisions().upsert(calls.map((c) => ({ ...c, conduct_id: conductId })), { onConflict: 'conduct_id,soldier_id' })
   }
 
   /** Deletes a manual call so the soldier falls back to the automatic rule. */

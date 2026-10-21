@@ -21,12 +21,8 @@ export function bunkOf(s: Soldier): string | null {
   return m ? `PLT ${m[1]} BUNK ${m[2]}` : null
 }
 
-/** Short reason: MC and Off/Leave by name, anything else by its own reason. */
-function reasonLabel(e: Exception): string {
-  if (exceptionType(e) === 'MC') return 'MC'
-  if (e.scope === 'Off/Leave') return 'Off/Leave'
-  return e.reason?.trim() || exceptionType(e)
-}
+/** Duties done in camp: the trooper still counts in the bunk. */
+const IN_CAMP_DUTIES = ['COS', 'Duty Clerk']
 
 /** The platoon a bunk belongs to ("PLT 1"), or null for a standalone bunk. */
 const platoonOfBunk = (bunk: string): string | null => bunk.match(/^(PLT \S+)/)?.[1] ?? null
@@ -67,7 +63,8 @@ const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeri
 
 /**
  * Groups on-strength troopers by platoon and bunk with their reasons for being out on `date`.
- * Out of the bunk: an absence, an exception in `outScopes` (Settings > Overview), or a duty that day.
+ * Out of the bunk: an absence, an exception in `outScopes` (Settings > Overview), or a duty that day other than COS and Duty Clerk.
+ * Reasons show the exception's category (exceptionType), e.g. RSO rather than its free-text reason.
  * `markedOut` holds soldier keys unticked by hand; `markedPresent` holds keys ticked in despite a reason (flagged).
  */
 export function buildBunks(
@@ -78,7 +75,7 @@ export function buildBunks(
   const keepsOut = (e: Exception) => e.counts_as_absence || outScopes.includes(e.scope)
   const active = buildActiveMap(exceptions, people, date)
   const onDuty = new Map<string, string[]>()
-  for (const d of duties.filter((d) => d.date === date)) {
+  for (const d of duties.filter((d) => d.date === date && !IN_CAMP_DUTIES.includes(d.duty_type))) {
     for (const name of splitDutyNames(d.name)) onDuty.set(name, [...(onDuty.get(name) ?? []), d.duty_type])
   }
 
@@ -88,7 +85,7 @@ export function buildBunks(
     if (!label) continue
     const key = soldierKeyOf(soldier)
     const reasons = [
-      ...(active.get(key) ?? []).filter(keepsOut).map(reasonLabel),
+      ...(active.get(key) ?? []).filter(keepsOut).map(exceptionType),
       ...(onDuty.get(soldier.name) ?? []),
     ]
     if (!reasons.length && markedOut.has(key)) reasons.push(NO_REASON)

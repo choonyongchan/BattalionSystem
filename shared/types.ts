@@ -49,6 +49,8 @@ export interface ConductDecision {
   soldier_id: string
   participating: boolean
   reason: string | null
+  /** Set when seeded from the Overview: not in camp, or ticked in but needing a call. */
+  group_kind?: 'out-of-camp' | 'to-confirm' | null
 }
 
 /** Detail for a 'Medical Review' exception; the exception carries soldier, date and diagnosis. */

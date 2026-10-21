@@ -36,20 +36,20 @@ afterAll(async () => {
 })
 
 describe('ConductsTab', () => {
-  it('puts the MC not in camp and the LD in fall out, which ✓ Participate settles', async () => {
+  it('puts the MC out of camp and the LD to confirm, which ✓ Participate settles', async () => {
     renderWithQuery(<ConductsTab company="test" companyLabel="Test" />)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'IPPT TEST' })).toBeInTheDocument(), { timeout: 10000 })
 
-    const away = screen.getByText(/^Not in camp –/).closest('section')!
+    const away = screen.getByText(/^Out of camp –/).closest('section')!
     expect(within(away).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
     expect(within(away).getByText('CONDUCT TEST MC')).toBeInTheDocument()
 
-    const outSection = screen.getByText(/^Fall out –/).closest('section')!
+    const outSection = screen.getByText(/^To confirm –/).closest('section')!
     expect(within(outSection).getByText(/GOH RONG HAO/)).toBeInTheDocument()
     await userEvent.click(within(outSection).getByRole('button', { name: '✓ Participate' }))
 
-    await waitFor(() => expect(within(screen.getByText(/^Fall out –/).closest('section')!).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument(), { timeout: 10000 })
-    const taking = screen.getByText(/^Taking part –/).closest('section')!
+    await waitFor(() => expect(within(screen.getByText(/^To confirm –/).closest('section')!).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument(), { timeout: 10000 })
+    const taking = screen.getByText(/^Participating –/).closest('section')!
     expect(within(taking).getByText('CONDUCT TEST LD · confirmed can')).toBeInTheDocument()
 
     const { data } = await supabase.from('Test_ConductDecisions').select('participating')

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   conductEnd, conductDay, conductDateRange, conductTimeRange, nearestConduct,
   classifyConduct, needsDecision, generateConductState,
-  conductSoldiers,
+  conductSoldiers, seedDecisions,
 } from '@/backend/domain/conducts/conducts'
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
 import type { PlatoonBlock } from '@/shared/companies'
@@ -97,9 +97,9 @@ describe('classifyConduct', () => {
     expect(byName(classifyConduct(C(), SOLDIERS, rmj, [], today, CALL))['FIT GUY'].kind).toBe('out-default')
   })
 
-  it('plain excuses take part, with the excuse shown as a note', () => {
+  it('plain excuses wait to be confirmed, with the excuse as the reason', () => {
     const p = byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, CALL))
-    expect(p['FLEGS GUY']).toMatchObject({ kind: 'in-excused', participating: true, note: 'Excuse FLEGS' })
+    expect(p['FLEGS GUY']).toMatchObject({ kind: 'in-excused', participating: false, reason: 'Excuse FLEGS' })
     expect(p['FIT GUY']).toMatchObject({ kind: 'in', participating: true, note: null })
   })
 
@@ -132,9 +132,9 @@ describe('classifyConduct', () => {
     expect(p['FLEGS GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Eczema' })
   })
 
-  it('a medical review is only a note: the soldier still takes part', () => {
+  it('a medical review is only an exception to confirm, not a fall-out', () => {
     const mr = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Report Sick', type: 'Medical Review', reason: 'Knee review', start: today, end: today })]
-    expect(byName(classifyConduct(C(), SOLDIERS, mr, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'in-excused', note: 'Knee review' })
+    expect(byName(classifyConduct(C(), SOLDIERS, mr, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'in-excused', reason: 'Knee review' })
   })
 
   it('a commander can let someone not in camp take part', () => {
@@ -176,10 +176,30 @@ describe('conduct state text', () => {
       'DATE: 220926',
       'TIME: 0800 - 1000HRS',
       '',
-      'OVERALL: 02/03',
-      'FALL OUT: 01',
+      'OVERALL: 01/03',
+      'FALL OUT: 00',
+      'TO CONFIRM: 02',
       '',
+      'TO CONFIRM:',
       '1. 1102 PTE LD GUY — FEVER, LD',
+      '2. 2101 PTE FLEGS GUY — EXCUSE FLEGS',
     ].join('\n'))
+  })
+
+  it('seeds groups from the Overview: out for a reason, unticked, ticked despite a reason', () => {
+    const exs = [
+      ex({ soldier_id: 'mc', name: 'MC GUY', scope: 'Att C', type: 'MC', reason: '3D MC', start: today, end: today, counts_as_absence: true }),
+      ex({ soldier_id: 'ld', name: 'LD GUY', scope: 'Att C', type: 'MC', reason: 'x', start: today, end: today, counts_as_absence: true }),
+    ]
+    const marks = [
+      { date: today, key: 'fit', kind: 'out' as const },
+      { date: today, key: 'ld', kind: 'present' as const },
+    ]
+    const calls = seedDecisions(C(), SOLDIERS, exs, [], marks, [], today)
+    const by = (id: string) => calls.find((x) => x.soldier_id === id)
+    expect(by('mc')).toMatchObject({ participating: false, group_kind: 'out-of-camp' })
+    expect(by('fit')).toMatchObject({ participating: false, group_kind: null })
+    expect(by('ld')).toMatchObject({ participating: false, group_kind: 'to-confirm' })
+    expect(by('fl')).toBeUndefined()
   })
 })

@@ -7,8 +7,8 @@ const DAY = '2026-10-11'
 const S = (id: string, rank: string, name: string, four_d: string | null, bunk: string | null = null): Soldier =>
   ({ id, rank, name, platoon: '1', four_d, bunk })
 let nextId = 1
-const ex = (soldier_id: string, scope: string, reason: string, counts_as_absence: boolean): Exception => ({
-  id: nextId++, name: '', scope, reason, start: DAY, end: DAY, counts_as_absence, soldier_id, type: null, revoked_at: null,
+const ex = (soldier_id: string, scope: string, reason: string, counts_as_absence: boolean, type: string | null = null): Exception => ({
+  id: nextId++, name: '', scope, reason, start: DAY, end: DAY, counts_as_absence, soldier_id, type, revoked_at: null,
 })
 
 const SOLDIERS = [
@@ -29,9 +29,13 @@ const EXCEPTIONS = [
   ex('e', 'Others', 'Stay Out', false),
   ex('e', 'Att C', 'MC', true),
   ex('d', 'Status', 'Excuse Boots', false), // a status keeps him in the bunk
+  ex('g', 'Att C', 'Cough', true, 'RSO'), // shown by category, not reason
 ]
 const OUT_SCOPES = ['Others', 'Guard Duty']
-const DUTIES: DutyEntry[] = [{ duty_type: 'COS', date: DAY, name: 'JOHN SANTO / ZENG YI CHUN' }]
+const DUTIES: DutyEntry[] = [
+  { duty_type: 'COS', date: DAY, name: 'JOHN SANTO / ZENG YI CHUN' }, // COS and Duty Clerk count in the bunk
+  { duty_type: 'Guard Duty', date: DAY, name: 'JAY LIEW' },
+]
 
 describe('bunkOf', () => {
   it('reads the 4D, and a Bunk on the roll wins', () => {
@@ -52,16 +56,16 @@ describe('buildBunks', () => {
     ])
   })
 
-  it('takes reasons from exceptions and duties, and ❌️ for a hand-marked absence', () => {
+  it('takes reason categories from exceptions and duties, and ❌️ for a hand-marked absence', () => {
     const reasons = Object.fromEntries(groups.flatMap((g) => g.bunks.flatMap((b) => b.members.map((m) => [m.soldier.name, m.reasons]))))
     expect(reasons).toEqual({
-      'KAI YANG': ['Stay Out'],
-      'ASHRAF BIN AFFENDY': ['Off/Leave'],
+      'KAI YANG': ['Others'],
+      'ASHRAF BIN AFFENDY': ['Leave'],
       'EDMUND CHEW': ['❌️'],
-      'JAY LIEW': [],
-      KAUSHAL: ['Stay Out', 'MC'],
-      'JOHN SANTO': ['COS'],
-      'ZENG YI CHUN': ['COS'],
+      'JAY LIEW': ['Guard Duty'],
+      KAUSHAL: ['Others', 'MC'],
+      'JOHN SANTO': [],
+      'ZENG YI CHUN': ['RSO'],
     })
   })
 })
@@ -71,8 +75,8 @@ describe('present despite a reason', () => {
 
   it('counts the soldier in, flags the reason, and lists them in the message', () => {
     const kai = groups[0].bunks[0].members.find((m) => m.soldier.name === 'KAI YANG')!
-    expect(kai).toMatchObject({ reasons: [], flagged: ['Stay Out'] })
-    expect(generateBunkMessage('t', DAY, '21:30', groups)).toContain('*⚠️ PRESENT DESPITE REASON*\n> 1101 PTE KAI YANG - Stay Out')
+    expect(kai).toMatchObject({ reasons: [], flagged: ['Others'] })
+    expect(generateBunkMessage('t', DAY, '21:30', groups)).toContain('*⚠️ PRESENT DESPITE REASON*\n> 1101 PTE KAI YANG - Others')
   })
 })
 
@@ -85,13 +89,14 @@ describe('generateBunkMessage', () => {
       '*PLT 1: 2/5*',
       '',
       '*PLT 1 BUNK 1 (1/3)*',
-      '> 1101 PTE KAI YANG - Stay Out',
-      '> 1102 PTE ASHRAF BIN AFFENDY - Off/Leave',
+      '> 1101 PTE KAI YANG - Others',
+      '> 1102 PTE ASHRAF BIN AFFENDY - Leave',
       '',
       '*PLT 1 BUNK 2 (1/2)*',
-      '> 1203 PTE KAUSHAL - Stay Out, MC',
+      '> 1203 PTE KAUSHAL - Others, MC',
       '',
-      '*ASA + MEDIC BUNK (2/2)*',
+      '*ASA + MEDIC BUNK (1/2)*',
+      '> LCP ZENG YI CHUN - RSO',
     ].join('\n'))
   })
 })
@@ -103,6 +108,6 @@ describe('excusing stay-in personnel', () => {
 
   it('keeps a stay-in soldier in the bunk unless excluded', () => {
     expect(out(false).reasons).toEqual([])
-    expect(out(true).reasons).toEqual(['Excuse Stay-In'])
+    expect(out(true).reasons).toEqual(['Excuse'])
   })
 })

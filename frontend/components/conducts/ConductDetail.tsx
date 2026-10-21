@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Conduct } from '@/shared/types'
-import { conductDateRange, conductTimeRange, generateConductState, inCamp, type Participation } from '@/backend/domain/conducts/conducts'
+import { conductDateRange, conductTimeRange, generateConductState, inCamp, isToConfirm, type Participation } from '@/backend/domain/conducts/conducts'
 import MessageBox from '@/frontend/components/shared/MessageBox'
 import { Button } from '@/frontend/components/ui/button'
 import { SearchInput, inputClass } from '@/frontend/components/ui/fields'
@@ -33,7 +33,8 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
   const shown = parts.filter((p) =>
     (!q || p.soldier.name.toLowerCase().includes(q) || (p.soldier.four_d ?? '').toLowerCase().includes(q)),
   )
-  const out = shown.filter((p) => inCamp(p) && !p.participating)
+  const confirm = shown.filter(isToConfirm)
+  const out = shown.filter((p) => inCamp(p) && !p.participating && !isToConfirm(p))
   const away = shown.filter((p) => !inCamp(p))
   const taking = shown.filter((p) => p.participating)
   const text = generateConductState(companyLabel, conduct, parts)
@@ -57,16 +58,15 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
       />
 
       <section className="space-y-2">
-        <SectionTitle className="mb-0">Taking part – {taking.length}</SectionTitle>
+        <SectionTitle className="mb-0">Participating – {taking.length}</SectionTitle>
         <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {taking.map((p) => (
             <li key={p.soldier.id} className="px-3 py-2 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink">{who(p)}</p>
-                  {p.note && <p className="text-xs text-warning">{p.note}{p.kind === 'in-confirmed' ? ' · confirmed can' : p.kind === 'in-excused' ? ' · needs confirm' : ''}</p>}
+                  {p.note && <p className="text-xs text-warning">{p.note}{p.kind === 'in-confirmed' ? ' · confirmed can' : ''}</p>}
                 </div>
-                {p.kind === 'in-excused' && <ParticipateButton p={p} busy={busy} actions={actions} />}
                 {p.decision ? (
                   <Button variant="secondary" size="sm" disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</Button>
                 ) : (
@@ -104,6 +104,23 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
       </section>
 
       <section className="space-y-2">
+        <SectionTitle className="mb-0">To confirm – {confirm.length}</SectionTitle>
+        <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
+          {confirm.map((p) => (
+            <li key={p.soldier.id} className="flex items-center gap-2 px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-ink">{who(p)}</p>
+                <p className="text-xs text-warning">{p.reason}</p>
+              </div>
+              <ParticipateButton p={p} busy={busy} actions={actions} />
+              <Button variant="danger-outline" size="sm" disabled={busy || !p.soldier.id} onClick={() => actions.decide(p.soldier.id!, false, p.reason)}>Fall out</Button>
+            </li>
+          ))}
+          {confirm.length === 0 && <li className="px-3 py-3 text-sm text-ink-60">No one.</li>}
+        </ul>
+      </section>
+
+      <section className="space-y-2">
         <SectionTitle className="mb-0">Fall out – {out.length}</SectionTitle>
         <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {out.map((p) => (
@@ -123,7 +140,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
       </section>
 
       <section className="space-y-2">
-        <SectionTitle className="mb-0">Not in camp – {away.length}</SectionTitle>
+        <SectionTitle className="mb-0">Out of camp – {away.length}</SectionTitle>
         <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {away.map((p) => (
             <li key={p.soldier.id} className="flex items-center gap-2 px-3 py-2">

@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import { ConductRepository } from '@/backend/data/repositories/ConductRepository'
+import { DutyRepository } from '@/backend/data/repositories/DutyRepository'
+import { OverviewMarkRepository } from '@/backend/data/repositories/OverviewMarkRepository'
 import type { Conduct } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { classifyConduct, conductDateRange, conductEnd, conductSoldiers, nearestConduct } from '@/backend/domain/conducts/conducts'
+import { classifyConduct, conductDateRange, conductDay, conductEnd, conductSoldiers, nearestConduct, seedDecisions } from '@/backend/domain/conducts/conducts'
 import { todaySGDate } from '@/shared/dates'
 import { useConfirmDelete } from '@/frontend/hooks/useConfirmDelete'
 import { combine, useConductDecisions, useConducts, useExceptions, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
@@ -63,8 +65,16 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     const ok = await run(async () => {
       if (form.id) return conductRepo.update(form.id, row)
       const res = await conductRepo.insert(row)
-      if (res.id) setSelectedId(res.id)
-      return res
+      if (!res.id) return res
+      setSelectedId(res.id)
+      // Follow the Overview strength for the conduct day
+      const day = conductDay({ ...row, id: res.id }, today)
+      const [duties, marks] = await Promise.all([new DutyRepository(company).list(day, day), new OverviewMarkRepository(company).list(day)])
+      const calls = seedDecisions(
+        { ...row, id: res.id }, conductSoldiers(soldiersQ.data ?? [], settings!.conducts.include_hq), exceptionsQ.data ?? [],
+        duties.data ?? [], marks.data ?? [], settings!.overview.out_scopes, today,
+      )
+      return calls.length ? conductRepo.decideMany(res.id, calls) : res
     })
     if (ok) setForm(null)
   }
@@ -101,7 +111,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     <div className="space-y-5">
       <PageHeader
         title="Conducts"
-        subtitle={`Troopers only. Fall-outs come from exceptions automatically; ${settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.`}
+        subtitle={`Troopers only. Groups follow the Overview strength when a conduct is created; ${settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.`}
         actions={
           <Button
             variant={form ? 'secondary' : 'primary'}
