@@ -14,32 +14,32 @@ export class SoldierRepository extends CompanyRepository {
 
   /** Lists every soldier, optionally ordered by platoon. */
   async list(orderByPlatoon = false): Promise<ListResult<Soldier>> {
-    const q = this.from().select('*')
+    const q = this.select()
     return rows<Soldier>(await (orderByPlatoon ? q.order('platoon') : q))
   }
 
   /** Adds one soldier. */
   async insert(soldier: SoldierFields): Promise<WriteResult> {
-    return this.from().insert(soldier)
+    return this.from().insert(this.own(soldier))
   }
 
   /** Inserts or replaces soldiers matched by name (bulk import). */
   async upsertMany(soldiers: SoldierFields[]): Promise<WriteResult> {
-    return this.from().upsert(soldiers, { onConflict: 'name' })
+    return this.from().upsert(soldiers.map(this.own), { onConflict: 'company,name' })
   }
 
   /** Updates the soldier currently named `name`. */
   async update(name: string, patch: Partial<SoldierFields>): Promise<WriteResult> {
-    return this.from().update(patch).eq('name', name)
+    return this.from().update(patch).eq('company', this.company).eq('name', name)
   }
 
   /** Deletes the soldier named `name`. */
   async remove(name: string): Promise<WriteResult> {
-    return this.from().delete().eq('name', name)
+    return this.from().delete().eq('company', this.company).eq('name', name)
   }
 
   /** Deletes every soldier in the roll. */
   async removeAll(): Promise<WriteResult> {
-    return this.from().delete().not('name', 'is', null)
+    return this.from().delete().eq('company', this.company)
   }
 }

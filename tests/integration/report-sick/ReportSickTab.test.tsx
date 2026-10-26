@@ -41,7 +41,7 @@ describe('ReportSickTab', () => {
     await waitFor(() => expect(screen.getByText(/REASON: Flu and phlegm/)).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.getByText(/REASON: Flu and phlegm/).textContent).toMatch(/\nURTI\nS\/N: 01\nR\/N: .*CHONG KAH WAI\nREASON: Flu and phlegm$/)
 
-    const { data } = await supabase.from('Test_Exceptions').select('scope, type, in_out, location, start, end, soldier_id').eq('reason', 'Flu and phlegm')
+    const { data } = await supabase.from('Exceptions').select('scope, type, in_out, location, start, end, soldier_id').eq('company', 'test').eq('reason', 'Flu and phlegm')
     expect(data).toEqual([expect.objectContaining({ scope: 'Report Sick', type: 'URTI', in_out: 'IN', location: 'KHMC', start: today, end: today })])
     expect(data![0].soldier_id).not.toBeNull()
   })
@@ -56,7 +56,7 @@ describe('ReportSickTab', () => {
 
     await waitFor(() => expect(screen.getByText(/Sprained ankle/)).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.queryByText(/message$/)).not.toBeInTheDocument()
-    const { data } = await supabase.from('Test_Exceptions').select('in_out, location, counts_as_absence').eq('reason', 'Sprained ankle')
+    const { data } = await supabase.from('Exceptions').select('in_out, location, counts_as_absence').eq('company', 'test').eq('reason', 'Sprained ankle')
     expect(data).toEqual([{ in_out: 'OUT', location: null, counts_as_absence: true }])
   })
 

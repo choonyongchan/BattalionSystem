@@ -9,7 +9,7 @@ import { RESET_SETTINGS } from '@/tests/fixtures/config'
 import { resetTestDb } from '@/tests/fixtures/db'
 import { FIXTURE_DATE } from '@/tests/fixtures/exceptions'
 
-// Real round trips against the Test_* tables, seeded with the dummy fixtures
+// Real round trips against the shared tables' company = 'test' rows, seeded with the dummy fixtures
 beforeAll(resetTestDb, 30000)
 afterAll(async () => {
   await new SettingsRepository('test').save(RESET_SETTINGS)
@@ -73,7 +73,7 @@ describe('DutyRepository', () => {
   const repo = new DutyRepository('test')
 
   it('lists a date range and a single day', async () => {
-    expect((await repo.list('2026-01-12', '2026-01-18')).data).toHaveLength(4)
+    expect((await repo.list('2026-01-12', '2026-01-18')).data).toHaveLength(5)
     expect((await repo.list('2026-02-01', '2026-02-07')).data).toHaveLength(0)
     expect((await repo.listOn(FIXTURE_DATE)).data.find((d) => d.duty_type === 'CDO')?.name).toBe('LEE JUN WEI')
   })

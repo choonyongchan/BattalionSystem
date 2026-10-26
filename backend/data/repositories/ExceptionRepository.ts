@@ -14,27 +14,27 @@ export class ExceptionRepository extends CompanyRepository {
 
   /** Lists exceptions, optionally only those in one scope. */
   async list(scope?: string): Promise<ListResult<Exception>> {
-    const q = this.from().select('*')
+    const q = this.select()
     return rows<Exception>(await (scope ? q.eq('scope', scope) : q))
   }
 
   /** Adds one or more exceptions. */
   async insert(fields: ExceptionFields | ExceptionFields[]): Promise<WriteResult> {
-    return this.from().insert(fields)
+    return this.from().insert(Array.isArray(fields) ? fields.map(this.own) : this.own(fields))
   }
 
   /** Updates the exception with `id`. */
   async update(id: number, patch: ExceptionFields): Promise<WriteResult> {
-    return this.from().update(patch).eq('id', id)
+    return this.from().update(patch).eq('company', this.company).eq('id', id)
   }
 
   /** Deletes the exception with `id`. */
   async remove(id: number): Promise<WriteResult> {
-    return this.from().delete().eq('id', id)
+    return this.from().delete().eq('company', this.company).eq('id', id)
   }
 
   /** Rewrites the soldier name stored on every exception after a rename. */
   async rename(oldName: string, newName: string): Promise<WriteResult> {
-    return this.from().update({ name: newName }).eq('name', oldName)
+    return this.from().update({ name: newName }).eq('company', this.company).eq('name', oldName)
   }
 }

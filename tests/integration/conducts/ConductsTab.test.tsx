@@ -20,14 +20,14 @@ beforeAll(async () => {
   await seedTestDb()
 
   // Fixture exceptions are dated in the past — add two running today, linked by soldier_id
-  const { data: roll } = await supabase.from('Test_NominalRoll').select('id, name').in('name', ['TAN RONG XIAN', 'GOH RONG HAO'])
+  const { data: roll } = await supabase.from('NominalRoll').select('id, name').eq('company', 'test').in('name', ['TAN RONG XIAN', 'GOH RONG HAO'])
   const idOf = (name: string) => roll!.find((r) => r.name === name)!.id
-  const { error: exErr } = await supabase.from('Test_Exceptions').insert([
-    { name: 'TAN RONG XIAN', soldier_id: idOf('TAN RONG XIAN'), scope: 'Att C', type: 'MC', reason: 'CONDUCT TEST MC', start: today, end: today, counts_as_absence: true },
-    { name: 'GOH RONG HAO', soldier_id: idOf('GOH RONG HAO'), scope: 'Status', type: 'LD', reason: 'CONDUCT TEST LD', start: today, end: today, counts_as_absence: false },
+  const { error: exErr } = await supabase.from('Exceptions').insert([
+    { company: 'test', name: 'TAN RONG XIAN', soldier_id: idOf('TAN RONG XIAN'), scope: 'Att C', type: 'MC', reason: 'CONDUCT TEST MC', start: today, end: today, counts_as_absence: true },
+    { company: 'test', name: 'GOH RONG HAO', soldier_id: idOf('GOH RONG HAO'), scope: 'Status', type: 'LD', reason: 'CONDUCT TEST LD', start: today, end: today, counts_as_absence: false },
   ])
   if (exErr) throw new Error(exErr.message)
-  const { error: cErr } = await supabase.from('Test_Conducts').insert({ name: 'IPPT TEST', date: today })
+  const { error: cErr } = await supabase.from('Conducts').insert({ company: 'test', name: 'IPPT TEST', date: today })
   if (cErr) throw new Error(cErr.message)
 }, 30000)
 
@@ -52,7 +52,7 @@ describe('ConductsTab', () => {
     const taking = screen.getByText(/^Participating –/).closest('section')!
     expect(within(taking).getByText('CONDUCT TEST LD · confirmed can')).toBeInTheDocument()
 
-    const { data } = await supabase.from('Test_ConductDecisions').select('participating')
+    const { data } = await supabase.from('ConductDecisions').select('participating').eq('company', 'test')
     expect(data).toEqual([{ participating: true }])
 
     expect(screen.getByText(/TEST COY CONDUCT STATE/)).toBeInTheDocument()

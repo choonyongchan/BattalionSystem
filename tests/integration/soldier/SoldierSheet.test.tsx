@@ -50,14 +50,14 @@ describe('SoldierSheet', () => {
 
     await waitFor(() => expect(within(screen.getByRole('dialog')).getByText('SHEET TEST FEVER')).toBeInTheDocument(), { timeout: 10000 })
 
-    const { data: soldier } = await supabase.from('Test_NominalRoll').select('id').eq('name', 'LEE JUN WEI').single()
-    const { data: rows } = await supabase.from('Test_Exceptions').select('*').eq('reason', 'SHEET TEST FEVER')
+    const { data: soldier } = await supabase.from('NominalRoll').select('id').eq('company', 'test').eq('name', 'LEE JUN WEI').single()
+    const { data: rows } = await supabase.from('Exceptions').select('*').eq('company', 'test').eq('reason', 'SHEET TEST FEVER')
     expect(rows).toHaveLength(1)
     expect(rows![0]).toMatchObject({ soldier_id: soldier!.id, scope: 'Att C', type: 'MC', revoked_at: null })
 
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Revoke' }))
     await waitFor(async () => {
-      const { data } = await supabase.from('Test_Exceptions').select('revoked_at').eq('reason', 'SHEET TEST FEVER').single()
+      const { data } = await supabase.from('Exceptions').select('revoked_at').eq('company', 'test').eq('reason', 'SHEET TEST FEVER').single()
       expect(data!.revoked_at).not.toBeNull()
     }, { timeout: 10000 })
 
@@ -78,7 +78,7 @@ describe('SoldierSheet', () => {
     await userEvent.type(nameInput, 'GOH RONG HAO RENAMED{Enter}')
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'GOH RONG HAO RENAMED' })).toBeInTheDocument(), { timeout: 10000 })
-    const { data } = await supabase.from('Test_Exceptions').select('name').eq('reason', 'Excuse RMJ')
+    const { data } = await supabase.from('Exceptions').select('name').eq('company', 'test').eq('reason', 'Excuse RMJ')
     expect(data!.map((r) => r.name)).toEqual(['GOH RONG HAO RENAMED'])
   })
 })

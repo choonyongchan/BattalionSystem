@@ -25,7 +25,7 @@ For tests, `.env.test` also needs `TEST_SUPABASE_EMAIL` (`test@40sar.internal`) 
 | `bun run build` | Static export to `out/` |
 | `bun run type-check` | `tsc --noEmit` |
 | `bun run test:unit` | Vitest, pure logic |
-| `bun run test:integration` | Vitest, against the live `Test_*` tables |
+| `bun run test:integration` | Vitest, against the live `company = 'test'` rows |
 | `npx playwright test` | e2e. On Windows Playwright hangs under bun, so run it with `npx`. |
 
 ## Architecture
@@ -61,7 +61,7 @@ Imports use the `@/` alias from the repo root, e.g. `@/backend/data/repositories
 | `frontend/components/ui/` | UI building blocks every page uses (see [UI](#ui)) |
 | `frontend/components/shared/` | Shared feature widgets: `SearchDropdown`, `MessageBox`, `ComingSoon`, `Redirect` |
 | `frontend/hooks/` | `useAuth`, `queries` (React Query hooks keyed `[company, ...]`, `useWrite`), `useParadeData`, `useConfirmDelete` |
-| `backend/data/client.ts` | Supabase client and `tbl(company, table)` |
+| `backend/data/client.ts` | Supabase client |
 | `backend/data/auth.ts` | Commander sign-in |
 | `backend/data/repositories/` | One class per table (see below) |
 | `backend/domain/<feature>/` | Pure functions: bunk overview, parade report, strength, duty points, report sick, validation, bulk import |
@@ -78,13 +78,13 @@ const { data, error } = await soldiers.list(true)
 
 | Class | Table |
 |---|---|
-| `SoldierRepository` | `{Company}_NominalRoll` |
-| `ExceptionRepository` | `{Company}_Exceptions` |
-| `DutyRepository` | `{Company}_Duty` |
-| `OffLeaveRepository` | `{Company}_OffLeave` |
-| `ConductRepository` | `{Company}_Conducts` and `_ConductDecisions` |
-| `MedicalReviewRepository` | `{Company}_MedicalReviews` (NRIC and appointments for a 'Medical Review' exception; deleted with it) |
-| `SettingsRepository` | `{Company}_Settings` (validated with zod) |
+| `SoldierRepository` | `NominalRoll` |
+| `ExceptionRepository` | `Exceptions` |
+| `DutyRepository` | `Duty` |
+| `OffLeaveRepository` | `OffLeave` |
+| `ConductRepository` | `Conducts` and `ConductDecisions` |
+| `MedicalReviewRepository` | `MedicalReviews` (NRIC and appointments for a 'Medical Review' exception; deleted with it) |
+| `SettingsRepository` | `Settings` (one row per company; validated with zod) |
 | `PublicHolidayRepository` | `PublicHolidays` (shared by all companies) |
 
 Components never call `supabase.from(...)` directly. Add a repository method instead.
@@ -93,13 +93,13 @@ Classes are used only for these stateful units. Domain logic stays as plain func
 
 ## Data model and security
 
-`supabase/schema.sql` creates the per-company tables in a loop over the company names. Every table has row-level security (RLS) with one policy:
+`supabase/schema.sql` creates one table per kind of data, shared by all companies. Each row carries a `company` column (e.g. `'hercules'`), and repositories filter on it. Every table has row-level security (RLS) with one policy:
 
 ```sql
-USING (auth.email() = '<company>@40sar.internal')
+USING (auth.email() = company || '@40sar.internal')
 ```
 
-Each company has one commander account, e.g. `hercules@40sar.internal`. A signed-in commander can only read and write their own company's tables. The publishable key in the browser gives no access without that sign-in.
+Each company has one commander account, e.g. `hercules@40sar.internal`. A signed-in commander can only read and write rows of their own company. The publishable key in the browser gives no access without that sign-in.
 
 `PublicHolidays` is battalion-wide, so any signed-in account can edit it.
 
@@ -165,15 +165,15 @@ Build pages from the blocks in `frontend/components/ui/` instead of styling raw 
 | Layer | Where | Runs against |
 |---|---|---|
 | Unit | `tests/unit/` | Pure functions from `backend/domain` and `shared`. No mocks, no network. |
-| Integration | `tests/integration/` | Repositories, hooks and components against the live `Test_*` tables |
+| Integration | `tests/integration/` | Repositories, hooks and components against the live `company = 'test'` rows |
 | e2e | `tests/e2e/` | The real app in Chromium, signed in as `test@` |
 
-Integration and e2e tests share the live `Test_*` tables. So:
+Integration and e2e tests share the live `company = 'test'` rows. So:
 
 - Vitest runs files one at a time (`fileParallelism: false`), and Playwright uses one worker.
-- Call `resetTestDb()` from `tests/fixtures/db.ts` before a test that depends on exact data. It signs in, empties the `Test_*` tables and loads the fixtures.
+- Call `resetTestDb()` from `tests/fixtures/db.ts` before a test that depends on exact data. It signs in, empties the test company's rows and loads the fixtures.
 - The fixtures in `tests/fixtures/` are dummy soldiers, exceptions, duties and off/leave, dated around `FIXTURE_DATE` (2026-01-15). e2e tests fix the browser clock to that date.
-- Never touch non-`Test_` tables in a test. `PublicHolidays` is real data, and a reset leaves it alone.
+- Never touch other companies' rows in a test (always filter `company = 'test'`). `PublicHolidays` is real data, and a reset leaves it alone.
 
 Mock only what the test can't reach for real, e.g. `next/navigation`.
 

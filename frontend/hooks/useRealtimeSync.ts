@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Company } from '@/shared/companies'
-import { supabase, tbl } from '@/backend/data/client'
+import { supabase } from '@/backend/data/client'
 
 const TABLES = ['NominalRoll', 'Exceptions', 'Duty', 'Settings', 'OffLeave', 'Conducts', 'ConductDecisions', 'MedicalReviews', 'OverviewMarks']
 
@@ -12,7 +12,7 @@ export function useRealtimeSync(company: Company) {
   useEffect(() => {
     const refresh = () => qc.invalidateQueries({ queryKey: [company] })
     let ch = supabase.channel(`sync-${company}`)
-    for (const t of TABLES) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tbl(company, t) }, refresh)
+    for (const t of TABLES) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: t, filter: `company=eq.${company}` }, refresh)
     ch.subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [company, qc])

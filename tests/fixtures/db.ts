@@ -17,15 +17,16 @@ function getClient() {
 
 export async function truncateTestDb() {
   const db = getClient()
+  const test = <T extends { eq: (col: string, v: string) => unknown }>(q: T) => q.eq('company', 'test')
   const ops = [
-    db.from('Test_Duty').delete().gte('date', '2000-01-01'),
+    test(db.from('Duty').delete()),
     // Decisions go with their conduct (ON DELETE CASCADE)
-    db.from('Test_Conducts').delete().gte('date', '2000-01-01'),
-    db.from('Test_Exceptions').delete().gte('id', 0),
-    db.from('Test_NominalRoll').delete().neq('name', ''),
-    db.from('Test_OffLeave').delete().neq('name', ''),
-    // Never PublicHolidays: it is battalion-wide live data, not a Test_ table
-  ]
+    test(db.from('Conducts').delete()),
+    test(db.from('Exceptions').delete()),
+    test(db.from('NominalRoll').delete()),
+    test(db.from('OffLeave').delete()),
+    // Only company = 'test' rows: the other companies share these tables, and PublicHolidays is battalion-wide live data
+  ] as PromiseLike<{ error: { message: string } | null }>[]
   const results = await Promise.all(ops)
   const failed = results.find(r => r.error)
   if (failed?.error) throw new Error(`truncateTestDb failed: ${failed.error.message}`)
@@ -33,12 +34,13 @@ export async function truncateTestDb() {
 
 export async function seedTestDb() {
   const db = getClient()
+  const test = <T extends object>(rows: T[]) => rows.map((r) => ({ ...r, company: 'test' }))
   const ops = await Promise.all([
-    db.from('Test_NominalRoll').insert(FIXTURE_SOLDIERS),
-    db.from('Test_Exceptions').insert(FIXTURE_EXCEPTIONS),
-    db.from('Test_Duty').insert(FIXTURE_DUTIES),
-    db.from('Test_OffLeave').insert(FIXTURE_OFF_LEAVE),
-    db.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1),
+    db.from('NominalRoll').insert(test(FIXTURE_SOLDIERS)),
+    db.from('Exceptions').insert(test(FIXTURE_EXCEPTIONS)),
+    db.from('Duty').insert(test(FIXTURE_DUTIES)),
+    db.from('OffLeave').insert(test(FIXTURE_OFF_LEAVE)),
+    db.from('Settings').update(RESET_SETTINGS).eq('company', 'test'),
   ])
   const failed = ops.find(r => r.error)
   if (failed?.error) throw new Error(`seedTestDb failed: ${failed.error.message}`)

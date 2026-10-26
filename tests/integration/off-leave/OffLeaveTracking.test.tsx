@@ -40,7 +40,7 @@ async function pickSoldier(query: string, name: string) {
 const rowOf = (name: string) => screen.getByText(name).closest('tr')!
 
 async function fetchRecord(name: string) {
-  const { data } = await supabase.from('Test_OffLeave').select('*').eq('name', name)
+  const { data } = await supabase.from('OffLeave').select('*').eq('company', 'test').eq('name', name)
   return data
 }
 

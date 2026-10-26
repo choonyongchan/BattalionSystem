@@ -19,5 +19,5 @@ export const FIXTURE_PARADE_CONFIG: ParadeConfig = {
 
 const { duty_base_weights, duty_day_multipliers, duty_weight_exceptions, eligibility_name_overrides, eligibility_rank_overrides, guard_duty_rank_overrides, absence_scope_defaults, parade_times } = defaultSettings('test')
 
-/** The settings columns that predate the nullable ones; tests reset the live Test_Settings row with these. */
+/** The settings columns that predate the nullable ones; tests reset the live test Settings row with these. */
 export const RESET_SETTINGS = { duty_base_weights, duty_day_multipliers, duty_weight_exceptions, eligibility_name_overrides, eligibility_rank_overrides, guard_duty_rank_overrides, absence_scope_defaults, parade_times }

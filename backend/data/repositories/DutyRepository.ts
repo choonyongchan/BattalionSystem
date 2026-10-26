@@ -11,22 +11,22 @@ export class DutyRepository extends CompanyRepository {
 
   /** Lists all duties, or only those dated within [from, to] (ISO dates, inclusive). */
   async list(from?: string, to?: string): Promise<ListResult<DutyEntry>> {
-    const q = this.from().select('*')
+    const q = this.select()
     return rows<DutyEntry>(await (from && to ? q.gte('date', from).lte('date', to) : q))
   }
 
   /** Lists duties on one ISO date. */
   async listOn(date: string): Promise<ListResult<DutyEntry>> {
-    return rows<DutyEntry>(await this.from().select('*').eq('date', date))
+    return rows<DutyEntry>(await this.select().eq('date', date))
   }
 
   /** Sets who holds a duty on a date. */
   async upsert(entry: DutyEntry): Promise<WriteResult> {
-    return this.from().upsert(entry)
+    return this.from().upsert(this.own(entry))
   }
 
   /** Clears a duty on a date. */
   async remove(dutyType: string, date: string): Promise<WriteResult> {
-    return this.from().delete().eq('duty_type', dutyType).eq('date', date)
+    return this.from().delete().eq('company', this.company).eq('duty_type', dutyType).eq('date', date)
   }
 }

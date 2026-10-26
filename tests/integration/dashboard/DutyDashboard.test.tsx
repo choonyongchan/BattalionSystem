@@ -19,7 +19,7 @@ beforeAll(async () => {
 }, 30000)
 
 afterAll(async () => {
-  await supabase.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1)
+  await supabase.from('Settings').update(RESET_SETTINGS).eq('company', 'test')
   await supabase.auth.signOut()
 })
 
@@ -70,15 +70,15 @@ describe('DutyDashboard', () => {
   })
 
   it('a custom duty_base_weights value from Settings is reflected in the leaderboard', async () => {
-    await supabase.from('Test_Settings').update({
+    await supabase.from('Settings').update({
       duty_base_weights: { ...RESET_SETTINGS.duty_base_weights, CDO: 3 },
-    }).eq('id', 1)
+    }).eq('company', 'test')
 
     renderDashboard()
     await loaded()
 
     await waitFor(() => expect(pointsFor('LEE JUN WEI')).toBe('3'))
 
-    await supabase.from('Test_Settings').update(RESET_SETTINGS).eq('id', 1)
+    await supabase.from('Settings').update(RESET_SETTINGS).eq('company', 'test')
   })
 })

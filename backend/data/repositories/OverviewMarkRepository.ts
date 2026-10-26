@@ -13,16 +13,16 @@ export class OverviewMarkRepository extends CompanyRepository {
 
   /** Lists the marks on one date. */
   async list(date: string): Promise<ListResult<OverviewMark>> {
-    return rows<OverviewMark>(await this.from().select('*').eq('date', date))
+    return rows<OverviewMark>(await this.select().eq('date', date))
   }
 
   /** Sets a mark, replacing any earlier one for the soldier. */
   async set(mark: OverviewMark): Promise<WriteResult> {
-    return this.from().upsert(mark, { onConflict: 'date,key' })
+    return this.from().upsert(this.own(mark), { onConflict: 'company,date,key' })
   }
 
   /** Removes a mark. */
   async clear(date: string, key: string): Promise<WriteResult> {
-    return this.from().delete().eq('date', date).eq('key', key)
+    return this.from().delete().eq('company', this.company).eq('date', date).eq('key', key)
   }
 }

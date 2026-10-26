@@ -1,6 +1,6 @@
 import type { Company } from '@/shared/companies'
 import type { MedicalReview } from '@/shared/types'
-import { supabase, tbl } from '@/backend/data/client'
+import { supabase } from '@/backend/data/client'
 import { CompanyRepository, rows, type ListResult, type WriteResult } from './CompanyRepository'
 import type { ExceptionFields } from './ExceptionRepository'
 
@@ -19,18 +19,18 @@ export class MedicalReviewRepository extends CompanyRepository {
 
   /** Lists every review's details. */
   async list(): Promise<ListResult<MedicalReview>> {
-    return rows<MedicalReview>(await this.from().select('*'))
+    return rows<MedicalReview>(await this.select())
   }
 
   /** Creates the review's exception, then its details; removes the exception if the details fail. */
   async add(exception: ExceptionFields, details: MedicalReviewFields): Promise<WriteResult> {
     // ponytail: no transaction; move both inserts into an RPC if partial writes ever show up
-    const exceptions = () => supabase.from(tbl(this.company, 'Exceptions'))
-    const { data, error } = await exceptions().insert(exception).select('id').single()
+    const exceptions = () => supabase.from('Exceptions')
+    const { data, error } = await exceptions().insert({ ...exception, company: this.company }).select('id').single()
     if (error) return { error }
     const id = (data as unknown as { id: number }).id
-    const res = await this.from().insert({ exception_id: id, ...details })
-    if (res.error) await exceptions().delete().eq('id', id)
+    const res = await this.from().insert(this.own({ exception_id: id, ...details }))
+    if (res.error) await exceptions().delete().eq('company', this.company).eq('id', id)
     return { error: res.error }
   }
 }

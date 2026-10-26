@@ -50,8 +50,8 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     const { data } = await supabase
-      .from('Test_NominalRoll')
-      .select('*')
+      .from('NominalRoll')
+      .select('*').eq('company', 'test')
       .eq('name', 'NEW_RECRUIT_TEST')
     expect(data).toHaveLength(1)
     expect((data![0] as { rank: string }).rank).toBe('PTE')
@@ -74,8 +74,8 @@ describe('NominalRoll', () => {
     }, { timeout: 10000 })
 
     const { data } = await supabase
-      .from('Test_NominalRoll')
-      .select('*')
+      .from('NominalRoll')
+      .select('*').eq('company', 'test')
       .eq('name', 'ONG JUN SHENG')
     expect(data).toHaveLength(0)
   })

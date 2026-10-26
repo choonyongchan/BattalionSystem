@@ -102,8 +102,8 @@ describe('Bulk Import', () => {
 
     // Verify soldiers are in the DB
     const { data } = await supabase
-      .from('Test_NominalRoll')
-      .select('*')
+      .from('NominalRoll')
+      .select('*').eq('company', 'test')
       .in('name', ['TEST_BULK_IMPORT_A', 'TEST_BULK_IMPORT_B'])
     expect(data).toHaveLength(2)
   }, 30000)
