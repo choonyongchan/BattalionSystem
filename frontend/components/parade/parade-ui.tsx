@@ -6,7 +6,6 @@ export const REASON_HINTS: Record<ExceptionScope, string> = {
   'Att C': 'e.g. Flu, Fever',
   'Status': 'e.g. Excuse RMJ, Excuse Uniform',
   'Off/Leave': 'e.g. Annual Leave, Off',
-  'Guard Duty': 'e.g. Regimental Guard, Guard Commander',
   'Report Sick': 'e.g. Flu, Fever',
   'MA': 'e.g. Skin Appt, IMH Appt',
   'Others': 'e.g. ...',

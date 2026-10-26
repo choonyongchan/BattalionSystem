@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { useFieldArray, type UseFormReturn } from 'react-hook-form'
 import type { Company } from '@/shared/companies'
+import { GUARD_DUTY } from '@/shared/guard-duty'
 import { AppSettingsSchema, rosterDutyTypes, BASE_DUTY_TYPES, type AppSettings } from '@/backend/domain/settings/settings'
 import { EXCEPTION_SCOPES } from '@/backend/domain/exceptions/exception-validation'
 import { SCOPE_TYPES, isOnStrength } from '@/backend/domain/exceptions/active'
@@ -131,7 +132,7 @@ export function DutyRosterSection({ company, settings }: Props) {
       title="Duty Roster"
       description={`Every company rosters ${BASE_DUTY_TYPES.join(', ')} and one PDS per platoon. Add any other duty here; set who may do it under Duty Eligibility.`}
       defaultValues={{ extra_duty_types: settings.extra_duty_types, multi_name_duty_types: settings.multi_name_duty_types }}
-      invalid={(v) => v.extra_duty_types.some((d) => d === 'Guard Duty' || rosterDutyTypes({ ...settings, extra_duty_types: [] }).includes(d))}
+      invalid={(v) => v.extra_duty_types.some((d) => d === GUARD_DUTY || rosterDutyTypes({ ...settings, extra_duty_types: [] }).includes(d))}
     >
       {({ watch, setValue }) => {
         const v = watch()

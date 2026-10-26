@@ -49,15 +49,6 @@ export const FIXTURE_EXCEPTIONS: Omit<Exception, 'id'>[] = [
     end: '2026-01-20',
     counts_as_absence: false,
   },
-  // Guard Duty — 1SG WONG KAH MENG (does NOT count as absence by default — still present)
-  {
-    name: 'WONG KAH MENG',
-    scope: 'Guard Duty',
-    reason: 'Regimental Guard',
-    start: '2026-01-15',
-    end: '2026-01-15',
-    counts_as_absence: false,
-  },
   // Others — PTE LIM WEI JIAN (does NOT count as absence by default — still present)
   {
     name: 'LIM WEI JIAN',

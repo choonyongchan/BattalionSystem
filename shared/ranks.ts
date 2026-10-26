@@ -41,17 +41,6 @@ export const DEFAULT_RANK_RULES: Record<string, RankRule> = {
   'Duty Clerk': { from: 'REC', to: 'CFC' },
 }
 
-/** The guard duty roles; a soldier fitting any role's range may do guard duty. */
-export const GUARD_DUTY_ROLES = ['CDOS', 'Guard Comd', 'Guard 2IC', 'Regimental Guard'] as const
-
-/** Default rank range per guard duty role; overridden in Settings > Guard Duty Roles. */
-export const DEFAULT_GUARD_DUTY_RANK_RULES: Record<string, RankRule> = {
-  CDOS: { from: '3SG', to: '2SG' },
-  'Guard Comd': { from: '3SG', to: '2SG' },
-  'Guard 2IC': { from: '3SG', to: '2SG' },
-  'Regimental Guard': { from: 'PTE', to: '2SG' },
-}
-
 /** Rank types in display order. */
 export const RANK_TYPES = ['Officer', 'WOSPEC', 'Enlistee'] as const
 

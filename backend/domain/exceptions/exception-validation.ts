@@ -1,12 +1,12 @@
 import type { Exception, Soldier } from '@/shared/types'
 import { compareNullableISO } from '@/shared/dates'
 
-/** Every exception scope: the parade-state section a row prints under (plus Guard Duty). */
-export const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Guard Duty', 'Report Sick', 'MA', 'Others'] as const
+/** Every exception scope: the parade-state section a row prints under. */
+export const EXCEPTION_SCOPES = ['Att C', 'Status', 'Off/Leave', 'Report Sick', 'MA', 'Others'] as const
 export type ExceptionScope = (typeof EXCEPTION_SCOPES)[number]
 
 /** Scopes recorded against one day rather than a range. */
-export const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA', 'Guard Duty']
+export const SINGLE_DATE_SCOPES: ExceptionScope[] = ['Report Sick', 'MA']
 
 /** Scopes that print an optional "@ <location>" suffix in the parade state. */
 export const LOCATION_PRINT_SCOPES: ExceptionScope[] = ['MA', 'Others']

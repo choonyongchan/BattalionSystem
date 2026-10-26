@@ -15,8 +15,8 @@ import { CheckField, Checkbox, Field, Input, inputClass } from '@/frontend/compo
 import { Panel } from '@/frontend/components/ui/layout'
 import { Segmented } from '@/frontend/components/ui/segmented'
 
-// Guard Duty is added in the Duties tab; new report sicks are keyed in the Report Sick tab
-const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty' && s !== 'Report Sick')
+// New report sicks are keyed in the Report Sick tab
+const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Report Sick')
 
 /** Blank form for a new exception dated `date`. */
 const emptyForm = (date: string): ExForm =>

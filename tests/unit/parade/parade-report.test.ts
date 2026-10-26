@@ -147,10 +147,6 @@ describe('generateParadeReport — platoon blocks', () => {
     expect(report).toContain('1. LCP TAN RONG XIAN - Flu (150126)')
   })
 
-  it('Guard Duty exceptions are not printed under any of the six sections', () => {
-    const report = generateParadeReport({ ...BASE_INPUT, activeExceptions: ALL_EXCEPTIONS }, FIXTURE_PARADE_CONFIG)
-    expect(report).not.toContain('Regimental Guard')
-  })
 })
 
 describe('generateParadeReport — record line details', () => {

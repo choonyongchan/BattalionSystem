@@ -15,7 +15,6 @@ export const SCOPE_TYPES: Record<ExceptionScope, readonly string[]> = {
   'Report Sick': ['Report Sick', 'URTI', 'Medical Review'],
   MA: ['MA'],
   'Off/Leave': ['Leave', 'Off'],
-  'Guard Duty': ['Guard Duty'],
   Others: ['Others', 'Course'],
 }
 
@@ -112,8 +111,8 @@ export function buildActiveMap(exceptions: Exception[], soldiers: Soldier[], dat
   return map
 }
 
-/** Events, not stretches: two report sicks or two guard duties back to back are two, not one long one. */
-const NEVER_MERGED = new Set(['Report Sick', 'URTI', 'Guard Duty'])
+/** Events, not stretches: two report sicks back to back are two, not one long one. */
+const NEVER_MERGED = new Set(['Report Sick', 'URTI'])
 
 /** "3D MC" → "MC": the day count is one row's length, not the exception's identity. */
 const DAYS_PREFIX = /^\s*\d+\s*D\s+/i

@@ -13,7 +13,7 @@ const VALID_SETTINGS = {
   guard_duty_rank_overrides: { CDOS: { from: '2SG', to: '2SG' } },
   absence_scope_defaults: {
     'Att C': true, 'Off/Leave': true, MA: true,
-    Status: false, 'Guard Duty': false, 'Report Sick': false, Others: false,
+    Status: false, 'Report Sick': false, Others: false,
   },
   parade_times: { 'First Parade': '09:30', 'Last Parade': '17:30' },
 }

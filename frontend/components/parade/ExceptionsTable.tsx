@@ -18,9 +18,6 @@ import { Segmented } from '@/frontend/components/ui/segmented'
 import { EditActions, RowActions, SortTh, TD, TD_EDIT, Table, Th, rowClass } from '@/frontend/components/ui/table'
 import { REASON_HINTS, soldierDropdownProps } from './parade-ui'
 
-// Guard Duty rows are managed in the Duties tab
-const EDIT_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Guard Duty')
-
 /** Cycles a column's sort: ascending, descending, then off. */
 function nextSort(prev: ExceptionSort, column: 'start' | 'end'): ExceptionSort {
   if (!prev || prev.column !== column) return { column, dir: 'asc' }
@@ -189,7 +186,7 @@ function EditCells({
               aria-label="Scope"
               value={edit.scope as ExceptionScope}
               onChange={(s) => setEdit({ ...edit, scope: s, counts_as_absence: absenceTouched ? edit.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
-              options={EDIT_SCOPES}
+              options={EXCEPTION_SCOPES}
             />
           </td>
         </>

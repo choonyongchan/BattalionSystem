@@ -1,5 +1,6 @@
 import type { Soldier } from '@/shared/types'
-import { ANY_RANK, DEFAULT_RANK_RULES, RANK_INDEX, GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES, type RankRule } from '@/shared/ranks'
+import { ANY_RANK, DEFAULT_RANK_RULES, RANK_INDEX, type RankRule } from '@/shared/ranks'
+import { GUARD_DUTY_ROLES, guardRankRule } from '@/shared/guard-duty'
 
 /** True when `rank` lies within the rule's from–to range. */
 export function isInRange(rule: RankRule, rank: string): boolean {
@@ -41,5 +42,5 @@ export function eligibleSoldiers(dt: string, soldiers: Soldier[], nameOverrides:
 
 /** Guard Duty has no single rank rule: a soldier is eligible if their rank fits any role's range. */
 export function isEligibleForGuardDuty(soldier: Soldier, guardDutyRankOverrides: Record<string, RankRule>): boolean {
-  return GUARD_DUTY_ROLES.some((role) => isInRange(guardDutyRankOverrides[role] ?? DEFAULT_GUARD_DUTY_RANK_RULES[role], soldier.rank))
+  return GUARD_DUTY_ROLES.some((role) => isInRange(guardRankRule(role, guardDutyRankOverrides)!, soldier.rank))
 }

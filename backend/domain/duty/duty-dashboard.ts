@@ -1,6 +1,7 @@
 import type { Soldier, DutyEntry } from '@/shared/types'
 import type { RankRule } from '@/shared/ranks'
 import { splitDutyNames } from '@/shared/names'
+import { GUARD_DUTY } from '@/shared/guard-duty'
 import { isEligible, isEligibleForGuardDuty } from './duty-rules'
 import { resolveDayType, type DayType } from '@/backend/domain/settings/settings'
 
@@ -53,7 +54,7 @@ export function getEligibleForDuty(
   guardDutyRankOverrides: Record<string, RankRule> = {},
 ): Soldier[] {
   return soldiers.filter((s) => dutyTypes.some((dt) =>
-    dt === 'Guard Duty' ? isEligibleForGuardDuty(s, guardDutyRankOverrides) : isEligible(dt, s, eligibilityOverrides, rankRuleOverrides),
+    dt === GUARD_DUTY ? isEligibleForGuardDuty(s, guardDutyRankOverrides) : isEligible(dt, s, eligibilityOverrides, rankRuleOverrides),
   ))
 }
 

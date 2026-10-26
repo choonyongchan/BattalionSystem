@@ -3,6 +3,7 @@ import { exceptionType, isOnStrength, soldierKeyOf, buildActiveMap } from '@/bac
 import { splitDutyNames } from '@/shared/names'
 import { ddmmyy } from '@/shared/dates'
 import { isCommander } from '@/shared/ranks'
+import { pointsGroupOf } from '@/shared/guard-duty'
 
 /**
  * Bunk strength: who is in each bunk tonight. A soldier's bunk is the Bunk field on the
@@ -23,6 +24,10 @@ export function bunkOf(s: Soldier): string | null {
 
 /** Duties done in camp: the trooper still counts in the bunk. */
 const IN_CAMP_DUTIES = ['COS', 'Duty Clerk']
+
+/** Why they are out: Status and Others show "Scope - reason", the rest their category (exceptionType), e.g. RSO. */
+const reasonLabel = (e: Exception): string =>
+  (e.scope === 'Others' || e.scope === 'Status') && e.reason?.trim() ? `${e.scope} - ${e.reason.trim()}` : exceptionType(e)
 
 /** The platoon a bunk belongs to ("PLT 1"), or null for a standalone bunk. */
 const platoonOfBunk = (bunk: string): string | null => bunk.match(/^(PLT \S+)/)?.[1] ?? null
@@ -64,7 +69,7 @@ const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeri
 /**
  * Groups on-strength troopers by platoon and bunk with their reasons for being out on `date`.
  * Out of the bunk: an absence, an exception in `outScopes` (Settings > Overview), or a duty that day other than COS and Duty Clerk.
- * Reasons show the exception's category (exceptionType), e.g. RSO rather than its free-text reason.
+ * Reasons show the exception's category (exceptionType), e.g. RSO; Status and Others show "Scope - reason".
  * `markedOut` holds soldier keys unticked by hand; `markedPresent` holds keys ticked in despite a reason (flagged).
  */
 export function buildBunks(
@@ -76,7 +81,7 @@ export function buildBunks(
   const active = buildActiveMap(exceptions, people, date)
   const onDuty = new Map<string, string[]>()
   for (const d of duties.filter((d) => d.date === date && !IN_CAMP_DUTIES.includes(d.duty_type))) {
-    for (const name of splitDutyNames(d.name)) onDuty.set(name, [...(onDuty.get(name) ?? []), d.duty_type])
+    for (const name of splitDutyNames(d.name)) onDuty.set(name, [...(onDuty.get(name) ?? []), pointsGroupOf(d.duty_type)])
   }
 
   const bunks = new Map<string, BunkMember[]>()
@@ -85,7 +90,7 @@ export function buildBunks(
     if (!label) continue
     const key = soldierKeyOf(soldier)
     const reasons = [
-      ...(active.get(key) ?? []).filter(keepsOut).map(exceptionType),
+      ...(active.get(key) ?? []).filter(keepsOut).map(reasonLabel),
       ...(onDuty.get(soldier.name) ?? []),
     ]
     if (!reasons.length && markedOut.has(key)) reasons.push(NO_REASON)

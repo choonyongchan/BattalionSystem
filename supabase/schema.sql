@@ -84,7 +84,7 @@ BEGIN
         eligibility_name_overrides  jsonb NOT NULL DEFAULT ''{}'',
         eligibility_rank_overrides  jsonb NOT NULL DEFAULT ''{}'',
         guard_duty_rank_overrides   jsonb NOT NULL DEFAULT ''{}'',
-        absence_scope_defaults      jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Guard Duty":false,"Report Sick":false,"Others":false}'',
+        absence_scope_defaults      jsonb NOT NULL DEFAULT ''{"Att C":true,"Off/Leave":true,"MA":true,"Status":false,"Report Sick":false,"Others":false}'',
         parade_times                jsonb NOT NULL DEFAULT ''{"First Parade":"09:30","Last Parade":"17:30"}''
       )', c);
     FOREACH t IN ARRAY ARRAY['platoons','extra_duty_types','multi_name_duty_types','report_sick','conducts','overview','in_out_scopes'] LOOP

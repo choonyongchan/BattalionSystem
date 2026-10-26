@@ -51,7 +51,7 @@ describe('DutyDashboard', () => {
     await loaded()
 
     expect(pointsFor('LEE JUN WEI')).toBe('1')   // CDO duty
-    expect(pointsFor('WONG KAH MENG')).toBe('2') // CDS duty + Guard Duty (exception fixture), both Thu ×1
+    expect(pointsFor('WONG KAH MENG')).toBe('2') // CDS duty + RG1 guard duty, both Thu ×1
     expect(pointsFor('YEO JIA HENG')).toBe('1')  // COS duty
     expect(pointsFor('HO KAI XIANG')).toBe('1')  // PDS1 duty
     // ONG JUN SHENG (REC) is ineligible for every duty type — excluded entirely

@@ -1,7 +1,7 @@
 'use client'
 
 import type { Company } from '@/shared/companies'
-import { GUARD_DUTY_ROLES, DEFAULT_GUARD_DUTY_RANK_RULES } from '@/shared/ranks'
+import { GUARD_DUTY_ROLES, guardRankRule } from '@/shared/guard-duty'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import { isRankRangeInvalid } from '@/backend/domain/duty/duty-rules'
 import { SectionTitle } from '@/frontend/components/ui/layout'
@@ -11,7 +11,7 @@ import RankRangePicker from './RankRangePicker'
 type FormValues = Pick<AppSettings, 'guard_duty_rank_overrides'>
 
 /** The rule in force for a role: its override, else the default. */
-const ruleFor = (v: FormValues, role: string) => v.guard_duty_rank_overrides[role] ?? DEFAULT_GUARD_DUTY_RANK_RULES[role]
+const ruleFor = (v: FormValues, role: string) => guardRankRule(role, v.guard_duty_rank_overrides)!
 
 /** Settings: rank range allowed for each guard duty role. */
 export default function GuardDutyRolesSection({ company, settings }: { company: Company; settings: AppSettings }) {

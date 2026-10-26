@@ -19,7 +19,7 @@ function weights(overrides: Partial<WeightSettings> = {}): WeightSettings {
 describe('computePoints', () => {
   it('defaults to weight 1 when settings are empty (FIXTURE_DATE is a Thursday â†’ MonThurs)', () => {
     expect(computePoints(FIXTURE_DUTIES, weights(), NO_HOLIDAYS)).toEqual({
-      'LEE JUN WEI': 1, 'WONG KAH MENG': 1, 'YEO JIA HENG': 1, 'HO KAI XIANG': 1,
+      'LEE JUN WEI': 1, 'WONG KAH MENG': 2, 'YEO JIA HENG': 1, 'HO KAI XIANG': 1, // WONG: CDS + RG1
     })
   })
 

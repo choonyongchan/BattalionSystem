@@ -10,7 +10,7 @@ import { Button } from '@/frontend/components/ui/button'
 import { SearchInput } from '@/frontend/components/ui/fields'
 import { Empty } from '@/frontend/components/ui/layout'
 
-/** Searchable list of exceptions (Guard Duty excluded) with an add form. */
+/** Searchable list of exceptions with an add form. */
 export default function ExceptionsSection({ date, settings, data }: {
   date: string
   settings: AppSettings | undefined
@@ -19,7 +19,7 @@ export default function ExceptionsSection({ date, settings, data }: {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const rows = sortExceptions(data.exceptions)
-    .filter((e) => e.scope !== 'Guard Duty' && matchesExceptionQuery(e, search, data.soldiers))
+    .filter((e) => matchesExceptionQuery(e, search, data.soldiers))
 
   return (
     <div className="space-y-4">

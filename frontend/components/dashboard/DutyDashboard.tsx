@@ -3,10 +3,11 @@
 import { useState, useMemo } from 'react'
 import type { Soldier, DutyEntry } from '@/shared/types'
 import type { Company } from '@/shared/companies'
-import { isOnStrength, isRevoked } from '@/backend/domain/exceptions/active'
+import { GUARD_DUTY, pointsGroupOf } from '@/shared/guard-duty'
+import { isOnStrength } from '@/backend/domain/exceptions/active'
 import { isEligible as checkEligible, isEligibleForGuardDuty } from '@/backend/domain/duty/duty-rules'
 import { computePoints, computePointsByDutyType, getEligibleForDuty, sortByPoints } from '@/backend/domain/duty/duty-dashboard'
-import { combine, useDuties, useExceptions, usePublicHolidaysQuery, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
+import { combine, useDuties, usePublicHolidaysQuery, useSettingsQuery, useSoldiers } from '@/frontend/hooks/queries'
 import { pointsDutyTypes, resolveDayType } from '@/backend/domain/settings/settings'
 import { Banner, Loading, PageHeader, SectionTitle } from '@/frontend/components/ui/layout'
 import { Segmented } from '@/frontend/components/ui/segmented'
@@ -22,17 +23,16 @@ const DAY_FILTERS = [
 export default function DutyDashboard({ company }: { company: Company }) {
   const soldiersQ = useSoldiers(company)
   const dutiesQ = useDuties(company)
-  const guardQ = useExceptions(company, 'Guard Duty')
   const settingsQ = useSettingsQuery(company)
-  const { loading, error } = combine(soldiersQ, dutiesQ, guardQ, settingsQ)
+  const { loading, error } = combine(soldiersQ, dutiesQ, settingsQ)
   const settings = settingsQ.data
   const dutyTypes = useMemo(() => (settings ? pointsDutyTypes(settings) : []), [settings])
   const soldiers = useMemo(() => (soldiersQ.data ?? []).filter(isOnStrength), [soldiersQ.data])
-  // Guard duties live in Exceptions; they count on their (single) date
-  const duties = useMemo<DutyEntry[]>(() => [
-    ...(dutiesQ.data ?? []),
-    ...(guardQ.data ?? []).filter((e) => !isRevoked(e)).map((e) => ({ duty_type: 'Guard Duty', date: e.end ?? e.start ?? '', name: e.name })),
-  ], [dutiesQ.data, guardQ.data])
+  // Every guard role earns points as one Guard Duty
+  const duties = useMemo<DutyEntry[]>(
+    () => (dutiesQ.data ?? []).map((d) => ({ ...d, duty_type: pointsGroupOf(d.duty_type) })),
+    [dutiesQ.data],
+  )
   const [filter, setFilter] = useState('all')
   const [dayFilter, setDayFilter] = useState<'all' | 'weekday' | 'weekend'>('all')
   const [sortCol, setSortCol] = useState<string | null>(null)
@@ -86,7 +86,7 @@ export default function DutyDashboard({ company }: { company: Company }) {
   const visible = useMemo(
     () => filter === 'all'
       ? eligibleForDuty
-      : filter === 'Guard Duty'
+      : filter === GUARD_DUTY
         ? eligibleForDuty.filter(s => isEligibleForGuardDuty(s, guardDutyRankOverrides))
         : eligibleForDuty.filter(s => checkEligible(filter, s, eligibilityOverrides, rankRuleOverrides)),
     [eligibleForDuty, filter, eligibilityOverrides, rankRuleOverrides, guardDutyRankOverrides],

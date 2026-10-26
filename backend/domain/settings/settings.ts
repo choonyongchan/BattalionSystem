@@ -1,6 +1,7 @@
 import z from 'zod'
 import { isFriday, isSaturday, isSunday, parseISO } from 'date-fns'
 import type { Company, PlatoonBlock } from '@/shared/companies'
+import { GUARD_DUTY } from '@/shared/guard-duty'
 
 export const DAY_TYPES = ['MonThurs', 'Friday', 'Saturday', 'Sunday', 'PublicHoliday'] as const
 export type DayType = (typeof DAY_TYPES)[number]
@@ -93,7 +94,7 @@ export function defaultSettings(company: Company): AppSettings {
   // Hercules is the battalion's HQ company: it rosters a Duty Clerk and its HQ sits out of conducts
   const hq = company === 'hercules'
   return {
-    duty_base_weights: { CDO: 1, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1, 'Guard Duty': 1 },
+    duty_base_weights: { CDO: 1, CDS: 1, COS: 1, PDS1: 1, PDS2: 1, PDS3: 1, PDS4: 1, [GUARD_DUTY]: 1 },
     duty_day_multipliers: { MonThurs: 1, Friday: 1.5, Saturday: 2, Sunday: 1.5, PublicHoliday: 2 },
     duty_weight_exceptions: {},
     eligibility_name_overrides: {},
@@ -104,7 +105,6 @@ export function defaultSettings(company: Company): AppSettings {
       'Off/Leave': true,
       MA: true,
       Status: false,
-      'Guard Duty': false,
       'Report Sick': false,
       Others: false,
     },
@@ -119,7 +119,7 @@ export function defaultSettings(company: Company): AppSettings {
       urti_keywords: ['urti', 'flu', 'cough', 'coughs', 'coughing', 'sore throat', 'phlegm', 'runny nose', 'blocked nose', 'sneeze', 'sneezing', 'fever', 'cold'],
     },
     conducts: { include_hq: !hq, needs_call_types: ['LD', 'RMJ'] },
-    overview: { message_title: 'CURRENT STRENGTH CAA', out_scopes: ['Others', 'Guard Duty'] },
+    overview: { message_title: 'CURRENT STRENGTH CAA', out_scopes: ['Others'] },
   }
 }
 
@@ -141,8 +141,8 @@ export function mergeSettings(raw: Partial<Record<keyof AppSettings, unknown>> |
 export const rosterDutyTypes = (s: AppSettings): string[] =>
   [...BASE_DUTY_TYPES, ...s.platoons.map((_, i) => `PDS${i + 1}`), ...s.extra_duty_types]
 
-/** Duties that earn points: the roster, then Guard Duty (kept in Exceptions). */
-export const pointsDutyTypes = (s: AppSettings): string[] => [...rosterDutyTypes(s), 'Guard Duty']
+/** Duties that earn points: the roster, then Guard Duty (its role duties, summed). */
+export const pointsDutyTypes = (s: AppSettings): string[] => [...rosterDutyTypes(s), GUARD_DUTY]
 
 /** Single source of truth for day-type classification. */
 export function resolveDayType(dateISO: string, holidays: Set<string>): DayType {

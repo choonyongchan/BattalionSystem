@@ -35,7 +35,6 @@ describe('types and scopes', () => {
     expect(exceptionType(ex({ scope: 'Status', reason: 'OLD WOUND' }))).toBe('Excuse')
     expect(exceptionType(ex({ scope: 'Off/Leave', reason: 'Annual Leave' }))).toBe('Leave')
     expect(exceptionType(ex({ scope: 'Off/Leave', reason: 'Weekend off' }))).toBe('Off')
-    expect(exceptionType(ex({ scope: 'Guard Duty' }))).toBe('Guard Duty')
   })
 
   it('"HOLD" or "Old" do not read as LD', () => {
@@ -134,8 +133,8 @@ describe('mergeRuns', () => {
     ])).toHaveLength(2)
   })
 
-  it('never merges Report Sick or Guard Duty, which are events', () => {
-    const gd = { soldier_id: 'u-tan', scope: 'Guard Duty', type: 'Guard Duty', reason: 'Regimental Guard' }
+  it('never merges Report Sick, which is an event', () => {
+    const gd = { soldier_id: 'u-tan', scope: 'Report Sick', type: 'Report Sick', reason: 'Flu' }
     expect(mergeRuns([
       ex({ ...gd, start: '2026-01-06', end: '2026-01-06' }),
       ex({ ...gd, start: '2026-01-07', end: '2026-01-07' }),
