@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { Exception } from '@/shared/types'
 import type { AppSettings } from '@/backend/domain/settings/settings'
 import {
   EXCEPTION_SCOPES, SINGLE_DATE_SCOPES,
@@ -18,24 +19,29 @@ import { Segmented } from '@/frontend/components/ui/segmented'
 // New report sicks are keyed in the Report Sick tab
 const ADD_SCOPES = EXCEPTION_SCOPES.filter((s) => s !== 'Report Sick')
 
-/** Blank form for a new exception dated `date`. */
-const emptyForm = (date: string): ExForm =>
-  ({ name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '' })
+/** Form for a new exception dated `date`, or filled from the one being edited. */
+const initForm = (date: string, e?: Exception): ExForm => e
+  ? {
+    name: e.name, scope: e.scope as ExForm['scope'], reason: e.reason ?? '', start: e.start ?? '', end: e.end ?? '',
+    counts_as_absence: e.counts_as_absence, time: e.time ?? '', location: e.location ?? '',
+  }
+  : { name: '', scope: 'Off/Leave', reason: '', start: date, end: date, counts_as_absence: true, time: '', location: '' }
 
 /**
- * Form for adding an exception. STATUS can hold several rows (one per status) that are
- * saved together; other scopes save one row.
+ * Form for adding an exception, or editing one when `editing` is set (remount per edit).
+ * STATUS can hold several rows (one per status) that are saved together; other scopes save one row.
  */
-export default function AddExceptionForm({ date, settings, data, onDone }: {
+export default function AddExceptionForm({ date, settings, data, editing, onDone }: {
   date: string
   settings: AppSettings | undefined
   data: ParadeData
+  editing?: Exception
   onDone: () => void
 }) {
   const { soldiers, repos, mutate, linkFields } = data
-  const [form, setForm] = useState<ExForm>(() => emptyForm(date))
-  const [absenceTouched, setAbsenceTouched] = useState(false)
-  const [statusRows, setStatusRows] = useState<StatusRow[]>([{ start: date, end: date, reason: '' }])
+  const [form, setForm] = useState<ExForm>(() => initForm(date, editing))
+  const [absenceTouched, setAbsenceTouched] = useState(!!editing)
+  const [statusRows, setStatusRows] = useState<StatusRow[]>([{ start: editing?.start ?? date, end: editing?.end ?? date, reason: editing?.reason ?? '' }])
   const [errors, setErrors] = useState<Record<string, boolean>>({})
 
   const singleDate = SINGLE_DATE_SCOPES.includes(form.scope)
@@ -52,7 +58,7 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
     const rows = form.scope === 'Status'
       ? statusRows.map((r) => ({
         name: form.name, scope: form.scope, reason: r.reason.trim() || null, start: r.start || null, end: r.end || null,
-        counts_as_absence: form.counts_as_absence, ...linkFields(form.name, form.scope, r.reason.trim() || null),
+        counts_as_absence: form.counts_as_absence, ...linkFields(form.name, form.scope, r.reason.trim() || null, editing?.type),
       }))
       : {
         name: form.name,
@@ -62,10 +68,11 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
         end: form.end || null,
         counts_as_absence: form.counts_as_absence,
         location: form.location.trim() || null,
-        ...(form.scope === 'MA' && form.time ? { time: form.time } : {}),
-        ...linkFields(form.name, form.scope, reason),
+        ...(form.scope === 'MA' && form.time ? { time: form.time } : editing ? { time: null } : {}),
+        ...linkFields(form.name, form.scope, reason, editing?.type),
       }
-    if (await mutate(() => repos.exceptions.insert(rows))) onDone()
+    const save = () => editing ? repos.exceptions.update(editing.id, Array.isArray(rows) ? rows[0] : rows) : repos.exceptions.insert(rows)
+    if (await mutate(save)) onDone()
   }
 
   return (
@@ -73,6 +80,7 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
       <Field label="Soldier" required>
         <SearchDropdown
           {...soldierDropdownProps}
+          autoOpen={false}
           items={soldiers}
           value={form.name}
           onChange={(name) => setForm({ ...form, name })}
@@ -85,7 +93,7 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
           label={<>Scope <span aria-hidden className="text-danger">*</span></>}
           value={form.scope}
           onChange={(s) => setForm({ ...form, scope: s, counts_as_absence: absenceTouched ? form.counts_as_absence : (settings?.absence_scope_defaults[s] ?? false) })}
-          options={ADD_SCOPES}
+          options={editing ? EXCEPTION_SCOPES : ADD_SCOPES}
         />
         <p className="text-xs text-ink-60 mt-1">Report sick → Report Sick tab</p>
       </div>
@@ -114,9 +122,9 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
               </div>
             )
           })}
-          <Button variant="secondary" size="sm" block type="button" className="border-dashed" onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}>
+          {!editing && <Button variant="secondary" size="sm" block type="button" className="border-dashed" onClick={() => setStatusRows((r) => [...r, { start: date, end: date, reason: '' }])}>
             + Add Status
-          </Button>
+          </Button>}
         </>
       ) : singleDate ? (
         <Field label="Date"><Input type="date" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} error={errors.end} /></Field>
@@ -150,7 +158,7 @@ export default function AddExceptionForm({ date, settings, data, onDone }: {
         />
       </CheckField>
 
-      <Button block onClick={add} disabled={!isExceptionValid(form, statusRows)}>Add Exception</Button>
+      <Button block onClick={add} disabled={!isExceptionValid(form, statusRows)}>{editing ? 'Save changes' : 'Add Exception'}</Button>
     </Panel>
   )
 }

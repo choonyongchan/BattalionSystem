@@ -19,9 +19,8 @@ import ConductDetail from './ConductDetail'
 type Form = { id: string | null; name: string; date: string; end_date: string; start_time: string; end_time: string }
 
 /**
- * Conduct tracking: create a conduct, and for the one selected see who falls
- * out automatically (from exceptions), who needs a commander's call, and copy
- * the conduct state. Only manual calls are written (ConductDecisions).
+ * Conduct tracking: create a conduct (seeded from the Overview), then fall people
+ * out or call them back in, and copy the conduct state (ConductDecisions).
  */
 export default function ConductsTab({ company, companyLabel }: { company: Company; companyLabel: string }) {
   const today = todaySGDate()
@@ -47,9 +46,9 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
 
   const parts = useMemo(
     () => (selected && settings
-      ? classifyConduct(selected, conductSoldiers(soldiersQ.data ?? [], settings.conducts.include_hq), exceptionsQ.data ?? [], decisionsQ.data ?? [], today, settings.conducts.needs_call_types)
+      ? classifyConduct(selected, conductSoldiers(soldiersQ.data ?? [], settings.conducts.include_hq), decisionsQ.data ?? [])
       : []),
-    [selected, settings, soldiersQ.data, exceptionsQ.data, decisionsQ.data, today],
+    [selected, settings, soldiersQ.data, decisionsQ.data],
   )
 
   /** Creates or updates the conduct in the form, then selects it. */
@@ -87,9 +86,6 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
       if (!selected) return
       await run(() => conductRepo.decide(selected.id, soldierId, participating, reason))
     },
-    undo: async (decisionId: string) => {
-      await run(() => conductRepo.removeDecision(decisionId))
-    },
   }
 
   if (loading || !settings) return <Loading />
@@ -111,7 +107,7 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
     <div className="space-y-5">
       <PageHeader
         title="Conducts"
-        subtitle={`Troopers only. Groups follow the Overview strength when a conduct is created; ${settings.conducts.needs_call_types.join(' / ') || 'nothing'} need a call.`}
+        subtitle="Troopers only. Present on the Overview when a conduct is created = participating; absent = out of camp."
         actions={
           <Button
             variant={form ? 'secondary' : 'primary'}

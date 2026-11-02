@@ -19,16 +19,15 @@ beforeAll(async () => {
   await truncateTestDb()
   await seedTestDb()
 
-  // Fixture exceptions are dated in the past — add two running today, linked by soldier_id
+  // One conduct, with TAN seeded out of camp as creating it from the Overview would
   const { data: roll } = await supabase.from('NominalRoll').select('id, name').eq('company', 'test').in('name', ['TAN RONG XIAN', 'GOH RONG HAO'])
   const idOf = (name: string) => roll!.find((r) => r.name === name)!.id
-  const { error: exErr } = await supabase.from('Exceptions').insert([
-    { company: 'test', name: 'TAN RONG XIAN', soldier_id: idOf('TAN RONG XIAN'), scope: 'Att C', type: 'MC', reason: 'CONDUCT TEST MC', start: today, end: today, counts_as_absence: true },
-    { company: 'test', name: 'GOH RONG HAO', soldier_id: idOf('GOH RONG HAO'), scope: 'Status', type: 'LD', reason: 'CONDUCT TEST LD', start: today, end: today, counts_as_absence: false },
-  ])
-  if (exErr) throw new Error(exErr.message)
-  const { error: cErr } = await supabase.from('Conducts').insert({ company: 'test', name: 'IPPT TEST', date: today })
+  const { data: conduct, error: cErr } = await supabase.from('Conducts').insert({ company: 'test', name: 'IPPT TEST', date: today }).select('id').single()
   if (cErr) throw new Error(cErr.message)
+  const { error: dErr } = await supabase.from('ConductDecisions').insert({
+    company: 'test', conduct_id: conduct!.id, soldier_id: idOf('TAN RONG XIAN'), participating: false, reason: 'MC', group_kind: 'out-of-camp',
+  })
+  if (dErr) throw new Error(dErr.message)
 }, 30000)
 
 afterAll(async () => {
@@ -36,29 +35,27 @@ afterAll(async () => {
 })
 
 describe('ConductsTab', () => {
-  it('puts the MC out of camp and the LD to confirm, which ✓ Participate settles', async () => {
+  it('seeded out of camp, the rest participate; fall out with a reason, then call back in', async () => {
     renderWithQuery(<ConductsTab company="test" companyLabel="Test" />)
     await waitFor(() => expect(screen.getByRole('heading', { name: 'IPPT TEST' })).toBeInTheDocument(), { timeout: 10000 })
+    const section = (re: RegExp) => within(screen.getByText(re).closest('section')!)
 
-    const away = screen.getByText(/^Out of camp –/).closest('section')!
-    expect(within(away).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
-    expect(within(away).getByText('CONDUCT TEST MC')).toBeInTheDocument()
+    expect(section(/^Out of camp –/).getByText(/TAN RONG XIAN/)).toBeInTheDocument()
+    expect(section(/^Fall out –/).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument()
+    const goh = within(section(/^Participating –/).getByText(/GOH RONG HAO/).closest('li')!)
 
-    const outSection = screen.getByText(/^To confirm –/).closest('section')!
-    expect(within(outSection).getByText(/GOH RONG HAO/)).toBeInTheDocument()
-    await userEvent.click(within(outSection).getByRole('button', { name: '✓ Participate' }))
-
-    await waitFor(() => expect(within(screen.getByText(/^To confirm –/).closest('section')!).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument(), { timeout: 10000 })
-    const taking = screen.getByText(/^Participating –/).closest('section')!
-    expect(within(taking).getByText('CONDUCT TEST LD · confirmed can')).toBeInTheDocument()
-
-    const { data } = await supabase.from('ConductDecisions').select('participating').eq('company', 'test')
-    expect(data).toEqual([{ participating: true }])
-
+    await userEvent.click(goh.getByRole('button', { name: 'Fall out…' }))
+    await userEvent.type(goh.getByLabelText('Fall-out reason'), 'Duty')
+    await userEvent.click(goh.getByRole('button', { name: 'Fall out' }))
+    await waitFor(() => expect(section(/^Fall out –/).getByText('Duty')).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.getByText(/TEST COY CONDUCT STATE/)).toBeInTheDocument()
-    // Not in camp is left out of the message
-    expect(screen.queryByText(/TAN RONG XIAN — CONDUCT TEST MC/)).not.toBeInTheDocument()
-    // Troopers only: commanders are not listed anywhere
+    expect(screen.getByText(/GOH RONG HAO — DUTY/)).toBeInTheDocument()
+
+    await userEvent.click(section(/^Fall out –/).getByRole('button', { name: '✓ Participate' }))
+    await waitFor(() => expect(section(/^Fall out –/).queryByText(/GOH RONG HAO/)).not.toBeInTheDocument(), { timeout: 10000 })
+
+    // Out of camp is left out of the message; troopers only
+    expect(screen.queryByText(/TAN RONG XIAN — MC/)).not.toBeInTheDocument()
     expect(screen.queryByText(/CHONG KAH WAI/)).not.toBeInTheDocument()
   })
 })

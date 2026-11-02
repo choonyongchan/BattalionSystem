@@ -198,13 +198,6 @@ export function ConductsSection({ company, settings }: Props) {
             COY HQ takes part
             <Switch checked={watch('conducts.include_hq')} onChange={(e) => setValue('conducts.include_hq', e.target.checked, { shouldDirty: true })} />
           </label>
-          <Group label="Needs a commander's call (out until decided)">
-            <CheckList
-              options={SCOPE_TYPES.Status}
-              value={watch('conducts.needs_call_types')}
-              onChange={(x) => setValue('conducts.needs_call_types', x, { shouldDirty: true })}
-            />
-          </Group>
         </>
       )}
     </SettingsForm>

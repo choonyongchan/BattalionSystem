@@ -98,7 +98,7 @@ test.describe('Parade State workflow', () => {
 
     const reasonInput = page.locator('input[value="Annual Leave"]')
     await reasonInput.fill('Medical Leave')
-    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Save changes' }).click()
 
     await expect(page.getByText('Medical Leave')).toBeVisible({ timeout: 10000 })
   })

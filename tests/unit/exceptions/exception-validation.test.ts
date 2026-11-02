@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isValidTime, isExceptionValid, validateAddEx,
-  isEditExceptionValid, validateEditEx, exceptionSortValue,
+  exceptionSortValue,
   compareExceptionOrder, groupExceptionsByPerson,
 } from '@/backend/domain/exceptions/exception-validation'
 import type { ExForm } from '@/backend/domain/exceptions/exception-validation'
@@ -49,25 +49,6 @@ describe('validateAddEx', () => {
 })
 
 const baseException: Exception = { id: 1, name: 'TAN AH KOW', scope: 'Off/Leave', reason: null, start: null, end: null, counts_as_absence: true }
-
-describe('isEditExceptionValid / validateEditEx', () => {
-  it('null editEx is invalid', () => {
-    expect(isEditExceptionValid(null)).toBe(false)
-    expect(validateEditEx(null)).toEqual({ name: true })
-  })
-  it('missing name is invalid', () => {
-    expect(isEditExceptionValid({ ...baseException, name: '' })).toBe(false)
-    expect(validateEditEx({ ...baseException, name: '' })).toEqual({ name: true })
-  })
-  it('MA scope requires a valid time', () => {
-    expect(isEditExceptionValid({ ...baseException, scope: 'MA', time: 'bad' })).toBe(false)
-    expect(validateEditEx({ ...baseException, scope: 'MA', time: 'bad' })).toEqual({ time: true })
-  })
-  it('valid exception passes', () => {
-    expect(isEditExceptionValid(baseException)).toBe(true)
-    expect(validateEditEx(baseException)).toEqual({})
-  })
-})
 
 const soldiers: Soldier[] = [{ rank: 'CPL', name: 'TAN AH KOW', platoon: '1', four_d: '1234' }]
 

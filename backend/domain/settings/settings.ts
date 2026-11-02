@@ -58,8 +58,6 @@ export const AppSettingsSchema = z.object({
   conducts: z.object({
     /** Whether COY HQ is counted and listed in conducts. */
     include_hq: z.boolean(),
-    /** Exception types that keep a soldier out of a conduct until a commander decides. */
-    needs_call_types: z.array(z.string()),
   }),
   overview: z.object({
     /** First words of the bunk strength message, e.g. "STRENGTH CAA". */
@@ -118,7 +116,7 @@ export function defaultSettings(company: Company): AppSettings {
       default_location: 'KHMC',
       urti_keywords: ['urti', 'flu', 'cough', 'coughs', 'coughing', 'sore throat', 'phlegm', 'runny nose', 'blocked nose', 'sneeze', 'sneezing', 'fever', 'cold'],
     },
-    conducts: { include_hq: !hq, needs_call_types: ['LD', 'RMJ'] },
+    conducts: { include_hq: !hq },
     overview: { message_title: 'CURRENT STRENGTH CAA', out_scopes: ['Others'] },
   }
 }

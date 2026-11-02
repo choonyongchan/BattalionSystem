@@ -38,18 +38,6 @@ export function isExceptionValid(exForm: ExForm, statusRows: StatusRow[]): boole
   return new Set(reasons).size === reasons.length
 }
 
-/** Field errors for an edited exception. */
-export function validateEditEx(editEx: Exception | null): Record<string, boolean> {
-  if (!editEx) return { name: true }
-  const errors: Record<string, boolean> = {}
-  if (!editEx.name) errors.name = true
-  if (editEx.scope === 'MA' && !isValidTime(editEx.time ?? '')) errors.time = true
-  return errors
-}
-
-/** True when the edited exception can be saved. */
-export const isEditExceptionValid = (editEx: Exception | null): boolean => Object.keys(validateEditEx(editEx)).length === 0
-
 /** The value an exception sorts by for a table column. */
 export function exceptionSortValue(
   e: Exception, key: 'four_d' | 'name' | 'scope' | 'reason' | 'start' | 'end', soldiers: Soldier[],

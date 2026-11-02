@@ -15,6 +15,7 @@ export default function SearchDropdown<T>({
   inputClass,
   placeholder,
   disabled,
+  autoOpen = true,
 }: {
   items: T[]
   value: string
@@ -26,12 +27,23 @@ export default function SearchDropdown<T>({
   inputClass: string
   placeholder?: string
   disabled?: boolean
+  /** Focus and open the menu on mount when a value is set (for inline table edits). */
+  autoOpen?: boolean
 }) {
   const selected = items.find(i => getKey(i) === value)
   const [query, setQuery] = useState(() => selected ? getLabel(selected) : value)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  /** Last value this component reported; a different `value` came from outside (edit load, form reset). */
+  const emitted = useRef(value)
+  const emit = (key: string) => { emitted.current = key; onChange(key) }
+  useEffect(() => {
+    if (value === emitted.current) return
+    emitted.current = value
+    setQuery(selected ? getLabel(selected) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
 
   const [openUpward, setOpenUpward] = useState(false)
   const [menuRect, setMenuRect] = useState<{ left: number; width: number; top: number; bottom: number } | null>(null)
@@ -70,7 +82,7 @@ export default function SearchDropdown<T>({
   }, [open])
 
   useEffect(() => {
-    if (!value) return
+    if (!value || !autoOpen) return
     inputRef.current?.focus()
     inputRef.current?.select()
     setOpen(true)
@@ -83,7 +95,7 @@ export default function SearchDropdown<T>({
         ref={inputRef}
         type="text"
         value={query}
-        onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true) }}
+        onChange={e => { setQuery(e.target.value); emit(''); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
         className={`${inputClass} ${disabled ? 'opacity-50 cursor-not-allowed bg-parchment' : ''}`}
@@ -105,7 +117,7 @@ export default function SearchDropdown<T>({
                 type="button"
                 onMouseDown={e => {
                   e.preventDefault()
-                  onChange(getKey(item))
+                  emit(getKey(item))
                   setQuery(getLabel(item))
                   setOpen(false)
                 }}

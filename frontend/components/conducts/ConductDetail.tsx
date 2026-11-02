@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Conduct } from '@/shared/types'
-import { conductDateRange, conductTimeRange, generateConductState, inCamp, isToConfirm, type Participation } from '@/backend/domain/conducts/conducts'
+import { conductDateRange, conductTimeRange, generateConductState, inCamp, type Participation } from '@/backend/domain/conducts/conducts'
 import MessageBox from '@/frontend/components/shared/MessageBox'
 import { Button } from '@/frontend/components/ui/button'
 import { SearchInput, inputClass } from '@/frontend/components/ui/fields'
@@ -11,11 +11,10 @@ import { SectionTitle } from '@/frontend/components/ui/layout'
 /** The writes a conduct's calls make. */
 export interface DecisionActions {
   decide: (soldierId: string, participating: boolean, reason: string | null) => Promise<void>
-  undo: (decisionId: string) => Promise<void>
 }
 
 /**
- * One conduct: who needs a call, who's falling out, who's taking part, and the
+ * One conduct: who's taking part, who's fallen out, who's out of camp, and the
  * copyable conduct state.
  */
 export default function ConductDetail({ companyLabel, conduct, parts, busy, actions }: {
@@ -33,10 +32,9 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
   const shown = parts.filter((p) =>
     (!q || p.soldier.name.toLowerCase().includes(q) || (p.soldier.four_d ?? '').toLowerCase().includes(q)),
   )
-  const confirm = shown.filter(isToConfirm)
-  const out = shown.filter((p) => inCamp(p) && !p.participating && !isToConfirm(p))
+  const out = shown.filter((p) => p.kind === 'fall-out')
   const away = shown.filter((p) => !inCamp(p))
-  const taking = shown.filter((p) => p.participating)
+  const taking = shown.filter((p) => p.kind === 'in')
   const text = generateConductState(companyLabel, conduct, parts)
 
 
@@ -47,7 +45,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
   return (
     <div className="space-y-4">
       <p className="text-xs text-ink-60">
-        {conductDateRange(conduct)}{time ? ` · ${time}HRS` : ''} · {parts.filter((p) => p.participating).length}/{parts.filter(inCamp).length} taking part
+        {conductDateRange(conduct)}{time ? ` · ${time}HRS` : ''} · {parts.filter((p) => p.kind === 'in').length}/{parts.filter(inCamp).length} taking part
       </p>
 
       <SearchInput
@@ -65,18 +63,13 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink">{who(p)}</p>
-                  {p.note && <p className="text-xs text-warning">{p.note}{p.kind === 'in-confirmed' ? ' · confirmed can' : ''}</p>}
                 </div>
-                {p.decision ? (
-                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</Button>
-                ) : (
-                  <Button
-                    variant="danger-outline"
-                    size="sm"
-                    disabled={busy || !p.soldier.id}
-                    onClick={() => setFallingOut({ id: p.soldier.id!, reason: p.note ?? '' })}
-                  >Fall out…</Button>
-                )}
+                <Button
+                  variant="danger-outline"
+                  size="sm"
+                  disabled={busy || !p.soldier.id}
+                  onClick={() => setFallingOut({ id: p.soldier.id!, reason: '' })}
+                >Fall out…</Button>
               </div>
               {fallingOut && fallingOut.id === p.soldier.id && (
                 <div className="flex gap-2">
@@ -104,34 +97,14 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
       </section>
 
       <section className="space-y-2">
-        <SectionTitle className="mb-0">To confirm – {confirm.length}</SectionTitle>
-        <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
-          {confirm.map((p) => (
-            <li key={p.soldier.id} className="flex items-center gap-2 px-3 py-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-ink">{who(p)}</p>
-                <p className="text-xs text-warning">{p.reason}</p>
-              </div>
-              <ParticipateButton p={p} busy={busy} actions={actions} />
-              <Button variant="danger-outline" size="sm" disabled={busy || !p.soldier.id} onClick={() => actions.decide(p.soldier.id!, false, p.reason)}>Fall out</Button>
-            </li>
-          ))}
-          {confirm.length === 0 && <li className="px-3 py-3 text-sm text-ink-60">No one.</li>}
-        </ul>
-      </section>
-
-      <section className="space-y-2">
         <SectionTitle className="mb-0">Fall out – {out.length}</SectionTitle>
         <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {out.map((p) => (
             <li key={p.soldier.id} className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink">{who(p)}</p>
-                <p className="text-xs text-danger">{p.reason}{p.kind === 'out-auto' ? ' · auto' : ''}</p>
+                <p className="text-xs text-danger">{p.reason}</p>
               </div>
-              {p.decision && (
-                <Button variant="secondary" size="sm" disabled={busy} onClick={() => actions.undo(p.decision!.id)}>Undo</Button>
-              )}
               <ParticipateButton p={p} busy={busy} actions={actions} />
             </li>
           ))}
@@ -160,7 +133,7 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
   )
 }
 
-/** Confirms a soldier takes part, e.g. an excuse, a fall-out or someone not in camp. */
+/** Calls a soldier in to take part, e.g. a fall-out or someone out of camp. */
 function ParticipateButton({ p, busy, actions }: { p: Participation; busy: boolean; actions: DecisionActions }) {
   return (
     <Button variant="secondary" size="sm" className="border-success/40 text-success hover:bg-success/5" disabled={busy || !p.soldier.id} onClick={() => actions.decide(p.soldier.id!, true, null)}>

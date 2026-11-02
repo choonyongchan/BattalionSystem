@@ -264,7 +264,7 @@ describe('ParadeState', () => {
     const reasonInput = screen.getByDisplayValue('Annual Leave')
     await userEvent.clear(reasonInput)
     await userEvent.type(reasonInput, 'Medical Leave')
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await waitFor(() => {
       expect(screen.getByText('Medical Leave')).toBeInTheDocument()

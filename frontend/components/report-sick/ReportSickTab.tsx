@@ -62,6 +62,8 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   const exceptions = useMemo(() => exceptionsQ.data ?? [], [exceptionsQ.data])
   const reviews = useMemo(() => reviewsQ.data ?? [], [reviewsQ.data])
   const [sick, setSick] = useState<SickForm>(SICK_FORM)
+  /** The RSI/RSO being edited in the add form; null when adding. */
+  const [editing, setEditing] = useState<Exception | null>(null)
   const [review, setReview] = useState<ReviewForm>(reviewForm(companyLabel.toUpperCase()))
   const delConfirm = useConfirmDelete<number>()
   const exceptionRepo = new ExceptionRepository(company)
@@ -90,6 +92,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   function switchKind(k: Kind) {
     setKind(k)
     setSick(SICK_FORM)
+    setEditing(null)
   }
 
   /** Fields shared by every report-sick exception written from this tab. */
@@ -105,11 +108,33 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
     }
   }
 
-  /** Adds an RSI or RSO for the picked soldier on the selected date. */
+  /** Loads an entry into the add form and scrolls up to it. */
+  function startEdit(e: Exception) {
+    setEditing(e)
+    setSick({ name: e.name, reason: e.reason ?? '', urti: isUrtiException(e), urtiTouched: true, location: e.location ?? '' })
+    document.getElementById('rs-form')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  /** Leaves edit mode, resetting the form and scrolling back to the entry. */
+  function endEdit() {
+    const id = editing?.id
+    setEditing(null)
+    setSick(SICK_FORM)
+    requestAnimationFrame(() => document.getElementById(`rs-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
+
+  /** Adds an RSI or RSO for the picked soldier on the selected date, or saves the edit. */
   async function addSick() {
     const soldier = soldiers.find((s) => s.name === sick.name)
     const reason = sick.reason.trim()
     if (!soldier || !reason) return
+    if (editing) {
+      const ok = await run(() => exceptionRepo.update(editing.id, {
+        name: soldier.name, soldier_id: soldier.id ?? null, reason, location: location.trim() || null, type: sick.urti ? 'URTI' : 'Report Sick',
+      }))
+      if (ok) endEdit()
+      return
+    }
     const ok = await run(() => exceptionRepo.insert({
       ...base(soldier),
       // RSO is outside camp, so always absent
@@ -162,6 +187,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   const soldierPicker = (value: string, onChange: (name: string) => void) => (
     <Field label="Soldier" required>
       <SearchDropdown
+        autoOpen={false}
         {...soldierDropdownProps}
         matches={(s, q) => `${s.four_d ?? ''} ${s.rank} ${s.name}`.toLowerCase().includes(q.toLowerCase())}
         items={soldiers}
@@ -212,7 +238,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
           </Button>
         </Panel>
       ) : (
-        <Panel className="space-y-3">
+        <Panel id="rs-form" className="scroll-mt-40 space-y-3">
           {soldierPicker(sick.name, (name) => setSick({ ...sick, name }))}
           <Field label="Reason" required>
             <Input
@@ -231,8 +257,9 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
             <Checkbox checked={sick.urti} onChange={(e) => setSick({ ...sick, urti: e.target.checked, urtiTouched: true })} />
           </CheckField>
           <Button block onClick={addSick} disabled={busy || !sick.name || !sick.reason.trim()}>
-            Add {kind === 'rso' ? 'RSO' : 'RSI'}
+            {editing ? 'Save changes' : `Add ${kind === 'rso' ? 'RSO' : 'RSI'}`}
           </Button>
+          {editing && <Button block variant="secondary" onClick={endEdit}>Cancel</Button>}
         </Panel>
       )}
 
@@ -241,7 +268,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
       ) : (
         <ul className="divide-y divide-hairline rounded-card border border-hairline bg-white">
           {entries.map((e) => (
-            <li key={e.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+            <li key={e.id} id={`rs-${e.id}`} className="flex items-center gap-2 px-3 py-2 text-sm">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-ink">{who(e)}</div>
                 <div className="truncate text-xs text-ink-60">{detail(e)}</div>
@@ -254,6 +281,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
               <RowActions
                 confirming={delConfirm.isConfirming(e.id)}
                 disabled={busy}
+                onEdit={kind === 'review' ? undefined : () => startEdit(e)}
                 onRequest={() => delConfirm.request(e.id)}
                 onConfirm={() => delConfirm.resolve(() => remove(e))}
                 onCancel={delConfirm.cancel}

@@ -2,15 +2,13 @@ import type { Conduct, ConductDecision, DutyEntry, Exception, Soldier } from '@/
 import type { OverviewMark } from '@/backend/data/repositories/OverviewMarkRepository'
 import { NO_REASON, buildBunks } from '@/backend/domain/overview/bunks'
 import { RANK_INDEX, isCommander } from '@/shared/ranks'
-import { wordsRegex } from '@/shared/names'
-import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
+import { isOnStrength } from '@/backend/domain/exceptions/active'
 import { ddmmyy, pad2 } from '@/shared/dates'
 
 /**
  * Conduct tracking, adapted from 40SAR_Archer: who takes part in a training
- * conduct and who falls out. Only manual calls are stored (ConductDecisions);
- * automatic fall-outs are read live off Exceptions, so an MC keyed late
- * updates the conduct with no double entry.
+ * conduct and who falls out. Calls are stored (ConductDecisions): the Overview
+ * snapshot taken at creation, then hand calls.
  */
 
 /** Last day — a missing end_date means the conduct is within its start day. */
@@ -73,66 +71,22 @@ export function nearestConduct(list: Conduct[], now: Date): Conduct | null {
 }
 
 export type ParticipationKind =
-  /** No active exception. */
+  /** Present on the Overview, or called in by hand. */
   | 'in'
-  /** A non-blocking exception (FLEGS, guard duty, ...) — to confirm until a commander calls it. */
-  | 'in-excused'
-  /** Ticked in on the Overview despite a reason — to confirm. */
-  | 'to-confirm'
-  /** Pinged, and a commander confirmed he CAN take part. */
-  | 'in-confirmed'
-  /** Report sick (RSI/RSO) — falls out automatically; a commander may still let him take part. */
-  | 'out-auto'
-  /** MC, Att C, MA, course or any other absence — not in camp, so outside the strength. Can be overridden to take part. */
-  | 'not-in-camp'
-  /** LD / RMJ with no call yet — out until someone decides. */
-  | 'out-default'
-  /** Pinged, and a commander confirmed he cannot. */
-  | 'out-confirmed'
-  /** Nothing blocking, but fallen out by hand with a reason. */
-  | 'out-manual'
+  /** Taking part until a reason was given by hand. */
+  | 'fall-out'
+  /** Absent on the Overview when the conduct was created. */
+  | 'out-of-camp'
 
 export interface Participation {
   soldier: Soldier
   kind: ParticipationKind
-  participating: boolean
   /** Why he's out (null while participating). */
   reason: string | null
-  /** An exception shown while he's participating. */
-  note: string | null
-  decision: ConductDecision | null
 }
 
-
-/**
- * True for a report sick (RSI or RSO), which always falls the soldier out.
- * By scope, as it is typed URTI or Report Sick; a medical review is only a note.
- */
-const isReportSick = (e: Exception) => e.scope === 'Report Sick' && exceptionType(e) !== 'Medical Review'
-
-/** The reason to print for an exception, else its type. */
-function describe(e: Exception): string {
-  if (isReportSick(e)) return e.reason ? `Report Sick — ${e.reason}` : 'Report Sick'
-  return e.reason || exceptionType(e)
-}
-
-/** True when an exception rules a soldier out regardless of any call. */
-const isHard = (e: Exception) => e.counts_as_absence || exceptionType(e) === 'MC' || isReportSick(e)
-
-/** An MC reads first, then a report sick, then whatever keeps him out of camp. */
-function hardOutReason(active: Exception[]): Exception | undefined {
-  return (
-    active.find((e) => exceptionType(e) === 'MC') ??
-    active.find(isReportSick) ??
-    active.find((e) => e.counts_as_absence)
-  )
-}
-
-/** False for someone not in camp: outside the strength and the message. */
-export const inCamp = (p: Participation): boolean => p.kind !== 'not-in-camp'
-
-/** True for someone waiting on a commander's call: an excuse, an LD / RMJ or a flagged Overview tick. */
-export const isToConfirm = (p: Participation): boolean => p.kind === 'in-excused' || p.kind === 'out-default' || p.kind === 'to-confirm'
+/** False for someone out of camp: outside the strength. */
+export const inCamp = (p: Participation): boolean => p.kind !== 'out-of-camp'
 
 /** Orders soldiers most senior first, then by 4D, then name. */
 function compareSoldiers(a: Soldier, b: Soldier): number {
@@ -144,64 +98,19 @@ function compareSoldiers(a: Soldier, b: Soldier): number {
 }
 
 /**
- * Sorts every on-strength soldier into taking part / falling out. Per soldier,
- * the first match wins: a hard exception; a stored decision; a needs-call type,
- * by type or named in the reason (out pending a call); any other exception
- * (in, with a note); else in.
- * @param needsCallTypes Settings > Conducts, e.g. ['LD', 'RMJ'].
+ * Sorts every on-strength soldier: no call -> participating; a stored call decides
+ * otherwise (seeded out of camp, a hand fall-out with a reason, or called back in).
  */
-export function classifyConduct(
-  conduct: Conduct,
-  soldiers: Soldier[],
-  exceptions: Exception[],
-  decisions: ConductDecision[],
-  todayISO: string,
-  needsCallTypes: string[],
-): Participation[] {
-  const people = soldiers.filter(isOnStrength).sort(compareSoldiers)
-  const callTypes = new Set(needsCallTypes)
-  const callRe = wordsRegex(needsCallTypes)
-  const active = buildActiveMap(exceptions, people, conductDay(conduct, todayISO))
+export function classifyConduct(conduct: Conduct, soldiers: Soldier[], decisions: ConductDecision[]): Participation[] {
   const decisionFor = new Map(decisions.filter((d) => d.conduct_id === conduct.id).map((d) => [d.soldier_id, d]))
-
-  return people.map((soldier): Participation => {
-    const mine = active.get(soldierKeyOf(soldier)) ?? []
-    const hard = hardOutReason(mine)
-    const decision = (soldier.id && decisionFor.get(soldier.id)) || null
-    // Groups seeded from the Overview when the conduct was created
-    if (decision?.group_kind === 'out-of-camp')
-      return { soldier, kind: 'not-in-camp', participating: false, reason: decision.reason, note: null, decision }
-    if (decision?.group_kind === 'to-confirm')
-      return { soldier, kind: 'to-confirm', participating: false, reason: decision.reason, note: null, decision }
-    // A commander's "participate" overrides even a hard absence
-    if (hard && !decision?.participating) {
-      const kind = isReportSick(hard) ? 'out-auto' : 'not-in-camp'
-      return { soldier, kind, participating: false, reason: describe(hard), note: null, decision }
-    }
-
-    const soft = mine.filter((e) => !isHard(e))
-    const softReason = [...(hard ? [hard] : []), ...soft].map(describe).join(', ') || null
-    if (decision) {
-      if (decision.participating) return { soldier, kind: 'in-confirmed', participating: true, reason: null, note: softReason, decision }
-      return {
-        soldier,
-        kind: soft.length ? 'out-confirmed' : 'out-manual',
-        participating: false,
-        reason: decision.reason || softReason || 'Fall out',
-        note: null,
-        decision,
-      }
-    }
-
-    if (soft.some((e) => callTypes.has(exceptionType(e)) || callRe.test(e.reason ?? '')))
-      return { soldier, kind: 'out-default', participating: false, reason: softReason, note: null, decision: null }
-    if (soft.length) return { soldier, kind: 'in-excused', participating: false, reason: softReason, note: null, decision: null }
-    return { soldier, kind: 'in', participating: true, reason: null, note: null, decision: null }
+  return soldiers.filter(isOnStrength).sort(compareSoldiers).map((soldier): Participation => {
+    const d = soldier.id ? decisionFor.get(soldier.id) : undefined
+    // ponytail: legacy 'to-confirm' rows count as participating
+    if (!d || d.participating || d.group_kind === 'to-confirm') return { soldier, kind: 'in', reason: null }
+    if (d.group_kind === 'out-of-camp') return { soldier, kind: 'out-of-camp', reason: d.reason }
+    return { soldier, kind: 'fall-out', reason: d.reason || 'Fall out' }
   })
 }
-
-/** The "needs a call" pile: pinged and not yet decided. */
-export const needsDecision = (parts: Participation[]): Participation[] => parts.filter((p) => p.kind === 'out-default')
 
 /** The roll a conduct is classified over: troopers only, less COY HQ when it sits out. */
 export const conductSoldiers = (soldiers: Soldier[], includeHQ: boolean): Soldier[] =>
@@ -215,50 +124,35 @@ function headerLines(label: string, c: Conduct): string[] {
   return lines
 }
 
-/** Participating / in camp, then the fall-out and to-confirm counts, zero-padded. Not in camp is ignored. */
-function strengthLines(parts: Participation[]): string[] {
-  const camp = parts.filter(inCamp)
-  const toConfirm = camp.filter(isToConfirm).length
-  const out = camp.filter((p) => !p.participating).length - toConfirm
-  return [
-    `OVERALL: ${pad2(camp.length - out - toConfirm)}/${pad2(camp.length)}`,
-    `FALL OUT: ${pad2(out)}`,
-    ...(toConfirm ? [`TO CONFIRM: ${pad2(toConfirm)}`] : []),
-  ]
-}
-
 /** Numbered lines with each reason. */
 function reasonLines(parts: Participation[]): string[] {
-  return parts.map((p, i) => `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name} — ${(p.reason ?? '').toUpperCase()}`)
+  return parts.map((p, i) => `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name}${p.reason ? ` — ${p.reason.toUpperCase()}` : ''}`)
 }
 
-/** The company's conduct state: strength, then who falls out and who is to confirm. */
+/** The company's conduct state: strength (in camp), who takes part, who falls out. */
 export function generateConductState(companyLabel: string, c: Conduct, parts: Participation[]): string {
   const camp = parts.filter(inCamp)
-  const out = reasonLines(camp.filter((p) => !p.participating && !isToConfirm(p)))
-  const confirm = reasonLines(camp.filter(isToConfirm))
+  const taking = camp.filter((p) => p.kind === 'in')
+  const out = camp.filter((p) => p.kind === 'fall-out')
   return [
-    ...headerLines(`${companyLabel.toUpperCase()} COY`, c), '', ...strengthLines(parts),
-    ...(out.length ? ['', 'FALL OUT:', ...out] : []),
-    ...(confirm.length ? ['', 'TO CONFIRM:', ...confirm] : []),
+    ...headerLines(`${companyLabel.toUpperCase()} COY`, c), '',
+    `STRENGTH: ${pad2(camp.length)}`,
+    '', `PARTICIPATING: ${pad2(taking.length)}`, ...reasonLines(taking),
+    '', `FALL OUT: ${pad2(out.length)}`, ...reasonLines(out),
   ].join('\n')
 }
 
 /**
  * The calls to store when a conduct is created, read off the Overview for the conduct day:
- * out for a reason -> out of camp; unticked with no reason -> fall out; ticked in despite a
- * reason -> to confirm. Everyone else is left to classifyConduct (an exception -> to confirm).
+ * everyone absent (a reason or unticked) -> out of camp. Everyone present takes part.
  */
 export function seedDecisions(
   conduct: Conduct, soldiers: Soldier[], exceptions: Exception[], duties: DutyEntry[], marks: OverviewMark[], outScopes: string[], todayISO: string,
 ): Omit<ConductDecision, 'id' | 'conduct_id'>[] {
   const keys = (kind: OverviewMark['kind']) => new Set(marks.filter((m) => m.kind === kind).map((m) => m.key))
   const groups = buildBunks(soldiers, exceptions, duties, conductDay(conduct, todayISO), keys('out'), outScopes, keys('present'))
-  return groups.flatMap((g) => g.bunks.flatMap((b) => b.members)).flatMap(({ soldier, reasons, flagged }) => {
-    const call = (participating: boolean, group_kind: ConductDecision['group_kind'], why: string[]) =>
-      soldier.id ? [{ soldier_id: soldier.id, participating, group_kind, reason: why.join(', ') || null }] : []
-    if (flagged) return call(false, 'to-confirm', flagged)
-    if (reasons[0] === NO_REASON) return call(false, null, [])
-    return reasons.length ? call(false, 'out-of-camp', reasons) : []
-  })
+  return groups.flatMap((g) => g.bunks.flatMap((b) => b.members)).flatMap(({ soldier, reasons, flagged }) =>
+    soldier.id && !flagged && reasons.length
+      ? [{ soldier_id: soldier.id, participating: false, group_kind: 'out-of-camp' as const, reason: reasons.filter((r) => r !== NO_REASON).join(', ') || null }]
+      : [])
 }

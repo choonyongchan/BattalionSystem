@@ -60,6 +60,22 @@ describe('ReportSickTab', () => {
     expect(data).toEqual([{ in_out: 'OUT', location: null, counts_as_absence: true }])
   })
 
+  it('edits an RSO through the add form', async () => {
+    await renderTab()
+    await userEvent.click(screen.getByRole('radio', { name: 'RSO' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
+    const reason = screen.getByPlaceholderText(/^Reason/)
+    expect(reason).toHaveValue('Sprained ankle')
+    await userEvent.clear(reason)
+    await userEvent.type(reason, 'Twisted ankle')
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(screen.getByText(/Twisted ankle/)).toBeInTheDocument(), { timeout: 10000 })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add RSO' })).toBeInTheDocument())
+    const { data } = await supabase.from('Exceptions').select('in_out, counts_as_absence').eq('company', 'test').eq('reason', 'Twisted ankle')
+    expect(data).toEqual([{ in_out: 'OUT', counts_as_absence: true }])
+  })
+
   it('keys a medical review and prints it in the medical review message', async () => {
     await renderTab()
     await userEvent.click(screen.getByRole('radio', { name: 'Medical Review' }))

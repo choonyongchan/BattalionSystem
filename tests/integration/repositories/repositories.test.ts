@@ -102,7 +102,7 @@ describe('OffLeaveRepository', () => {
 describe('ConductRepository', () => {
   const repo = new ConductRepository('test')
 
-  it('creates a conduct, records and undoes a call, then deletes it', async () => {
+  it('creates a conduct, records a call, then deletes it', async () => {
     const { id, error } = await repo.insert({ name: 'ROUTE MARCH', date: FIXTURE_DATE, end_date: null, start_time: '08:00', end_time: null })
     expect(error).toBeNull()
     const soldier = (await new SoldierRepository('test').list()).data[0]
@@ -111,8 +111,6 @@ describe('ConductRepository', () => {
     const calls = (await repo.listDecisions()).data.filter((d) => d.conduct_id === id)
     expect(calls).toHaveLength(1)
     expect(calls[0]).toMatchObject({ participating: true, reason: null })
-    await repo.removeDecision(calls[0].id)
-    expect((await repo.listDecisions()).data.some((d) => d.conduct_id === id)).toBe(false)
     await repo.remove(id!)
     expect((await repo.list()).data.some((c) => c.id === id)).toBe(false)
   })

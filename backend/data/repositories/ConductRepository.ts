@@ -57,9 +57,4 @@ export class ConductRepository extends CompanyRepository {
   async decideMany(conductId: string, calls: Omit<ConductDecision, 'id' | 'conduct_id'>[]): Promise<WriteResult> {
     return this.decisions().upsert(calls.map((c) => ({ ...c, company: this.company, conduct_id: conductId })), { onConflict: 'conduct_id,soldier_id' })
   }
-
-  /** Deletes a manual call so the soldier falls back to the automatic rule. */
-  async removeDecision(id: string): Promise<WriteResult> {
-    return this.decisions().delete().eq('company', this.company).eq('id', id)
-  }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   conductEnd, conductDay, conductDateRange, conductTimeRange, nearestConduct,
-  classifyConduct, needsDecision, generateConductState,
+  classifyConduct, generateConductState,
   conductSoldiers, seedDecisions,
 } from '@/backend/domain/conducts/conducts'
 import type { Conduct, ConductDecision, Exception, Soldier } from '@/shared/types'
@@ -41,8 +41,8 @@ const BLOCKS: PlatoonBlock[] = [
   { key: '2', label: 'PL 2', pdsLabel: 'PDS 2' },
 ]
 
-const CALL = ['LD', 'RMJ']
-
+const dec = (p: Partial<ConductDecision>): ConductDecision =>
+  ({ id: 'd', conduct_id: 'c1', soldier_id: 'fit', participating: false, reason: null, group_kind: null, ...p })
 const byName = (parts: ReturnType<typeof classifyConduct>) => Object.fromEntries(parts.map((p) => [p.soldier.name, p]))
 
 describe('conduct dates', () => {
@@ -78,84 +78,40 @@ describe('conduct dates', () => {
 })
 
 describe('classifyConduct', () => {
-  const today = '2026-09-22'
-
-  it('MC and out-of-camp soldiers are not in camp, with their reason', () => {
-    const p = byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, CALL))
-    expect(p['MC GUY']).toMatchObject({ kind: 'not-in-camp', participating: false, reason: '3D MC' })
-    expect(p['LEAVE GUY']).toMatchObject({ kind: 'not-in-camp', participating: false, reason: 'Annual Leave' })
+  it('no call -> participating', () => {
+    expect(byName(classifyConduct(C(), SOLDIERS, []))['FIT GUY']).toMatchObject({ kind: 'in', reason: null })
   })
 
-  it('LD and RMJ fall out by default and wait for a commander\'s call', () => {
-    const parts = classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, CALL)
-    expect(byName(parts)['LD GUY']).toMatchObject({ kind: 'out-default', participating: false, reason: 'FEVER, LD' })
-    expect(needsDecision(parts).map((p) => p.soldier.name)).toEqual(['LD GUY'])
+  it('a seeded out-of-camp call -> out of camp, with its reason', () => {
+    const p = byName(classifyConduct(C(), SOLDIERS, [dec({ soldier_id: 'mc', reason: '3D MC', group_kind: 'out-of-camp' })]))
+    expect(p['MC GUY']).toMatchObject({ kind: 'out-of-camp', reason: '3D MC' })
   })
 
-  it('an RMJ bundled into an excuse reason also needs a call', () => {
-    const rmj = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Status', type: 'Excuse', reason: 'Excuse Heavy Loads, RMJ' })]
-    expect(byName(classifyConduct(C(), SOLDIERS, rmj, [], today, CALL))['FIT GUY'].kind).toBe('out-default')
+  it('a hand fall-out takes its own reason; calls for another conduct are ignored', () => {
+    const manual = dec({ reason: 'Duty' })
+    expect(byName(classifyConduct(C(), SOLDIERS, [manual]))['FIT GUY']).toMatchObject({ kind: 'fall-out', reason: 'Duty' })
+    expect(byName(classifyConduct(C(), SOLDIERS, [{ ...manual, conduct_id: 'c2' }]))['FIT GUY'].kind).toBe('in')
   })
 
-  it('plain excuses wait to be confirmed, with the excuse as the reason', () => {
-    const p = byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, CALL))
-    expect(p['FLEGS GUY']).toMatchObject({ kind: 'in-excused', participating: false, reason: 'Excuse FLEGS' })
-    expect(p['FIT GUY']).toMatchObject({ kind: 'in', participating: true, note: null })
+  it('a participate call brings back a fall-out or someone out of camp', () => {
+    const p = byName(classifyConduct(C(), SOLDIERS, [dec({ participating: true }), dec({ soldier_id: 'mc', participating: true })]))
+    expect(p['FIT GUY']).toMatchObject({ kind: 'in' })
+    expect(p['MC GUY']).toMatchObject({ kind: 'in' })
   })
 
-  it('a stored decision settles a pinged soldier either way', () => {
-    const can: ConductDecision = { id: 'd1', conduct_id: 'c1', soldier_id: 'ld', participating: true, reason: null }
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today, CALL))['LD GUY']).toMatchObject({ kind: 'in-confirmed', participating: true })
-    const cannot = { ...can, participating: false }
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [cannot], today, CALL))['LD GUY']).toMatchObject({ kind: 'out-confirmed', reason: 'FEVER, LD' })
-  })
-
-  it('a manual fall-out takes its own reason; decisions for another conduct are ignored', () => {
-    const manual: ConductDecision = { id: 'd2', conduct_id: 'c1', soldier_id: 'fit', participating: false, reason: 'Duty' }
-    const other: ConductDecision = { ...manual, id: 'd3', conduct_id: 'c2' }
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [manual], today, CALL))['FIT GUY']).toMatchObject({ kind: 'out-manual', reason: 'Duty' })
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [other], today, CALL))['FIT GUY'].kind).toBe('in')
-  })
-
-  it('anyone marked absent is not in camp, whatever the scope', () => {
-    const absent = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Others', type: 'Others', reason: 'Court', counts_as_absence: true })]
-    expect(byName(classifyConduct(C(), SOLDIERS, absent, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'not-in-camp', reason: 'Court' })
-  })
-
-  it('a report sick falls out automatically, URTI or not', () => {
-    const rs = [
-      ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Report Sick', type: 'URTI', reason: 'Flu', start: today, end: today }),
-      ex({ soldier_id: 'fl', name: 'FLEGS GUY', scope: 'Report Sick', type: 'Report Sick', reason: 'Eczema', start: today, end: today }),
-    ]
-    const p = byName(classifyConduct(C(), SOLDIERS, rs, [], today, CALL))
-    expect(p['FIT GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Flu' })
-    expect(p['FLEGS GUY']).toMatchObject({ kind: 'out-auto', reason: 'Report Sick — Eczema' })
-  })
-
-  it('a medical review is only an exception to confirm, not a fall-out', () => {
-    const mr = [ex({ soldier_id: 'fit', name: 'FIT GUY', scope: 'Report Sick', type: 'Medical Review', reason: 'Knee review', start: today, end: today })]
-    expect(byName(classifyConduct(C(), SOLDIERS, mr, [], today, CALL))['FIT GUY']).toMatchObject({ kind: 'in-excused', reason: 'Knee review' })
-  })
-
-  it('a commander can let someone not in camp take part', () => {
-    const can: ConductDecision = { id: 'd4', conduct_id: 'c1', soldier_id: 'mc', participating: true, reason: null }
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [can], today, CALL))['MC GUY']).toMatchObject({ kind: 'in-confirmed', participating: true })
-  })
-
-  it('reads exceptions on the conduct day, and skips revoked ones and posted-out soldiers', () => {
-    const later = C({ date: '2026-09-30' })
-    expect(byName(classifyConduct(later, SOLDIERS, EXCEPTIONS, [], today, CALL))['MC GUY'].kind).toBe('in')
-    const revoked = EXCEPTIONS.map((e) => (e.soldier_id === 'mc' ? { ...e, revoked_at: '2026-09-21T00:00:00Z' } : e))
-    expect(byName(classifyConduct(C(), SOLDIERS, revoked, [], today, CALL))['MC GUY'].kind).toBe('in')
+  it('skips posted-out soldiers', () => {
     const postedOut = SOLDIERS.map((s) => (s.id === 'fit' ? { ...s, on_strength: false } : s))
-    expect(byName(classifyConduct(C(), postedOut, EXCEPTIONS, [], today, CALL))['FIT GUY']).toBeUndefined()
+    expect(byName(classifyConduct(C(), postedOut, []))['FIT GUY']).toBeUndefined()
   })
 })
 
 describe('conduct state text', () => {
   const today = '2026-09-22'
   const conduct = C({ start_time: '08:00:00', end_time: '10:00:00' })
-  const parts = classifyConduct(conduct, conductSoldiers(SOLDIERS, true), EXCEPTIONS, [], today, CALL)
+  const parts = classifyConduct(conduct, conductSoldiers(SOLDIERS, true), [
+    dec({ soldier_id: 'mc', reason: '3D MC', group_kind: 'out-of-camp' }),
+    dec({ soldier_id: 'ld', reason: 'Duty' }),
+  ])
 
   it('counts troopers only, and drops COY HQ when it sits out', () => {
     expect(byName(parts)['OC ONE']).toBeUndefined()
@@ -165,28 +121,26 @@ describe('conduct state text', () => {
     expect(conductSoldiers([...SOLDIERS, hq], true).map((s) => s.name)).toContain('HQ CLERK')
   })
 
-  it('needs-call types come from settings', () => {
-    expect(byName(classifyConduct(C(), SOLDIERS, EXCEPTIONS, [], today, []))['LD GUY'].kind).toBe('in-excused')
-  })
-
-  it('renders the conduct state: in-camp strength, fall-outs only', () => {
+  it('renders strength (in camp), those participating and those fallen out', () => {
     expect(generateConductState('Hercules', conduct, parts)).toBe([
       'HERCULES COY CONDUCT STATE',
       'CONDUCT: IPPT1',
       'DATE: 220926',
       'TIME: 0800 - 1000HRS',
       '',
-      'OVERALL: 01/03',
-      'FALL OUT: 00',
-      'TO CONFIRM: 02',
+      'STRENGTH: 04',
       '',
-      'TO CONFIRM:',
-      '1. 1102 PTE LD GUY — FEVER, LD',
-      '2. 2101 PTE FLEGS GUY — EXCUSE FLEGS',
+      'PARTICIPATING: 03',
+      '1. 2103 CPL LEAVE GUY',
+      '2. 2101 PTE FLEGS GUY',
+      '3. 2102 PTE FIT GUY',
+      '',
+      'FALL OUT: 01',
+      '1. 1102 PTE LD GUY — DUTY',
     ].join('\n'))
   })
 
-  it('seeds groups from the Overview: out for a reason, unticked, ticked despite a reason', () => {
+  it('seeds out of camp for everyone absent on the Overview; present (even flagged) takes part', () => {
     const exs = [
       ex({ soldier_id: 'mc', name: 'MC GUY', scope: 'Att C', type: 'MC', reason: '3D MC', start: today, end: today, counts_as_absence: true }),
       ex({ soldier_id: 'ld', name: 'LD GUY', scope: 'Att C', type: 'MC', reason: 'x', start: today, end: today, counts_as_absence: true }),
@@ -197,9 +151,9 @@ describe('conduct state text', () => {
     ]
     const calls = seedDecisions(C(), SOLDIERS, exs, [], marks, [], today)
     const by = (id: string) => calls.find((x) => x.soldier_id === id)
-    expect(by('mc')).toMatchObject({ participating: false, group_kind: 'out-of-camp' })
-    expect(by('fit')).toMatchObject({ participating: false, group_kind: null })
-    expect(by('ld')).toMatchObject({ participating: false, group_kind: 'to-confirm' })
+    expect(by('mc')).toMatchObject({ participating: false, group_kind: 'out-of-camp', reason: 'MC' })
+    expect(by('fit')).toMatchObject({ participating: false, group_kind: 'out-of-camp', reason: null })
+    expect(by('ld')).toBeUndefined()
     expect(by('fl')).toBeUndefined()
   })
 })
