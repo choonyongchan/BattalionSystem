@@ -28,6 +28,7 @@ describe('OverviewTab', () => {
     await waitFor(() => expect(msg.textContent).toContain('*TROOPER BUNK (2/3)*'))
     expect(msg.textContent).toMatch(/LIM ZHEN HAO - MA/)
     expect(msg.textContent).not.toMatch(/YEO JIA HENG/)
+    expect(screen.getByText('Company').nextElementSibling?.textContent).toBe('2/3')
 
     await userEvent.click(screen.getByRole('checkbox', { name: /GOH RONG HAO/ }))
     await waitFor(() => expect(msg.textContent).toContain('*TROOPER BUNK (1/3)*'))

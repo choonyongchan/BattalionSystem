@@ -80,6 +80,24 @@ export default function OverviewTab({ company }: { company: Company }) {
 
       {groups.length === 0 && <Empty>No soldier has a bunk yet. Add 4Ds or bunks in the Nominal Roll.</Empty>}
 
+      {groups.length > 0 && (
+        <Card className="p-3 space-y-1">
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm font-semibold text-ink">Company</span>
+            <span className="text-lg font-semibold text-ink">{strength(groups.flatMap((g) => g.bunks.flatMap((b) => b.members)))}</span>
+          </div>
+          {groups.map((g) => (
+            <div key={g.platoon ?? 'other'} className="flex flex-wrap items-baseline gap-x-3 text-sm">
+              <span className="font-semibold text-ink">{g.platoon ?? 'Other'}</span>
+              <span className="text-ink">{strength(g.bunks.flatMap((b) => b.members))}</span>
+              <span className="text-ink-60">
+                {g.bunks.map((b) => `${g.platoon ? b.label.replace(/^PLT \S+ BUNK /, 'B') : b.label} ${strength(b.members)}`).join(' · ')}
+              </span>
+            </div>
+          ))}
+        </Card>
+      )}
+
       {groups.map((g) => (
         <section key={g.platoon ?? 'other'} className="space-y-2">
           {g.platoon && (
