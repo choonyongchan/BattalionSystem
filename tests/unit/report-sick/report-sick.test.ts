@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isUrti, generateRsiReport, generateMedicalReviewReport } from '@/backend/domain/report-sick/report-sick'
+import { isUrti, reasonWithDetail, generateRsiReport, generateMedicalReviewReport } from '@/backend/domain/report-sick/report-sick'
 import { defaultSettings } from '@/backend/domain/settings/settings'
 import { soldierIndex } from '@/backend/domain/exceptions/active'
 import type { Exception, MedicalReview, Soldier } from '@/shared/types'
@@ -26,6 +26,16 @@ describe('isUrti', () => {
     expect(isUrti('Eczema', KEYWORDS)).toBe(false)
     expect(isUrti('Headache and Nausea', KEYWORDS)).toBe(false)
     expect(isUrti('Influenza-like', KEYWORDS)).toBe(false)
+  })
+})
+
+describe('reasonWithDetail', () => {
+  const e = (extra: Partial<Exception>) => ({ ...rs('a', 'Report Sick', 'Wrist Injury'), ...extra })
+  it('appends laterality and onset in one bracket, only what is recorded', () => {
+    expect(reasonWithDetail(e({ laterality: 'LEFT', onset: '2026-10-14' }))).toBe('Wrist Injury (Left, Since 141026)')
+    expect(reasonWithDetail(e({ onset: '2026-10-14' }))).toBe('Wrist Injury (Since 141026)')
+    expect(reasonWithDetail(e({ laterality: 'BOTH' }))).toBe('Wrist Injury (Both)')
+    expect(reasonWithDetail(e({}))).toBe('Wrist Injury')
   })
 })
 

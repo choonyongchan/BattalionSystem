@@ -22,6 +22,10 @@ export interface Exception {
   time?: string | null
   location?: string | null
   in_out?: 'IN' | 'OUT' | null
+  /** Report sick: date symptoms began. Null on rows from before the field existed. */
+  onset?: string | null
+  /** Report sick: which side, when it matters. */
+  laterality?: 'LEFT' | 'RIGHT' | 'BOTH' | null
   /** The soldier it belongs to. Null for rows written before the id existed or by the old app — see soldierKey(). */
   soldier_id?: string | null
   /** Fine-grained kind (MC, LD, RMJ, Excuse, ...); scope is the parade section it prints under. Null = infer (exceptionType). */

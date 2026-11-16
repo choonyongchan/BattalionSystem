@@ -43,8 +43,13 @@ CREATE TABLE IF NOT EXISTS public."Exceptions" (
   in_out            text CHECK (in_out IS NULL OR in_out = ANY (ARRAY['IN','OUT'])),
   soldier_id        uuid REFERENCES public."NominalRoll" (id) ON DELETE SET NULL,
   type              text,
-  revoked_at        timestamptz
+  revoked_at        timestamptz,
+  onset             date,
+  laterality        text CHECK (laterality IS NULL OR laterality = ANY (ARRAY['LEFT','RIGHT','BOTH']))
 );
+-- Report sick: when symptoms began, and which side. Added after the table first shipped
+ALTER TABLE public."Exceptions" ADD COLUMN IF NOT EXISTS onset date;
+ALTER TABLE public."Exceptions" ADD COLUMN IF NOT EXISTS laterality text CHECK (laterality IS NULL OR laterality = ANY (ARRAY['LEFT','RIGHT','BOTH']));
 CREATE INDEX IF NOT EXISTS exceptions_company_name_scope_idx ON public."Exceptions" (company, name, scope);
 CREATE INDEX IF NOT EXISTS exceptions_soldier_idx ON public."Exceptions" (soldier_id);
 

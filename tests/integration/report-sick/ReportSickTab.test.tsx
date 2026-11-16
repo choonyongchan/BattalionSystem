@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ReportSickTab from '@/frontend/components/report-sick/ReportSickTab'
@@ -29,6 +29,9 @@ async function pick(name: string) {
   await userEvent.click(await screen.findByText(name))
 }
 
+/** Fills the compulsory onset date with today. */
+const setOnset = () => fireEvent.change(screen.getByLabelText(/Onset of symptoms/), { target: { value: today } })
+
 describe('ReportSickTab', () => {
   it('keys an RSI at KHMC as a URTI exception and prints it under URTI', async () => {
     await renderTab()
@@ -36,13 +39,15 @@ describe('ReportSickTab', () => {
     await pick('CHONG KAH WAI')
     await userEvent.type(screen.getByPlaceholderText(/^Reason/), 'Flu and phlegm')
     expect(screen.getByRole('checkbox', { name: 'URTI' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Add RSI' })).toBeDisabled()
+    setOnset()
     await userEvent.click(screen.getByRole('button', { name: 'Add RSI' }))
 
     await waitFor(() => expect(screen.getByText(/REASON: Flu and phlegm/)).toBeInTheDocument(), { timeout: 10000 })
-    expect(screen.getByText(/REASON: Flu and phlegm/).textContent).toMatch(/\nURTI\nS\/N: 01\nR\/N: .*CHONG KAH WAI\nREASON: Flu and phlegm$/)
+    expect(screen.getByText(/REASON: Flu and phlegm/).textContent).toMatch(/\nURTI\nS\/N: 01\nR\/N: .*CHONG KAH WAI\nREASON: Flu and phlegm \(Since \d{6}\)$/)
 
-    const { data } = await supabase.from('Exceptions').select('scope, type, in_out, location, start, end, soldier_id').eq('company', 'test').eq('reason', 'Flu and phlegm')
-    expect(data).toEqual([expect.objectContaining({ scope: 'Report Sick', type: 'URTI', in_out: 'IN', location: 'KHMC', start: today, end: today })])
+    const { data } = await supabase.from('Exceptions').select('scope, type, in_out, location, start, end, soldier_id, onset, laterality').eq('company', 'test').eq('reason', 'Flu and phlegm')
+    expect(data).toEqual([expect.objectContaining({ scope: 'Report Sick', type: 'URTI', in_out: 'IN', location: 'KHMC', start: today, end: today, onset: today, laterality: null })])
     expect(data![0].soldier_id).not.toBeNull()
   })
 
@@ -52,12 +57,14 @@ describe('ReportSickTab', () => {
     expect(screen.getByLabelText('Location')).toHaveValue('')
     await pick('GOH RONG HAO')
     await userEvent.type(screen.getByPlaceholderText(/^Reason/), 'Sprained ankle')
+    setOnset()
+    await userEvent.click(screen.getByRole('radio', { name: 'Left' }))
     await userEvent.click(screen.getByRole('button', { name: 'Add RSO' }))
 
     await waitFor(() => expect(screen.getByText(/Sprained ankle/)).toBeInTheDocument(), { timeout: 10000 })
     expect(screen.queryByText(/message$/)).not.toBeInTheDocument()
-    const { data } = await supabase.from('Exceptions').select('in_out, location, counts_as_absence').eq('company', 'test').eq('reason', 'Sprained ankle')
-    expect(data).toEqual([{ in_out: 'OUT', location: null, counts_as_absence: true }])
+    const { data } = await supabase.from('Exceptions').select('in_out, location, counts_as_absence, laterality').eq('company', 'test').eq('reason', 'Sprained ankle')
+    expect(data).toEqual([{ in_out: 'OUT', location: null, counts_as_absence: true, laterality: 'LEFT' }])
   })
 
   it('edits an RSO through the add form', async () => {
@@ -83,6 +90,7 @@ describe('ReportSickTab', () => {
     expect(screen.getByLabelText('Coy')).toHaveValue('TEST')
     await userEvent.type(screen.getByLabelText('NRIC'), 's0000000a')
     await userEvent.type(screen.getByLabelText('Diagnosis/Issue'), 'Revoke FLEGS Status')
+    setOnset()
     await userEvent.click(screen.getByRole('radio', { name: 'Yes' }))
     await userEvent.click(screen.getByRole('button', { name: 'Add medical review' }))
 

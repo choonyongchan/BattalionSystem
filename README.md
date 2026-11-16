@@ -38,6 +38,8 @@ Tabs are grouped by what you are doing. The open tab is kept in the address bar 
 - **RSO** (report sick outside): the same, with no default location. RSO has no message.
 - **Medical Review**: rank and name, coy, NRIC, diagnosis, last and next medical appointment, memo (Yes/No) and remarks. Copy the medical review message.
 
+Every kind needs an **onset of symptoms** date and can take a left/right/both laterality; the messages print them as `Reason (Left, Since 141026)`.
+
 RSI and RSO also fall the soldier out of conducts. A medical review shows there only as a note.
 
 NRICs are stored in the database. Anyone with the company password can see them, so keep the password to people who need it.

@@ -8,7 +8,7 @@ import type { Company } from '@/shared/companies'
 import { isActiveOn, isOnStrength, soldierIndex, soldierOf } from '@/backend/domain/exceptions/active'
 import {
   generateMedicalReviewReport, generateRsiReport,
-  isMedicalReview, isRsi, isRso, isUrti, isUrtiException,
+  isMedicalReview, isRsi, isRso, isUrti, isUrtiException, reasonWithDetail,
 } from '@/backend/domain/report-sick/report-sick'
 import { combine, useExceptions, useMedicalReviews, useSettingsQuery, useSoldiers, useWrite } from '@/frontend/hooks/queries'
 import { todaySGDate } from '@/shared/dates'
@@ -35,11 +35,15 @@ const KINDS: { value: Kind; label: string }[] = [
 const IS_KIND: Record<Kind, (e: Exception) => boolean> = { rsi: isRsi, rso: isRso, review: isMedicalReview }
 
 /** location null = untouched: shows and saves the kind's default (Settings > Report Sick for RSI). */
-type SickForm = { name: string; reason: string; urti: boolean; urtiTouched: boolean; location: string | null }
-type ReviewForm = { name: string; coy: string; nric: string; diagnosis: string; lastMa: string; nextMa: string; memo: boolean; remarks: string }
+type Laterality = '' | 'LEFT' | 'RIGHT' | 'BOTH'
+const LATERALITY: { value: Laterality; label: string }[] = [
+  { value: '', label: 'None' }, { value: 'LEFT', label: 'Left' }, { value: 'RIGHT', label: 'Right' }, { value: 'BOTH', label: 'Both' },
+]
+type SickForm = { name: string; reason: string; urti: boolean; urtiTouched: boolean; location: string | null; onset: string; laterality: Laterality }
+type ReviewForm = { name: string; coy: string; nric: string; diagnosis: string; lastMa: string; nextMa: string; memo: boolean; remarks: string; onset: string; laterality: Laterality }
 
-const SICK_FORM: SickForm = { name: '', reason: '', urti: false, urtiTouched: false, location: null }
-const reviewForm = (coy: string): ReviewForm => ({ name: '', coy, nric: '', diagnosis: '', lastMa: '', nextMa: '', memo: false, remarks: '' })
+const SICK_FORM: SickForm = { name: '', reason: '', urti: false, urtiTouched: false, location: null, onset: '', laterality: '' }
+const reviewForm = (coy: string): ReviewForm => ({ name: '', coy, nric: '', diagnosis: '', lastMa: '', nextMa: '', memo: false, remarks: '', onset: '', laterality: '' })
 
 /**
  * Report Sick tab: RSI (inside, default location from Settings), RSO (outside) and medical reviews. Each is a
@@ -111,7 +115,10 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   /** Loads an entry into the add form and scrolls up to it. */
   function startEdit(e: Exception) {
     setEditing(e)
-    setSick({ name: e.name, reason: e.reason ?? '', urti: isUrtiException(e), urtiTouched: true, location: e.location ?? '' })
+    setSick({
+      name: e.name, reason: e.reason ?? '', urti: isUrtiException(e), urtiTouched: true, location: e.location ?? '',
+      onset: e.onset ?? '', laterality: e.laterality ?? '',
+    })
     document.getElementById('rs-form')?.scrollIntoView({ behavior: 'smooth' })
   }
 
@@ -123,14 +130,19 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
     requestAnimationFrame(() => document.getElementById(`rs-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
   }
 
+  /** Onset is compulsory and cannot fall after the report date. */
+  const onsetOk = (onset: string) => !!onset && onset <= date
+
   /** Adds an RSI or RSO for the picked soldier on the selected date, or saves the edit. */
   async function addSick() {
     const soldier = soldiers.find((s) => s.name === sick.name)
     const reason = sick.reason.trim()
-    if (!soldier || !reason) return
+    if (!soldier || !reason || !onsetOk(sick.onset)) return
+    const detail = { onset: sick.onset, laterality: sick.laterality || null }
     if (editing) {
       const ok = await run(() => exceptionRepo.update(editing.id, {
         name: soldier.name, soldier_id: soldier.id ?? null, reason, location: location.trim() || null, type: sick.urti ? 'URTI' : 'Report Sick',
+        ...detail,
       }))
       if (ok) endEdit()
       return
@@ -143,6 +155,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
       reason,
       in_out: kind === 'rso' ? 'OUT' : 'IN',
       location: location.trim() || null,
+      ...detail,
     }))
     if (ok) setSick(SICK_FORM)
   }
@@ -150,9 +163,9 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   /** Adds a medical review for the picked soldier on the selected date. */
   async function addReview() {
     const soldier = soldiers.find((s) => s.name === review.name)
-    if (!soldier || !review.nric.trim() || !review.diagnosis.trim()) return
+    if (!soldier || !review.nric.trim() || !review.diagnosis.trim() || !onsetOk(review.onset)) return
     const ok = await run(() => reviewRepo.add(
-      { ...base(soldier), type: 'Medical Review', reason: review.diagnosis.trim() },
+      { ...base(soldier), type: 'Medical Review', reason: review.diagnosis.trim(), onset: review.onset, laterality: review.laterality || null },
       {
         nric: review.nric.trim().toUpperCase(),
         coy: review.coy.trim(),
@@ -180,9 +193,18 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
   }
   /** Second line of a list entry: reason, plus where and when. */
   const detail = (e: Exception) => {
-    if (kind === 'review') return [e.reason, reviewById.get(e.id)?.nric].filter(Boolean).join(' · ')
-    return [e.reason, e.location && `@ ${e.location}`, e.time].filter(Boolean).join(' ')
+    if (kind === 'review') return [reasonWithDetail(e), reviewById.get(e.id)?.nric].filter(Boolean).join(' · ')
+    return [reasonWithDetail(e), e.location && `@ ${e.location}`, e.time].filter(Boolean).join(' ')
   }
+
+  const onsetFields = <F extends { onset: string; laterality: Laterality }>(f: F, setF: (f: F) => void) => (
+    <>
+      <Field label="Onset of symptoms" required>
+        <Input type="date" max={date} value={f.onset} onChange={(e) => setF({ ...f, onset: e.target.value })} />
+      </Field>
+      <Segmented label="Laterality (optional)" value={f.laterality} onChange={(laterality) => setF({ ...f, laterality })} options={LATERALITY} />
+    </>
+  )
 
   const soldierPicker = (value: string, onChange: (name: string) => void) => (
     <Field label="Soldier" required>
@@ -222,6 +244,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
             <Field label="NRIC"><Input value={review.nric} autoComplete="off" onChange={(e) => setReview({ ...review, nric: e.target.value })} /></Field>
           </div>
           <Field label="Diagnosis/Issue"><Input value={review.diagnosis} onChange={(e) => setReview({ ...review, diagnosis: e.target.value })} /></Field>
+          {onsetFields(review, setReview)}
           <div className="grid grid-cols-2 gap-2">
             <Field label="Most recent MA"><Input type="date" value={review.lastMa} onChange={(e) => setReview({ ...review, lastMa: e.target.value })} /></Field>
             <Field label="Next MA"><Input type="date" value={review.nextMa} onChange={(e) => setReview({ ...review, nextMa: e.target.value })} /></Field>
@@ -233,7 +256,7 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
             options={[{ value: true, label: 'Yes' }, { value: false, label: 'No' }]}
           />
           <Field label="Remarks/Requests"><Input value={review.remarks} onChange={(e) => setReview({ ...review, remarks: e.target.value })} /></Field>
-          <Button block onClick={addReview} disabled={busy || !review.name || !review.nric.trim() || !review.diagnosis.trim()}>
+          <Button block onClick={addReview} disabled={busy || !review.name || !review.nric.trim() || !review.diagnosis.trim() || !onsetOk(review.onset)}>
             Add medical review
           </Button>
         </Panel>
@@ -250,13 +273,14 @@ export default function ReportSickTab({ company, companyLabel }: { company: Comp
               }}
             />
           </Field>
+          {onsetFields(sick, setSick)}
           <Field label="Location">
             <Input placeholder="Location" value={location} onChange={(e) => setSick({ ...sick, location: e.target.value })} />
           </Field>
           <CheckField label="URTI">
             <Checkbox checked={sick.urti} onChange={(e) => setSick({ ...sick, urti: e.target.checked, urtiTouched: true })} />
           </CheckField>
-          <Button block onClick={addSick} disabled={busy || !sick.name || !sick.reason.trim()}>
+          <Button block onClick={addSick} disabled={busy || !sick.name || !sick.reason.trim() || !onsetOk(sick.onset)}>
             {editing ? 'Save changes' : `Add ${kind === 'rso' ? 'RSO' : 'RSI'}`}
           </Button>
           {editing && <Button block variant="secondary" onClick={endEdit}>Cancel</Button>}

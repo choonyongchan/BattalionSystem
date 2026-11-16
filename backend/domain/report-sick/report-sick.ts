@@ -33,11 +33,20 @@ function rankName(e: Exception, idx: SoldierIndex): string {
   return s ? `${s.rank} ${s.name}` : e.name
 }
 
+/** "Reason (Left, Since 141026)"; the bracket holds only what was recorded. */
+export function reasonWithDetail(e: Exception): string {
+  const detail = [
+    e.laterality && e.laterality[0] + e.laterality.slice(1).toLowerCase(),
+    e.onset && `Since ${ddmmyy(e.onset)}`,
+  ].filter(Boolean).join(', ')
+  return `${e.reason ?? ''}${detail ? ` (${detail})` : ''}`
+}
+
 /** S/N, R/N and REASON lines for one report sick. */
 function entryLines(e: Exception, n: number, idx: SoldierIndex): string[] {
   const s = soldierOf(e, idx)
   const who = s ? [s.four_d, s.rank, s.name].filter(Boolean).join(' ') : e.name
-  return [`S/N: ${pad2(n + 1)}`, `R/N: ${who}`, `REASON: ${e.reason ?? ''}`]
+  return [`S/N: ${pad2(n + 1)}`, `R/N: ${who}`, `REASON: ${reasonWithDetail(e)}`]
 }
 
 /** A titled section of numbered entries; nothing when there are none. */
@@ -70,7 +79,7 @@ export function generateMedicalReviewReport(
     `Rank + Name: ${rankName(e, idx)}`,
     `Coy: ${r.coy}`,
     `NRIC: ${r.nric}`,
-    `Diagnosis/Issue: ${e.reason ?? ''}`,
+    `Diagnosis/Issue: ${reasonWithDetail(e)}`,
     `Date of most recent Medical Appointment: ${date(r.last_ma)}`,
     `Date of Next MA: ${date(r.next_ma)}`,
     `Memo (Yes/No): ${r.memo ? 'Yes' : 'No'}`,
