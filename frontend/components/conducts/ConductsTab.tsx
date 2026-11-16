@@ -46,9 +46,9 @@ export default function ConductsTab({ company, companyLabel }: { company: Compan
 
   const parts = useMemo(
     () => (selected && settings
-      ? classifyConduct(selected, conductSoldiers(soldiersQ.data ?? [], settings.conducts.include_hq), decisionsQ.data ?? [])
+      ? classifyConduct(selected, conductSoldiers(soldiersQ.data ?? [], settings.conducts.include_hq), decisionsQ.data ?? [], exceptionsQ.data ?? [])
       : []),
-    [selected, settings, soldiersQ.data, decisionsQ.data],
+    [selected, settings, soldiersQ.data, decisionsQ.data, exceptionsQ.data],
   )
 
   /** Creates or updates the conduct in the form, then selects it. */

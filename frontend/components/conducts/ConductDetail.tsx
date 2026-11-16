@@ -63,12 +63,13 @@ export default function ConductDetail({ companyLabel, conduct, parts, busy, acti
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink">{who(p)}</p>
+                  {p.statuses.length > 0 && <p className="text-xs text-ink-60">{p.statuses.join(', ')}</p>}
                 </div>
                 <Button
                   variant="danger-outline"
                   size="sm"
                   disabled={busy || !p.soldier.id}
-                  onClick={() => setFallingOut({ id: p.soldier.id!, reason: '' })}
+                  onClick={() => setFallingOut({ id: p.soldier.id!, reason: p.statuses.join(', ') })}
                 >Fall out…</Button>
               </div>
               {fallingOut && fallingOut.id === p.soldier.id && (

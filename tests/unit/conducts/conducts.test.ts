@@ -99,6 +99,15 @@ describe('classifyConduct', () => {
     expect(p['MC GUY']).toMatchObject({ kind: 'in' })
   })
 
+  it('carries active statuses and footnotes them in the state text', () => {
+    const parts = classifyConduct(C(), conductSoldiers(SOLDIERS, true), [], EXCEPTIONS)
+    expect(byName(parts)['LD GUY'].statuses).toEqual(['LD (FEVER, LD)'])
+    expect(byName(parts)['FIT GUY'].statuses).toEqual([])
+    const text = generateConductState('Hercules', C(), parts)
+    expect(text).toContain('LD GUY [')
+    expect(text).toContain('NOTE:\n[1] ')
+  })
+
   it('skips posted-out soldiers', () => {
     const postedOut = SOLDIERS.map((s) => (s.id === 'fit' ? { ...s, on_strength: false } : s))
     expect(byName(classifyConduct(C(), postedOut, []))['FIT GUY']).toBeUndefined()

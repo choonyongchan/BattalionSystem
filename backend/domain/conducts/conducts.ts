@@ -2,8 +2,8 @@ import type { Conduct, ConductDecision, DutyEntry, Exception, Soldier } from '@/
 import type { OverviewMark } from '@/backend/data/repositories/OverviewMarkRepository'
 import { NO_REASON, buildBunks } from '@/backend/domain/overview/bunks'
 import { RANK_INDEX, isCommander } from '@/shared/ranks'
-import { isOnStrength } from '@/backend/domain/exceptions/active'
-import { ddmmyy, pad2 } from '@/shared/dates'
+import { buildActiveMap, exceptionType, isOnStrength, soldierKeyOf } from '@/backend/domain/exceptions/active'
+import { ddmmyy, offsetDate, pad2 } from '@/shared/dates'
 
 /**
  * Conduct tracking, adapted from 40SAR_Archer: who takes part in a training
@@ -83,6 +83,8 @@ export interface Participation {
   kind: ParticipationKind
   /** Why he's out (null while participating). */
   reason: string | null
+  /** Statuses active on any conduct day, e.g. "LD (no running)". */
+  statuses: string[]
 }
 
 /** False for someone out of camp: outside the strength. */
@@ -101,14 +103,18 @@ function compareSoldiers(a: Soldier, b: Soldier): number {
  * Sorts every on-strength soldier: no call -> participating; a stored call decides
  * otherwise (seeded out of camp, a hand fall-out with a reason, or called back in).
  */
-export function classifyConduct(conduct: Conduct, soldiers: Soldier[], decisions: ConductDecision[]): Participation[] {
+export function classifyConduct(conduct: Conduct, soldiers: Soldier[], decisions: ConductDecision[], exceptions: Exception[] = []): Participation[] {
   const decisionFor = new Map(decisions.filter((d) => d.conduct_id === conduct.id).map((d) => [d.soldier_id, d]))
+  const days: string[] = []
+  for (let day = conduct.date; day <= conductEnd(conduct); day = offsetDate(day, 1)) days.push(day)
+  const dayMaps = days.map((day) => buildActiveMap(exceptions, soldiers, day))
   return soldiers.filter(isOnStrength).sort(compareSoldiers).map((soldier): Participation => {
     const d = soldier.id ? decisionFor.get(soldier.id) : undefined
+    const statuses = [...new Set(dayMaps.flatMap((m) => m.get(soldierKeyOf(soldier)) ?? []).map((e) => `${exceptionType(e)}${e.reason ? ` (${e.reason})` : ''}`))]
     // ponytail: legacy 'to-confirm' rows count as participating
-    if (!d || d.participating || d.group_kind === 'to-confirm') return { soldier, kind: 'in', reason: null }
-    if (d.group_kind === 'out-of-camp') return { soldier, kind: 'out-of-camp', reason: d.reason }
-    return { soldier, kind: 'fall-out', reason: d.reason || 'Fall out' }
+    if (!d || d.participating || d.group_kind === 'to-confirm') return { soldier, kind: 'in', reason: null, statuses }
+    if (d.group_kind === 'out-of-camp') return { soldier, kind: 'out-of-camp', reason: d.reason, statuses }
+    return { soldier, kind: 'fall-out', reason: d.reason || 'Fall out', statuses }
   })
 }
 
@@ -124,9 +130,12 @@ function headerLines(label: string, c: Conduct): string[] {
   return lines
 }
 
-/** Numbered lines with each reason. */
-function reasonLines(parts: Participation[]): string[] {
-  return parts.map((p, i) => `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name}${p.reason ? ` — ${p.reason.toUpperCase()}` : ''}`)
+/** Numbered lines with each reason; `notes` adds a [n] marker to anyone holding a status. */
+function reasonLines(parts: Participation[], notes?: Participation[]): string[] {
+  return parts.map((p, i) => {
+    const n = notes ? notes.indexOf(p) + 1 : 0
+    return `${i + 1}. ${p.soldier.four_d ? `${p.soldier.four_d} ` : ''}${p.soldier.rank} ${p.soldier.name}${p.reason ? ` — ${p.reason.toUpperCase()}` : ''}${n ? ` [${n}]` : ''}`
+  })
 }
 
 /** The company's conduct state: strength (in camp), who takes part, who falls out. */
@@ -134,11 +143,13 @@ export function generateConductState(companyLabel: string, c: Conduct, parts: Pa
   const camp = parts.filter(inCamp)
   const taking = camp.filter((p) => p.kind === 'in')
   const out = camp.filter((p) => p.kind === 'fall-out')
+  const noted = taking.filter((p) => p.statuses.length)
   return [
     ...headerLines(`${companyLabel.toUpperCase()} COY`, c), '',
     `STRENGTH: ${pad2(camp.length)}`,
-    '', `PARTICIPATING: ${pad2(taking.length)}`, ...reasonLines(taking),
+    '', `PARTICIPATING: ${pad2(taking.length)}`, ...reasonLines(taking, noted),
     '', `FALL OUT: ${pad2(out.length)}`, ...reasonLines(out),
+    ...(noted.length ? ['', 'NOTE:', ...noted.map((p, i) => `[${i + 1}] ${p.statuses.join(', ').toUpperCase()}`)] : []),
   ].join('\n')
 }
 
